@@ -1,0 +1,30 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with: { python-version: '3.11' }
+    - name: Set up Node
+      uses: actions/setup-node@v3
+      with: { node-version: '18' }
+    - name: Python tests
+      run: |
+        cd pipeline
+        pip install -r requirements.txt
+        python -m pytest tests/
+    - name: C++ tests
+      run: |
+        cd engine
+        mkdir build && cd build
+        cmake ..
+        cmake --build .
+        ctest --output-on-failure
+    - name: JS tests
+      run: |
+        cd dashboard
+        npm install
+        npm run test
