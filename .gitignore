@@ -1,0 +1,6 @@
+node_modules/
+build/
+__pycache__/
+.venv/
+data/*/raw.pbf
+*.onnx
