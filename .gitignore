@@ -2,5 +2,7 @@ node_modules/
 build/
 __pycache__/
 .venv/
-data/*/raw.pbf
+data/
 *.onnx
+engine.exe
+pipeline/cache/
