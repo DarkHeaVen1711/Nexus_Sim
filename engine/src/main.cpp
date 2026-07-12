@@ -4,8 +4,11 @@
 
 int main(int argc, char** argv) {
     std::string city = "chicago";
-    if (argc >= 3 && std::string(argv[1]) == "--city") {
-        city = argv[2];
+    if (argc >= 3) {
+        std::string arg1(argv[1]);
+        if (arg1 == "--city") {
+            city = argv[2];
+        }
     }
     
     std::cout << "NexusSim Engine Version 1.0\n";
