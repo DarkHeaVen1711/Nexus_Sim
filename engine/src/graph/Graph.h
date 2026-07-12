@@ -11,6 +11,8 @@ struct Node {
     int64_t id;
     double lat;
     double lon;
+    double x; // Precomputed pseudo-meters for fast heuristic
+    double y; // Precomputed pseudo-meters for fast heuristic
     int32_t zone_id;
 };
 
@@ -30,6 +32,21 @@ public:
     void add_edge(const Edge& edge) {
         edges_.push_back(edge);
         adj_list_[edge.u].push_back(edge);
+    }
+
+    const Node* get_node(int64_t id) const {
+        auto it = nodes_.find(id);
+        return it != nodes_.end() ? &it->second : nullptr;
+    }
+
+    const std::vector<Edge>& get_edges_from(int64_t u) const {
+        static const std::vector<Edge> empty;
+        auto it = adj_list_.find(u);
+        return it != adj_list_.end() ? it->second : empty;
+    }
+
+    const std::unordered_map<int64_t, Node>& get_nodes() const {
+        return nodes_;
     }
 
     size_t node_count() const { return nodes_.size(); }

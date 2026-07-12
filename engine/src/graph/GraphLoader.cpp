@@ -1,6 +1,7 @@
 #include "GraphLoader.h"
 #include <fstream>
 #include <iostream>
+#include <cmath>
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -24,6 +25,8 @@ Graph load_from_json(const std::string& filepath) {
             n.id = node_json["id"].get<int64_t>();
             n.lat = node_json["lat"].get<double>();
             n.lon = node_json["lon"].get<double>();
+            n.x = n.lon * 111320.0 * std::cos(n.lat * 3.14159265359 / 180.0);
+            n.y = n.lat * 111320.0;
             n.zone_id = node_json["zone_id"].get<int32_t>();
             g.add_node(n);
         }
