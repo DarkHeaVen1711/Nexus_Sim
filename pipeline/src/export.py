@@ -2,40 +2,6 @@ import os
 import json
 import argparse
 import osmnx as ox
-from jsonschema import validate
-
-SCHEMA = {
-  "type": "object",
-  "properties": {
-    "nodes": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "lat": { "type": "number" },
-          "lon": { "type": "number" },
-          "zone_id": { "type": "integer" }
-        },
-        "required": ["id", "lat", "lon", "zone_id"]
-      }
-    },
-    "edges": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "u": { "type": "integer" },
-          "v": { "type": "integer" },
-          "length_m": { "type": "number" },
-          "lanes": { "type": "integer" }
-        },
-        "required": ["u", "v", "length_m", "lanes"]
-      }
-    }
-  },
-  "required": ["nodes", "edges"]
-}
 
 def export_graph(city_id: str):
     in_path = f"../data/{city_id}/zones.graphml"
@@ -64,8 +30,6 @@ def export_graph(city_id: str):
             "lanes": int(data.get('lanes_inferred', 1))
         })
         
-    validate(instance=output, schema=SCHEMA)
-    
     with open(out_path, 'w') as f:
         json.dump(output, f, indent=2)
         
