@@ -1,7 +1,9 @@
 #pragma once
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <cstdint>
+#include <cstddef>
 
 namespace nexussim {
 
@@ -30,17 +32,6 @@ public:
         adj_list_[edge.u].push_back(edge);
     }
 
-    const Node* get_node(int64_t id) const {
-        auto it = nodes_.find(id);
-        return it != nodes_.end() ? &it->second : nullptr;
-    }
-
-    const std::vector<Edge>& get_edges_from(int64_t u) const {
-        static const std::vector<Edge> empty;
-        auto it = adj_list_.find(u);
-        return it != adj_list_.end() ? it->second : empty;
-    }
-
     size_t node_count() const { return nodes_.size(); }
     size_t edge_count() const { return edges_.size(); }
     
@@ -52,8 +43,8 @@ public:
     }
     
     size_t zone_count() const {
-        std::unordered_map<int32_t, bool> zones;
-        for (const auto& pair : nodes_) zones[pair.second.zone_id] = true;
+        std::unordered_set<int32_t> zones;
+        for (const auto& pair : nodes_) zones.insert(pair.second.zone_id);
         return zones.size();
     }
 

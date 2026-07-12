@@ -4,9 +4,6 @@
 
 namespace nexussim {
 
-class GraphLoader {
-public:
-    static Graph load_from_json(const std::string& filepath);
-};
+Graph load_from_json(const std::string& filepath);
 
 } // namespace nexussim

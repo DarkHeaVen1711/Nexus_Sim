@@ -7,7 +7,7 @@ using json = nlohmann::json;
 
 namespace nexussim {
 
-Graph GraphLoader::load_from_json(const std::string& filepath) {
+Graph load_from_json(const std::string& filepath) {
     Graph g;
     std::ifstream file(filepath);
     if (!file.is_open()) {
