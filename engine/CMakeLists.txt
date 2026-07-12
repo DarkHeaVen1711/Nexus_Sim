@@ -31,7 +31,7 @@ target_link_libraries(engine PRIVATE engine_lib)
 
 # Testing
 enable_testing()
-add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp)
+add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp)
 target_link_libraries(engine_test gtest_main engine_lib)
 
 include(GoogleTest)
