@@ -63,7 +63,7 @@ add_library(engine_lib
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers)
-target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uWebSockets_SOURCE_DIR}/src ${uSockets_SOURCE_DIR}/src)
+target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src ${usockets_SOURCE_DIR}/src)
 
 add_executable(engine src/main.cpp)
 target_link_libraries(engine PRIVATE engine_lib uSockets z)
