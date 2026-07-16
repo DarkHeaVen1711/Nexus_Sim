@@ -63,6 +63,10 @@ add_library(engine_lib
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers)
+FetchContent_GetProperties(uWebSockets)
+FetchContent_GetProperties(uSockets)
+message(STATUS "uWebSockets source: ${uwebsockets_SOURCE_DIR}")
+message(STATUS "uSockets source: ${usockets_SOURCE_DIR}")
 target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src ${usockets_SOURCE_DIR}/src)
 
 add_executable(engine src/main.cpp)
