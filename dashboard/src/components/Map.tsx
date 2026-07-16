@@ -2,12 +2,13 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { MetricsPanel } from './MetricsPanel';
 
 // Coordinate config (Piedmont sample data)
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
 export const Map: React.FC = () => {
-  const { agents, isConnected, isReconnecting } = useWebSocket('ws://localhost:9002');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting } = useWebSocket('ws://localhost:9002');
   const [graphData, setGraphData] = useState<any>(null);
 
   useEffect(() => {
@@ -54,10 +55,12 @@ export const Map: React.FC = () => {
       )}
       
       {!isConnected && !isReconnecting && (
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-red-500 text-white px-4 py-2 rounded shadow">
+        <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '4px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
           Disconnected
         </div>
       )}
+
+      <MetricsPanel metrics={metrics} />
 
       <MapContainer 
         center={CITY_CENTER} 

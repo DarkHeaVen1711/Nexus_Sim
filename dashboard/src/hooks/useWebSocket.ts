@@ -13,12 +13,16 @@ export interface Agent {
 
 interface UseWebSocketResult {
   agents: Agent[];
+  metrics: any;
+  zoneMetrics: any[];
   isConnected: boolean;
   isReconnecting: boolean;
 }
 
 export function useWebSocket(url: string): UseWebSocketResult {
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [zoneMetrics, setZoneMetrics] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   
@@ -42,7 +46,15 @@ export function useWebSocket(url: string): UseWebSocketResult {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          setAgents(data);
+          // If we receive the new payload structure with metrics:
+          if (data.agents && data.metrics) {
+            setAgents(data.agents);
+            setMetrics(data.metrics);
+            setZoneMetrics(data.zone_metrics);
+          } else {
+            // Fallback for old mock_engine that just sends raw array
+            setAgents(data);
+          }
         } catch (e) {
           console.error("Failed to parse websocket message", e);
         }
@@ -83,5 +95,5 @@ export function useWebSocket(url: string): UseWebSocketResult {
     };
   }, [connect]);
 
-  return { agents, isConnected, isReconnecting };
+  return { agents, metrics, zoneMetrics, isConnected, isReconnecting };
 }
