@@ -52,10 +52,48 @@ public:
         se_->insert(px, py, agent_idx);
     }
 
+    void query_radius(T cx, T cy, T r,
+                      std::vector<QuadPoint<T>>& out) const {
+        if (!bounds_.intersects_circle(cx, cy, r)) return;
+        for (const auto& p : points_) {
+            T dx = p.x - cx;
+            T dy = p.y - cy;
+            if (dx * dx + dy * dy <= r * r)
+                out.push_back(p);
+        }
+        if (divided_) {
+            nw_->query_radius(cx, cy, r, out);
+            ne_->query_radius(cx, cy, r, out);
+            sw_->query_radius(cx, cy, r, out);
+            se_->query_radius(cx, cy, r, out);
+        }
+    }
+
     void clear() {
         points_.clear();
         nw_.reset(); ne_.reset(); sw_.reset(); se_.reset();
         divided_ = false;
+    }
+
+    void rebuild(const std::vector<T>& xs,
+                 const std::vector<T>& ys,
+                 const std::vector<size_t>& indices) {
+        clear();
+        if (xs.empty()) return;
+        T min_x = xs[0], max_x = xs[0], min_y = ys[0], max_y = ys[0];
+        for (size_t i = 1; i < xs.size(); ++i) {
+            min_x = std::min(min_x, xs[i]);
+            max_x = std::max(max_x, xs[i]);
+            min_y = std::min(min_y, ys[i]);
+            max_y = std::max(max_y, ys[i]);
+        }
+        T pad = static_cast<T>(1.0);
+        bounds_ = {min_x - pad, min_y - pad,
+                   max_x - min_x + 2 * pad,
+                   max_y - min_y + 2 * pad};
+        divided_ = false;
+        for (size_t i = 0; i < xs.size(); ++i)
+            insert(xs[i], ys[i], indices[i]);
     }
 
     size_t point_count() const {
