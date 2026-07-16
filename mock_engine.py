@@ -57,10 +57,45 @@ async def mock_engine(websocket):
                 'heading': heading,
                 'type': agent['type']
             })
+        # Mock Metrics
+        zone_wait_times = {}
+        for agent in agents:
+            # Fake wait time based on progress
+            wait = 0
+            if agent['progress'] < 0.1: 
+                wait = random.uniform(5, 30)
+            
+            zid = agent['u']['zone_id']
+            if zid not in zone_wait_times:
+                zone_wait_times[zid] = []
+            zone_wait_times[zid].append(wait)
+            
+        zone_metrics = []
+        total_wait = 0
+        total_agents = 0
+        
+        for zid, waits in zone_wait_times.items():
+            avg_wait = sum(waits) / len(waits)
+            zone_metrics.append({'zone_id': zid, 'wait_time': avg_wait})
+            total_wait += sum(waits)
+            total_agents += len(waits)
+            
+        city_avg = total_wait / max(1, total_agents)
+        gini = random.uniform(0.2, 0.4) # Mock Gini
+        
+        payload = {
+            'tick': 0,
+            'agents': payload_agents,
+            'metrics': {
+                'avg_wait_time': city_avg,
+                'gini_coefficient': gini
+            },
+            'zone_metrics': zone_metrics
+        }
             
         # Broadcast
         try:
-            await websocket.send(json.dumps(payload_agents))
+            await websocket.send(json.dumps(payload))
             await asyncio.sleep(0.1) # 10 FPS
         except websockets.exceptions.ConnectionClosed:
             print("Dashboard disconnected.")
