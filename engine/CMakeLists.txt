@@ -31,8 +31,12 @@ target_link_libraries(engine PRIVATE engine_lib)
 
 # Testing
 enable_testing()
-add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp)
+add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp)
 target_link_libraries(engine_test gtest_main engine_lib)
 
 include(GoogleTest)
 gtest_discover_tests(engine_test)
+
+# Benchmark
+add_executable(bench_quadtree bench/bench_quadtree.cpp)
+target_link_libraries(bench_quadtree PRIVATE engine_lib)
