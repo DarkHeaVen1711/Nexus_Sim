@@ -55,6 +55,7 @@ public:
         auto t0 = std::chrono::high_resolution_clock::now();
         const size_t N = agents_.size();
 
+        // Snapshot phase (sequential) — safe reads for parallel updates
         snap_x_.resize(N);
         snap_y_.resize(N);
         snap_v_.resize(N);
@@ -73,8 +74,10 @@ public:
             snap_state_[i] = agents_.state[i];
         }
 
+        // Rebuild quadtree
         rebuild_quadtree(active);
 
+        // Parallel agent updates
         size_t nthreads = std::thread::hardware_concurrency();
         if (nthreads == 0) nthreads = 4;
         size_t chunk = (active.size() + nthreads - 1) / nthreads;
@@ -91,10 +94,12 @@ public:
         }
         for (auto& f : futures) f.get();
 
+        // FPS tracking
         auto t1 = std::chrono::high_resolution_clock::now();
         double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
         tick_times_.push_back(ms);
         tick_count_++;
+        if (tick_count_ % 500 == 0) log_fps();
     }
 
     void log_journey_times(const std::string& filepath) {
@@ -138,10 +143,12 @@ private:
     std::vector<int64_t> valid_nodes_;
     Quadtree<double> qt_{0, 0, 1, 1};
 
+    // Snapshots for thread-safe parallel reads
     std::vector<double> snap_x_, snap_y_, snap_v_;
     std::vector<double> snap_edge_dir_x_, snap_edge_dir_y_;
     std::vector<AgentState> snap_state_;
 
+    // Edge length lookup cache
     struct PairHash {
         size_t operator()(const std::pair<int64_t,int64_t>& p) const {
             return std::hash<int64_t>()(p.first)
@@ -150,6 +157,7 @@ private:
     };
     std::unordered_map<std::pair<int64_t,int64_t>,double,PairHash> edge_len_;
 
+    // FPS tracking
     std::vector<double> tick_times_;
     uint64_t tick_count_ = 0;
 
@@ -213,12 +221,109 @@ private:
     void update_agent(size_t i, double dt) {
         IDMParams p = get_default_idm_params(agents_.type[i],
                                               chaos_coefficient_);
+        double v_lead = p.v0;
+        double s = 10000.0;
+
+        // Proximity-based deceleration via quadtree
+        find_leader(i, v_lead, s);
+
         double acc = compute_idm_acceleration(p, agents_.velocity[i],
-                                              p.v0, 10000.0);
+                                              v_lead, s);
         agents_.velocity[i] += acc * dt;
         agents_.velocity[i] = std::max(0.0, agents_.velocity[i]);
-        agents_.position[i] += agents_.velocity[i] * dt;
+
+        double dist = agents_.velocity[i] * dt;
+        agents_.position[i] += dist;
+
+        // Lane change check
+        maybe_lane_change(i, dt);
+
+        // Edge advancement
         advance_edge(i);
+    }
+
+    void find_leader(size_t i, double& v_lead, double& s) {
+        double ax = snap_x_[i], ay = snap_y_[i];
+        double dx = snap_edge_dir_x_[i];
+        double dy = snap_edge_dir_y_[i];
+
+        double follow_dist = agents_.target_speed[i] * 3.0 + 20.0;
+        std::vector<QuadPoint<double>> nearby;
+        qt_.query_radius(ax, ay, follow_dist, nearby);
+
+        double best_s = 1e18;
+        double best_v = 0;
+        for (const auto& pt : nearby) {
+            size_t j = pt.idx;
+            if (j == i) continue;
+            if (snap_state_[j] != AgentState::Navigating
+                && snap_state_[j] != AgentState::Spawned)
+                continue;
+
+            double rel_x = pt.x - ax;
+            double rel_y = pt.y - ay;
+            double proj = rel_x * dx + rel_y * dy;
+
+            if (proj <= 0.5) continue; // Not ahead
+
+            double perp = std::abs(rel_x * (-dy) + rel_y * dx);
+            if (perp > 5.0) continue; // Different lateral position
+
+            if (proj < best_s) {
+                best_s = proj;
+                best_v = snap_v_[j];
+            }
+        }
+        if (best_s < 1e17) {
+            s = best_s;
+            v_lead = best_v;
+        }
+    }
+
+    void maybe_lane_change(size_t i, double dt) {
+        if (snap_state_[i] != AgentState::Navigating) return;
+        IDMParams p = get_default_idm_params(agents_.type[i],
+                                              chaos_coefficient_);
+        double prob = (1.0 - p.lane_discipline)
+                    * chaos_coefficient_ * dt * 0.5;
+        if (prob <= 0) return;
+
+        std::mt19937 rng(agents_.id[i] + tick_count_);
+        std::uniform_real_distribution<double> coin(0.0, 1.0);
+        if (coin(rng) >= prob) return;
+
+        size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+        const auto& path = agents_.path[i];
+        if (ei + 1 >= path.size()) return;
+        int32_t max_lane = get_num_lanes(path[ei], path[ei + 1]) - 1;
+        if (max_lane <= 0) return;
+
+        int32_t dir = (coin(rng) < 0.5) ? -1 : 1;
+        int32_t target = agents_.lane[i] + dir;
+        if (target < 0 || target > max_lane) return;
+
+        double ax = snap_x_[i], ay = snap_y_[i];
+        double px = -snap_edge_dir_y_[i];
+        double py =  snap_edge_dir_x_[i];
+        double shift = 3.5 * dir;
+        double tx = ax + px * shift;
+        double ty = ay + py * shift;
+
+        std::vector<QuadPoint<double>> lateral;
+        qt_.query_radius(tx, ty, 5.0, lateral);
+
+        bool blocked = false;
+        for (const auto& pt : lateral) {
+            size_t j = pt.idx;
+            if (j == i) continue;
+            double dx2 = pt.x - tx;
+            double dy2 = pt.y - ty;
+            if (dx2 * dx2 + dy2 * dy2 < 25.0) {
+                blocked = true;
+                break;
+            }
+        }
+        if (!blocked) agents_.lane[i] = target;
     }
 
     void advance_edge(size_t i) {
@@ -237,9 +342,20 @@ private:
             if (agents_.current_edge_idx[i] + 1
                 >= static_cast<int64_t>(path.size()))
                 agents_.state[i] = AgentState::Arrived;
-            else
+            else {
                 agents_.lane[i] = 0;
+            }
         }
+    }
+
+    void log_fps() {
+        double avg = avg_tick_ms();
+        double p95 = p95_tick_ms();
+        double fps = (avg > 0) ? 1000.0 / avg : 0;
+        std::cout << "[FPS] tick=" << tick_count_
+                  << " avg=" << avg << "ms"
+                  << " p95=" << p95 << "ms"
+                  << " fps=" << fps << "\n";
     }
 };
 
