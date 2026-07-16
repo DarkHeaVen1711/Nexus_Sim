@@ -18,20 +18,21 @@ enum class AgentType {
     Pedestrian
 };
 
-// Struct-of-Arrays (SoA) layout for Agents
 struct AgentSystem {
-    std::vector<int64_t> id;
-    std::vector<int64_t> origin;
-    std::vector<int64_t> destination;
-    std::vector<AgentType> type;
-    std::vector<AgentState> state;
-    std::vector<double> position; // Position along current edge (meters)
-    std::vector<double> velocity; // Current velocity (m/s)
-    std::vector<int64_t> current_edge_idx; // Index of the current edge in the path
-    std::vector<std::vector<int64_t>> path; // Sequence of node IDs
-    
-    // Add a new agent and return its internal index
-    size_t add_agent(int64_t agent_id, int64_t orig, int64_t dest, AgentType t) {
+    alignas(64) std::vector<int64_t> id;
+    alignas(64) std::vector<int64_t> origin;
+    alignas(64) std::vector<int64_t> destination;
+    alignas(64) std::vector<AgentType> type;
+    alignas(64) std::vector<AgentState> state;
+    alignas(64) std::vector<double> position;
+    alignas(64) std::vector<double> velocity;
+    alignas(64) std::vector<double> target_speed;
+    alignas(64) std::vector<int64_t> current_edge_idx;
+    alignas(64) std::vector<int32_t> lane;
+    alignas(64) std::vector<std::vector<int64_t>> path;
+
+    size_t add_agent(int64_t agent_id, int64_t orig, int64_t dest,
+                     AgentType t) {
         size_t idx = id.size();
         id.push_back(agent_id);
         origin.push_back(orig);
@@ -40,7 +41,9 @@ struct AgentSystem {
         state.push_back(AgentState::Spawned);
         position.push_back(0.0);
         velocity.push_back(0.0);
+        target_speed.push_back(0.0);
         current_edge_idx.push_back(0);
+        lane.push_back(0);
         path.push_back({});
         return idx;
     }
