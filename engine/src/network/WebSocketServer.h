@@ -4,7 +4,7 @@
 #include <thread>
 #include <vector>
 #include <mutex>
-#include "uWebSockets/App.h"
+#include "App.h"
 #include "agent_delta_generated.h" // FlatBuffers generated header
 
 namespace nexussim {
