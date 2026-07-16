@@ -20,14 +20,53 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+# FlatBuffers
+FetchContent_Declare(
+  flatbuffers
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v23.5.26
+)
+set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(flatbuffers)
+
+# uWebSockets
+FetchContent_Declare(
+  uSockets
+  GIT_REPOSITORY https://github.com/uNetworking/uSockets.git
+  GIT_TAG v0.8.6
+)
+FetchContent_MakeAvailable(uSockets)
+
+FetchContent_Declare(
+  uWebSockets
+  GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
+  GIT_TAG v20.46.0
+)
+FetchContent_MakeAvailable(uWebSockets)
+
+# Generate FlatBuffers C++ header
+set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schemas)
+set(SCHEMA_FILE ${SCHEMA_DIR}/agent_delta.fbs)
+set(SCHEMA_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${SCHEMA_OUT_DIR})
+
+add_custom_command(
+    OUTPUT ${SCHEMA_OUT_DIR}/agent_delta_generated.h
+    COMMAND flatbuffers::flatc --cpp -o ${SCHEMA_OUT_DIR} ${SCHEMA_FILE}
+    DEPENDS ${SCHEMA_FILE}
+    COMMENT "Building C++ header for agent_delta.fbs"
+)
+add_custom_target(generate_fbs DEPENDS ${SCHEMA_OUT_DIR}/agent_delta_generated.h)
+
 add_library(engine_lib 
     src/graph/GraphLoader.cpp
 )
-target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json)
-target_include_directories(engine_lib PUBLIC src)
+add_dependencies(engine_lib generate_fbs)
+target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers::flatbuffers)
+target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uWebSockets_SOURCE_DIR}/src ${uSockets_SOURCE_DIR}/src)
 
 add_executable(engine src/main.cpp)
-target_link_libraries(engine PRIVATE engine_lib)
+target_link_libraries(engine PRIVATE engine_lib uSockets z)
 
 # Testing
 enable_testing()

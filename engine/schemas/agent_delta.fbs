@@ -1,0 +1,24 @@
+namespace nexussim.fbs;
+
+enum AgentType : byte {
+  CAR = 0,
+  BUS = 1,
+  AUTO = 2,
+  BIKE = 3,
+  PEDESTRIAN = 4
+}
+
+table AgentDelta {
+  agent_id: uint32;
+  lat: float;
+  lon: float;
+  heading: float;
+  type: AgentType;
+}
+
+table Frame {
+  tick: uint32;
+  agents: [AgentDelta];
+}
+
+root_type Frame;
