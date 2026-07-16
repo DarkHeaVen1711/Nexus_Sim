@@ -62,7 +62,7 @@ add_library(engine_lib
     src/graph/GraphLoader.cpp
 )
 add_dependencies(engine_lib generate_fbs)
-target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers)
+target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers)
 FetchContent_GetProperties(uWebSockets)
 FetchContent_GetProperties(uSockets)
 message(STATUS "uWebSockets source: ${uwebsockets_SOURCE_DIR}")
