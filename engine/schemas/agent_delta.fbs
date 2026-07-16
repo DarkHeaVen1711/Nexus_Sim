@@ -16,9 +16,21 @@ table AgentDelta {
   type: AgentType;
 }
 
+table Metrics {
+  avg_wait_time: float;
+  gini_coefficient: float;
+}
+
+table ZoneMetric {
+  zone_id: uint32;
+  wait_time: float;
+}
+
 table Frame {
   tick: uint32;
   agents: [AgentDelta];
+  metrics: Metrics;
+  zone_metrics: [ZoneMetric];
 }
 
 root_type Frame;
