@@ -52,7 +52,7 @@ file(MAKE_DIRECTORY ${SCHEMA_OUT_DIR})
 
 add_custom_command(
     OUTPUT ${SCHEMA_OUT_DIR}/agent_delta_generated.h
-    COMMAND flatbuffers::flatc --cpp -o ${SCHEMA_OUT_DIR} ${SCHEMA_FILE}
+    COMMAND flatc --cpp -o ${SCHEMA_OUT_DIR} ${SCHEMA_FILE}
     DEPENDS ${SCHEMA_FILE}
     COMMENT "Building C++ header for agent_delta.fbs"
 )
@@ -62,7 +62,7 @@ add_library(engine_lib
     src/graph/GraphLoader.cpp
 )
 add_dependencies(engine_lib generate_fbs)
-target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers::flatbuffers)
+target_link_libraries(engine_lib PRIVATE nlohmann_json::nlohmann_json flatbuffers)
 target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uWebSockets_SOURCE_DIR}/src ${uSockets_SOURCE_DIR}/src)
 
 add_executable(engine src/main.cpp)
