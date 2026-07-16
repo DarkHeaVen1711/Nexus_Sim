@@ -29,20 +29,38 @@ FetchContent_Declare(
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(flatbuffers)
 
-# uWebSockets
+# uSockets (no CMakeLists — must be built manually from source)
 FetchContent_Declare(
   uSockets
   GIT_REPOSITORY https://github.com/uNetworking/uSockets.git
   GIT_TAG v0.8.6
 )
-FetchContent_MakeAvailable(uSockets)
+FetchContent_GetProperties(uSockets)
+if(NOT usockets_POPULATED)
+  FetchContent_Populate(uSockets)
+endif()
 
+# uWebSockets (header-only)
 FetchContent_Declare(
   uWebSockets
   GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
   GIT_TAG v20.46.0
 )
-FetchContent_MakeAvailable(uWebSockets)
+FetchContent_GetProperties(uWebSockets)
+if(NOT uwebsockets_POPULATED)
+  FetchContent_Populate(uWebSockets)
+endif()
+
+# Build uSockets as a static C library from source
+enable_language(C)
+add_library(uSockets_lib STATIC
+  ${usockets_SOURCE_DIR}/src/loop.c
+  ${usockets_SOURCE_DIR}/src/context.c
+  ${usockets_SOURCE_DIR}/src/socket.c
+  ${usockets_SOURCE_DIR}/src/udp.c
+)
+target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src)
+target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL)
 
 # Generate FlatBuffers C++ header
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schemas)
@@ -62,15 +80,11 @@ add_library(engine_lib
     src/graph/GraphLoader.cpp
 )
 add_dependencies(engine_lib generate_fbs)
-target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers)
-FetchContent_GetProperties(uWebSockets)
-FetchContent_GetProperties(uSockets)
-message(STATUS "uWebSockets source: ${uwebsockets_SOURCE_DIR}")
-message(STATUS "uSockets source: ${usockets_SOURCE_DIR}")
-target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src ${usockets_SOURCE_DIR}/src)
+target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers uSockets_lib)
+target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src)
 
 add_executable(engine src/main.cpp)
-target_link_libraries(engine PRIVATE engine_lib uSockets z)
+target_link_libraries(engine PRIVATE engine_lib)
 
 # Testing
 enable_testing()
