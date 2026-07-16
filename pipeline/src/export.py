@@ -19,7 +19,8 @@ def export_graph(city_id: str):
             "id": int(n),
             "lat": float(data['y']),
             "lon": float(data['x']),
-            "zone_id": int(data.get('zone_id', 0))
+            "zone_id": int(data.get('zone_id', 0)),
+            "is_signal": data.get('highway') == 'traffic_signals'
         })
         
     for u, v, key, data in G.edges(keys=True, data=True):
