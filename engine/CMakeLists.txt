@@ -58,9 +58,11 @@ add_library(uSockets_lib STATIC
   ${usockets_SOURCE_DIR}/src/context.c
   ${usockets_SOURCE_DIR}/src/socket.c
   ${usockets_SOURCE_DIR}/src/udp.c
+  ${usockets_SOURCE_DIR}/src/bsd.c
+  ${usockets_SOURCE_DIR}/src/eventing/epoll_kqueue.c
 )
 target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src)
-target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL)
+target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL LIBUS_USE_EPOLL)
 
 # Generate FlatBuffers C++ header
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schemas)
