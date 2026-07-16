@@ -15,6 +15,9 @@
 #include "Pathfinder.h"
 #include "../graph/Graph.h"
 #include "../spatial/Quadtree.h"
+#include "../network/WebSocketServer.h"
+#include "agent_delta_generated.h"
+#include "flatbuffers/flatbuffers.h"
 
 namespace nexussim {
 
@@ -100,6 +103,38 @@ public:
         tick_times_.push_back(ms);
         tick_count_++;
         if (tick_count_ % 500 == 0) log_fps();
+    }
+
+    void broadcast_state(network::WebSocketServer* ws_server) {
+        if (!ws_server) return;
+        flatbuffers::FlatBufferBuilder builder(1024);
+        std::vector<flatbuffers::Offset<nexussim::fbs::AgentDelta>> deltas;
+
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (snap_state_[i] != AgentState::Navigating && snap_state_[i] != AgentState::Spawned)
+                continue;
+            
+            // Map AgentType to FlatBuffers AgentType
+            nexussim::fbs::AgentType fbs_type = static_cast<nexussim::fbs::AgentType>(static_cast<int>(agents_.type[i]));
+            
+            // Calculate heading from velocity vector or path direction
+            float heading = std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]);
+
+            deltas.push_back(nexussim::fbs::CreateAgentDelta(
+                builder,
+                agents_.id[i],
+                static_cast<float>(snap_y_[i]), // Map coordinate (lat)
+                static_cast<float>(snap_x_[i]), // Map coordinate (lon)
+                heading,
+                fbs_type
+            ));
+        }
+
+        auto agents_vec = builder.CreateVector(deltas);
+        auto frame = nexussim::fbs::CreateFrame(builder, tick_count_, agents_vec);
+        builder.Finish(frame);
+
+        ws_server->broadcast(builder.GetBufferPointer(), builder.GetSize());
     }
 
     void log_journey_times(const std::string& filepath) {

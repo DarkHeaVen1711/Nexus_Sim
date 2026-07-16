@@ -1,0 +1,36 @@
+namespace nexussim.fbs;
+
+enum AgentType : byte {
+  CAR = 0,
+  BUS = 1,
+  AUTO = 2,
+  BIKE = 3,
+  PEDESTRIAN = 4
+}
+
+table AgentDelta {
+  agent_id: uint32;
+  lat: float;
+  lon: float;
+  heading: float;
+  type: AgentType;
+}
+
+table Metrics {
+  avg_wait_time: float;
+  gini_coefficient: float;
+}
+
+table ZoneMetric {
+  zone_id: uint32;
+  wait_time: float;
+}
+
+table Frame {
+  tick: uint32;
+  agents: [AgentDelta];
+  metrics: Metrics;
+  zone_metrics: [ZoneMetric];
+}
+
+root_type Frame;

@@ -13,6 +13,10 @@ def download_city(city_id: str):
     query = config[city_id]["query"]
     print(f"Downloading data for {query}...")
     
+    # Keep highway tags on nodes so we can identify traffic signals
+    if 'highway' not in ox.settings.useful_tags_node:
+        ox.settings.useful_tags_node.append('highway')
+        
     # Use simplify=False so clean.py handles it
     G = ox.graph_from_place(query, network_type="drive", simplify=False)
     

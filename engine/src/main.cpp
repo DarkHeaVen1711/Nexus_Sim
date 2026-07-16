@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
+#include "network/WebSocketServer.h"
 
 int main(int argc, char** argv) {
     std::string city = "chicago";
@@ -40,11 +41,19 @@ int main(int argc, char** argv) {
     std::cout << "Running " << duration_min << "-min sim ("
               << ticks << " ticks, dt=" << dt << "s)...\n";
 
+    nexussim::network::WebSocketServer ws_server(9001);
+    ws_server.start();
+    std::cout << "WebSocket Server starting on port 9001...\n";
+
     for (int i = 0; i < ticks; ++i) {
         sim.tick(dt);
+        sim.broadcast_state(&ws_server);
+        
         if (i % 500 == 0)
             std::cout << "Tick " << i << "/" << ticks
                       << " active=" << sim.active_agents() << "\n";
+        
+        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(dt * 1000))); // Basic rate limiting for real-time visualization
     }
 
     sim.log_journey_times("journey_times.csv");
