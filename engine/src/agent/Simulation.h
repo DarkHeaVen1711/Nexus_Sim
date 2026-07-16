@@ -198,11 +198,11 @@ private:
 
     void precompute_edge_lengths() {
         for (const auto& e : graph_.get_edges())
-            edge_len_[{e.u, e.v}] = e.length_m;
+            edge_len_[std::make_pair(e.u, e.v)] = e.length_m;
     }
 
     double lookup_edge_len(int64_t u, int64_t v) const {
-        auto it = edge_len_.find({u, v});
+        auto it = edge_len_.find(std::make_pair(u, v));
         return it != edge_len_.end() ? it->second : 100.0;
     }
 

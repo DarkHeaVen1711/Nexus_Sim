@@ -39,6 +39,10 @@ public:
         return it != nodes_.end() ? &it->second : nullptr;
     }
 
+    const std::vector<Edge>& get_edges() const {
+        return edges_;
+    }
+
     const std::vector<Edge>& get_edges_from(int64_t u) const {
         static const std::vector<Edge> empty;
         auto it = adj_list_.find(u);
