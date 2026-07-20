@@ -6,3 +6,4 @@ data/
 *.onnx
 engine.exe
 pipeline/cache/
+test_cmake/build*/
