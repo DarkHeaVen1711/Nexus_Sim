@@ -1,7 +1,24 @@
 cmake_minimum_required(VERSION 3.25)
 project(NexusSim CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
+
+if(WIN32)
+  add_compile_definitions(PRTL_OSVERSIONINFOW=void*)
+  add_compile_definitions(_WIN32_WINNT=0x0601)
+  add_compile_definitions("NET_LUID=unsigned __int64")
+  add_compile_definitions(IF_MAX_STRING_SIZE=256)
+  add_compile_definitions(RRF_RT_REG_SZ=0x00000002)
+  add_compile_definitions(IP_RECVTOS=40)
+  add_compile_definitions(IPV6_RECVTCLASS=40)
+  add_compile_options(-include winerror.h)
+endif()
+
+
+
+
+
+
 
 include(FetchContent)
 
@@ -20,6 +37,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+# ZLIB
+find_package(ZLIB)
+if(NOT ZLIB_FOUND)
+  FetchContent_Declare(
+    zlib
+    GIT_REPOSITORY https://github.com/madler/zlib.git
+    GIT_TAG v1.3.1
+  )
+  FetchContent_MakeAvailable(zlib)
+  set(ZLIB_LIBRARIES zlibstatic)
+  set(ZLIB_INCLUDE_DIRS ${zlib_SOURCE_DIR} ${zlib_BINARY_DIR})
+endif()
+
 # FlatBuffers
 FetchContent_Declare(
   flatbuffers
@@ -34,6 +64,7 @@ FetchContent_Declare(
   uSockets
   GIT_REPOSITORY https://github.com/uNetworking/uSockets.git
   GIT_TAG v0.8.6
+  GIT_SUBMODULES ""
 )
 FetchContent_GetProperties(uSockets)
 if(NOT usockets_POPULATED)
@@ -45,24 +76,56 @@ FetchContent_Declare(
   uWebSockets
   GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
   GIT_TAG v20.46.0
+  GIT_SUBMODULES ""
 )
 FetchContent_GetProperties(uWebSockets)
 if(NOT uwebsockets_POPULATED)
   FetchContent_Populate(uWebSockets)
 endif()
 
+
 # Build uSockets as a static C library from source
 enable_language(C)
-add_library(uSockets_lib STATIC
-  ${usockets_SOURCE_DIR}/src/loop.c
-  ${usockets_SOURCE_DIR}/src/context.c
-  ${usockets_SOURCE_DIR}/src/socket.c
-  ${usockets_SOURCE_DIR}/src/udp.c
-  ${usockets_SOURCE_DIR}/src/bsd.c
-  ${usockets_SOURCE_DIR}/src/eventing/epoll_kqueue.c
-)
-target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src)
-target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL LIBUS_USE_EPOLL)
+
+if(WIN32)
+  FetchContent_Declare(
+    libuv
+    GIT_REPOSITORY https://github.com/libuv/libuv.git
+    GIT_TAG v1.30.0
+    GIT_SUBMODULES ""
+  )
+  FetchContent_MakeAvailable(libuv)
+
+  add_library(uSockets_lib STATIC
+    ${usockets_SOURCE_DIR}/src/loop.c
+    ${usockets_SOURCE_DIR}/src/context.c
+    ${usockets_SOURCE_DIR}/src/socket.c
+    ${usockets_SOURCE_DIR}/src/udp.c
+    ${usockets_SOURCE_DIR}/src/bsd.c
+    ${usockets_SOURCE_DIR}/src/eventing/libuv.c
+  )
+  # libuv exports uv_a for static library
+  target_link_libraries(uSockets_lib PUBLIC uv_a ws2_32 iphlpapi userenv psapi)
+  target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL LIBUS_USE_LIBUV)
+else()
+  add_library(uSockets_lib STATIC
+    ${usockets_SOURCE_DIR}/src/loop.c
+    ${usockets_SOURCE_DIR}/src/context.c
+    ${usockets_SOURCE_DIR}/src/socket.c
+    ${usockets_SOURCE_DIR}/src/udp.c
+    ${usockets_SOURCE_DIR}/src/bsd.c
+    ${usockets_SOURCE_DIR}/src/eventing/epoll_kqueue.c
+  )
+  target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL LIBUS_USE_EPOLL)
+endif()
+
+if(WIN32)
+  target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src ${libuv_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+else()
+  target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src)
+endif()
+
+
 
 # Generate FlatBuffers C++ header
 set(SCHEMA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/schemas)
@@ -72,7 +135,7 @@ file(MAKE_DIRECTORY ${SCHEMA_OUT_DIR})
 
 add_custom_command(
     OUTPUT ${SCHEMA_OUT_DIR}/agent_delta_generated.h
-    COMMAND flatc --cpp -o ${SCHEMA_OUT_DIR} ${SCHEMA_FILE}
+    COMMAND $<TARGET_FILE:flatc> --cpp -o ${SCHEMA_OUT_DIR} ${SCHEMA_FILE}
     DEPENDS ${SCHEMA_FILE}
     COMMENT "Building C++ header for agent_delta.fbs"
 )
@@ -83,10 +146,10 @@ add_library(engine_lib
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers uSockets_lib)
-target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src)
+target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src ${ZLIB_INCLUDE_DIRS})
 
 add_executable(engine src/main.cpp)
-target_link_libraries(engine PRIVATE engine_lib z)
+target_link_libraries(engine PRIVATE engine_lib ${ZLIB_LIBRARIES})
 
 # Testing
 enable_testing()
