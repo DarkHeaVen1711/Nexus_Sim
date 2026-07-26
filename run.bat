@@ -8,7 +8,7 @@ echo.
 
 set PATH=C:\msys64\mingw64\bin;%PATH%
 
-set CITY=chicago
+set CITY=piedmont
 set AGENTS=500
 set DURATION=5
 set BUILD_TYPE=Release
@@ -29,7 +29,7 @@ goto parse_args
 echo Usage: run.bat [OPTIONS]
 echo.
 echo Options:
-echo   --city NAME        City to simulate (default: chicago)
+echo   --city NAME        City to simulate (default: piedmont)
 echo   --agents N         Number of agents (default: 500)
 echo   --duration N       Duration in minutes (default: 5)
 echo   --debug            Build in Debug mode
