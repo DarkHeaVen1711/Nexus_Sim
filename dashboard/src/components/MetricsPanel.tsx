@@ -2,19 +2,16 @@ import React from 'react';
 
 interface MetricsPanelProps {
   metrics: {
-    avg_wait_time: number;
-    gini_coefficient: number;
+    avg_speed?: number;
+    active_agents?: number;
+    completed_agents?: number;
+    avg_wait_time?: number;
+    gini_coefficient?: number;
   } | null;
 }
 
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics }) => {
   if (!metrics) return null;
-
-  const getGiniColor = (val: number) => {
-    if (val < 0.3) return '#4ade80'; // green
-    if (val < 0.5) return '#facc15'; // yellow
-    return '#f87171'; // red
-  };
 
   const panelStyle: React.CSSProperties = {
     position: 'absolute',
@@ -28,47 +25,46 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics }) => {
     borderRadius: '12px',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     border: '1px solid #374151',
-    width: '320px',
+    width: '280px',
     fontFamily: 'system-ui, sans-serif'
   };
 
   return (
     <div style={panelStyle}>
-      <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 24px 0', display: 'flex', alignItems: 'center' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
         <span style={{ backgroundColor: '#3b82f6', width: '8px', height: '24px', borderRadius: '4px', marginRight: '12px' }}></span>
         Simulation Metrics
       </h2>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
-          <div style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-            Efficiency
+          <div style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+            Avg Speed
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 300 }}>
-            {metrics.avg_wait_time.toFixed(1)} <span style={{ fontSize: '14px', color: '#6b7280' }}>sec/veh</span>
+          <div style={{ fontSize: '28px', fontWeight: 300 }}>
+            {(metrics.avg_speed ?? 0).toFixed(1)} <span style={{ fontSize: '13px', color: '#6b7280' }}>m/s</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Citywide Avg. Wait Time</div>
         </div>
 
         <div style={{ height: '1px', backgroundColor: 'rgba(55, 65, 81, 0.5)', width: '100%' }}></div>
 
         <div>
-          <div style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
-            Equity
+          <div style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+            Active Agents
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 300, color: getGiniColor(metrics.gini_coefficient) }}>
-            {metrics.gini_coefficient.toFixed(3)}
+          <div style={{ fontSize: '28px', fontWeight: 300, color: '#4ade80' }}>
+            {metrics.active_agents ?? 0}
           </div>
-          <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>Gini Coefficient (0=Equal, 1=Unequal)</div>
-          
-          <div style={{ marginTop: '12px', height: '8px', width: '100%', backgroundColor: '#1f2937', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
-            <div 
-              style={{ 
-                height: '100%', 
-                backgroundColor: getGiniColor(metrics.gini_coefficient),
-                width: `${Math.min(100, metrics.gini_coefficient * 100)}%` 
-              }}
-            ></div>
+        </div>
+
+        <div style={{ height: '1px', backgroundColor: 'rgba(55, 65, 81, 0.5)', width: '100%' }}></div>
+
+        <div>
+          <div style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>
+            Completed
+          </div>
+          <div style={{ fontSize: '28px', fontWeight: 300, color: '#3b82f6' }}>
+            {metrics.completed_agents ?? 0}
           </div>
         </div>
       </div>
