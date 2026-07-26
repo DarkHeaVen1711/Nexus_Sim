@@ -72,6 +72,7 @@ public:
             auto s = agents_.state[i];
             if (s == AgentState::Spawned || s == AgentState::Navigating) {
                 compute_world(i);
+                snap_v_[i] = agents_.velocity[i];
                 active.push_back(i);
             }
             snap_state_[i] = agents_.state[i];
@@ -80,7 +81,8 @@ public:
         // Rebuild quadtree
         rebuild_quadtree(active);
 
-        // Parallel agent updates
+        // Parallel agent updates (with fallback to sequential if C++11 thread support is missing)
+#if defined(_GLIBCXX_HAS_GTHREADS) || defined(_MSC_VER)
         size_t nthreads = std::thread::hardware_concurrency();
         if (nthreads == 0) nthreads = 4;
         size_t chunk = (active.size() + nthreads - 1) / nthreads;
@@ -96,6 +98,12 @@ public:
                 }));
         }
         for (auto& f : futures) f.get();
+#else
+        for (size_t k = 0; k < active.size(); ++k) {
+            update_agent(active[k], dt);
+        }
+#endif
+
 
         // FPS tracking
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -231,7 +239,7 @@ private:
 
         double elen = lookup_edge_len(u, v);
         double t = (elen > 0)
-            ? std::clamp(agents_.position[i] / elen, 0.0, 1.0)
+            ? std::max(0.0, std::min(1.0, agents_.position[i] / elen))
             : 0.0;
         snap_x_[i] = nu->x + (nv->x - nu->x) * t;
         snap_y_[i] = nu->y + (nv->y - nu->y) * t;
