@@ -11,6 +11,8 @@ jobs:
     - name: Set up Node
       uses: actions/setup-node@v4
       with: { node-version: '18' }
+    - name: Install system dependencies
+      run: sudo apt-get update && sudo apt-get install -y ninja-build
     - name: Python tests
       run: |
         cd pipeline
@@ -20,7 +22,7 @@ jobs:
       run: |
         cd engine
         mkdir build && cd build
-        cmake .. -DENABLE_TESTING=ON
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_TESTING=ON
         cmake --build . --parallel
     - name: C++ tests
       run: |

@@ -1,13 +1,32 @@
-node_modules/
+# Build outputs
 build/
+engine/build/
+engine.exe
+
+# Dependencies
+node_modules/
 __pycache__/
 .venv/
-data/
-*.onnx
-engine.exe
+
+# Pipeline intermediate files
+data/**/*.graphml
+data/chicago/
+data/ahmedabad/
+data/paris/
 pipeline/cache/
+
+# Generated files
+*.onnx
+journey_times.csv
+engine/journey_times.csv
+
+# IDE / OS
+.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Misc
 test_cmake/build*/
 test_clone_usockets/
 pdf_text.txt
-engine/journey_times.csv
-journey_times.csv
+gh_log.txt
