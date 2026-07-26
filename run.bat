@@ -88,7 +88,7 @@ timeout /t 3 /nobreak >nul
 cd ..
 
 echo.
-echo [3/4] Running simulation...
+echo [4/4] Running simulation...
 echo City: %CITY%
 echo Agents: %AGENTS%
 echo Duration: %DURATION% min
@@ -96,7 +96,7 @@ echo.
 echo Dashboard: http://localhost:5173
 echo WebSocket: ws://localhost:9001
 echo.
-engine.exe --city %CITY% --agents %AGENTS% --duration %DURATION%
+engine\build\engine.exe --city %CITY% --agents %AGENTS% --duration %DURATION%
 if errorlevel 1 (
     echo ERROR: Simulation failed!
     exit /b 1
