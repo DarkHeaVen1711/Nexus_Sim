@@ -53,7 +53,11 @@ int main(int argc, char** argv) {
             std::cout << "Tick " << i << "/" << ticks
                       << " active=" << sim.active_agents() << "\n";
         
+#ifdef _WIN32
+        Sleep(static_cast<DWORD>(dt * 1000));
+#else
         std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(dt * 1000))); // Basic rate limiting for real-time visualization
+#endif
     }
 
     sim.log_journey_times("journey_times.csv");
