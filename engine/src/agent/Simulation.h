@@ -62,6 +62,8 @@ public:
         snap_x_.resize(N);
         snap_y_.resize(N);
         snap_v_.resize(N);
+        snap_lat_.resize(N);
+        snap_lon_.resize(N);
         snap_state_.resize(N);
         snap_edge_dir_x_.resize(N);
         snap_edge_dir_y_.resize(N);
@@ -129,9 +131,9 @@ public:
             json += "{\"id\":";
             json += std::to_string(agents_.id[i]);
             json += ",\"lat\":";
-            json += std::to_string(snap_y_[i]);
+            json += std::to_string(snap_lat_[i]);
             json += ",\"lon\":";
-            json += std::to_string(snap_x_[i]);
+            json += std::to_string(snap_lon_[i]);
             json += ",\"heading\":";
             json += std::to_string(std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]));
             json += ",\"type\":";
@@ -212,6 +214,7 @@ private:
 
     // Snapshots for thread-safe parallel reads
     std::vector<double> snap_x_, snap_y_, snap_v_;
+    std::vector<double> snap_lat_, snap_lon_;
     std::vector<double> snap_edge_dir_x_, snap_edge_dir_y_;
     std::vector<AgentState> snap_state_;
 
@@ -247,11 +250,13 @@ private:
     void compute_world(size_t i) {
         size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
         const auto& p = agents_.path[i];
-        if (p.empty()) { snap_x_[i] = 0; snap_y_[i] = 0; return; }
+        if (p.empty()) { snap_x_[i] = 0; snap_y_[i] = 0; snap_lat_[i] = 0; snap_lon_[i] = 0; return; }
         if (ei + 1 >= p.size()) {
             const Node* n = graph_.get_node(p.back());
             snap_x_[i] = n ? n->x : 0;
             snap_y_[i] = n ? n->y : 0;
+            snap_lat_[i] = n ? n->lat : 0;
+            snap_lon_[i] = n ? n->lon : 0;
             snap_edge_dir_x_[i] = 0;
             snap_edge_dir_y_[i] = 0;
             return;
@@ -259,7 +264,7 @@ private:
         int64_t u = p[ei], v = p[ei + 1];
         const Node* nu = graph_.get_node(u);
         const Node* nv = graph_.get_node(v);
-        if (!nu || !nv) { snap_x_[i] = 0; snap_y_[i] = 0; return; }
+        if (!nu || !nv) { snap_x_[i] = 0; snap_y_[i] = 0; snap_lat_[i] = 0; snap_lon_[i] = 0; return; }
 
         double elen = lookup_edge_len(u, v);
         double t = (elen > 0)
@@ -267,6 +272,8 @@ private:
             : 0.0;
         snap_x_[i] = nu->x + (nv->x - nu->x) * t;
         snap_y_[i] = nu->y + (nv->y - nu->y) * t;
+        snap_lat_[i] = nu->lat + (nv->lat - nu->lat) * t;
+        snap_lon_[i] = nu->lon + (nv->lon - nu->lon) * t;
 
         double dx = nv->x - nu->x;
         double dy = nv->y - nu->y;
