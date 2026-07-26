@@ -6,7 +6,7 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 option(ENABLE_TESTING "Build tests and benchmarks" ON)
 
-if(WIN32)
+if(WIN32 AND NOT MINGW)
   add_compile_definitions(PRTL_OSVERSIONINFOW=void*)
   add_compile_definitions(_WIN32_WINNT=0x0601)
   add_compile_definitions("NET_LUID=unsigned __int64")
@@ -95,16 +95,22 @@ endif()
 enable_language(C)
 
 if(WIN32)
-  FetchContent_Declare(
-    libuv
-    GIT_REPOSITORY https://github.com/libuv/libuv.git
-    GIT_TAG v1.10.0
-    GIT_SUBMODULES ""
-  )
-  set(libuv_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-  set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(libuv)
+  find_library(LIBUV_LIBRARY uv)
+  if(LIBUV_LIBRARY)
+    message(STATUS "Using system libuv: ${LIBUV_LIBRARY}")
+  else()
+    FetchContent_Declare(
+      libuv
+      GIT_REPOSITORY https://github.com/libuv/libuv.git
+      GIT_TAG v1.48.0
+      GIT_SUBMODULES ""
+    )
+    set(libuv_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(libuv)
+    set(LIBUV_LIBRARY uv_a)
+  endif()
 
   add_library(uSockets_lib STATIC
     ${usockets_SOURCE_DIR}/src/loop.c
@@ -114,8 +120,7 @@ if(WIN32)
     ${usockets_SOURCE_DIR}/src/bsd.c
     ${usockets_SOURCE_DIR}/src/eventing/libuv.c
   )
-  # libuv exports uv_a for static library
-  target_link_libraries(uSockets_lib PUBLIC uv_a ws2_32 iphlpapi userenv psapi)
+  target_link_libraries(uSockets_lib PUBLIC ${LIBUV_LIBRARY} ws2_32 iphlpapi userenv psapi)
   target_compile_definitions(uSockets_lib PUBLIC LIBUS_NO_SSL LIBUS_USE_LIBUV)
 else()
   add_library(uSockets_lib STATIC
@@ -130,7 +135,12 @@ else()
 endif()
 
 if(WIN32)
-  target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src ${libuv_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  find_path(LIBUV_INCLUDE_DIR uv.h)
+  if(LIBUV_INCLUDE_DIR)
+    target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src ${LIBUV_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  else()
+    target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src ${libuv_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  endif()
 else()
   target_include_directories(uSockets_lib PUBLIC ${usockets_SOURCE_DIR}/src)
 endif()

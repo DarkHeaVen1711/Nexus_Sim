@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     sim.spawn_agents(agent_count);
 
     double dt = 0.1;
-    int ticks = (duration_min * 60) / static_cast<int>(dt);
+    int ticks = static_cast<int>((duration_min * 60.0) / dt);
     std::cout << "Running " << duration_min << "-min sim ("
               << ticks << " ticks, dt=" << dt << "s)...\n";
 

@@ -6,6 +6,8 @@ echo   NexusSim Engine - Build ^& Run
 echo ============================================
 echo.
 
+set PATH=C:\msys64\mingw64\bin;%PATH%
+
 set CITY=chicago
 set AGENTS=500
 set DURATION=5
@@ -42,7 +44,7 @@ exit /b 0
 echo [1/3] Configuring CMake...
 if not exist "engine\build" mkdir "engine\build"
 cd engine\build
-cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DENABLE_TESTING=OFF
+cmake .. -G Ninja -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DENABLE_TESTING=OFF -DCMAKE_C_COMPILER=C:/msys64/mingw64/bin/gcc.exe -DCMAKE_CXX_COMPILER=C:/msys64/mingw64/bin/g++.exe
 if errorlevel 1 (
     echo ERROR: CMake configuration failed!
     cd ..\..
