@@ -286,6 +286,10 @@ private:
     }
 
     void update_agent(size_t i, double dt) {
+        if (agents_.state[i] == AgentState::Spawned) {
+            agents_.state[i] = AgentState::Navigating;
+        }
+
         IDMParams p = get_default_idm_params(agents_.type[i],
                                               chaos_coefficient_);
         double v_lead = p.v0;
