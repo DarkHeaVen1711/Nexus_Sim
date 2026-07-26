@@ -21,7 +21,11 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "NexusSim Engine v3.0\n";
-    std::string filepath = "../data/" + city + "/graph.json";
+    std::string filepath = "data/" + city + "/graph.json";
+    std::ifstream test(filepath);
+    if (!test.good()) {
+        filepath = "../data/" + city + "/graph.json";
+    }
 
     std::cout << "Loading graph for " << city << "...\n";
     auto g = nexussim::load_from_json(filepath);
