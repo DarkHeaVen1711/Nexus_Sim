@@ -42,7 +42,7 @@ exit /b 0
 echo [1/3] Configuring CMake...
 if not exist "engine\build" mkdir "engine\build"
 cd engine\build
-cmake .. -DCMAKE_BUILD_TYPE=%BUILD_TYPE%
+cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DENABLE_TESTING=OFF
 if errorlevel 1 (
     echo ERROR: CMake configuration failed!
     cd ..\..
@@ -51,7 +51,7 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] Building engine...
-cmake --build . --config %BUILD_TYPE%
+cmake --build .
 if errorlevel 1 (
     echo ERROR: Build failed!
     cd ..\..
@@ -64,7 +64,7 @@ echo City: %CITY%
 echo Agents: %AGENTS%
 echo Duration: %DURATION% min
 echo.
-%BUILD_TYPE%\engine.exe --city %CITY% --agents %AGENTS% --duration %DURATION%
+engine.exe --city %CITY% --agents %AGENTS% --duration %DURATION%
 if errorlevel 1 (
     echo ERROR: Simulation failed!
     cd ..\..

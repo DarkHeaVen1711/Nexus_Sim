@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.25)
 project(NexusSim CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
+option(ENABLE_TESTING "Build tests and benchmarks" ON)
 
 if(WIN32)
   add_compile_definitions(PRTL_OSVERSIONINFOW=void*)
@@ -22,18 +25,22 @@ endif()
 
 include(FetchContent)
 
-# GoogleTest
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+# GoogleTest (only when testing enabled — MinGW Win32 threads lacks <mutex>)
+if(ENABLE_TESTING)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.15.2
+  )
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+  FetchContent_MakeAvailable(googletest)
+endif()
 
 # nlohmann/json
 FetchContent_Declare(
     json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.2
 )
 FetchContent_MakeAvailable(json)
 
@@ -91,9 +98,12 @@ if(WIN32)
   FetchContent_Declare(
     libuv
     GIT_REPOSITORY https://github.com/libuv/libuv.git
-    GIT_TAG v1.30.0
+    GIT_TAG v1.10.0
     GIT_SUBMODULES ""
   )
+  set(libuv_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+  set(LIBUV_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(libuv)
 
   add_library(uSockets_lib STATIC
@@ -152,13 +162,15 @@ add_executable(engine src/main.cpp)
 target_link_libraries(engine PRIVATE engine_lib ${ZLIB_LIBRARIES})
 
 # Testing
-enable_testing()
-add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp)
-target_link_libraries(engine_test gtest_main engine_lib)
+if(ENABLE_TESTING)
+  enable_testing()
+  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp)
+  target_link_libraries(engine_test gtest_main engine_lib)
 
-include(GoogleTest)
-gtest_discover_tests(engine_test)
+  include(GoogleTest)
+  gtest_discover_tests(engine_test)
 
-# Benchmark
-add_executable(bench_quadtree bench/bench_quadtree.cpp)
-target_link_libraries(bench_quadtree PRIVATE engine_lib)
+  # Benchmark
+  add_executable(bench_quadtree bench/bench_quadtree.cpp)
+  target_link_libraries(bench_quadtree PRIVATE engine_lib)
+endif()

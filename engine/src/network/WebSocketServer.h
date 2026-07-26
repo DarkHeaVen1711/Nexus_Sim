@@ -3,14 +3,13 @@
 #include <iostream>
 #include <vector>
 #include <functional>
-#include <string_view>
 #include "../mingw_thread_compat.h"
+#include "App.h"
 
 #if !(defined(_WIN32) && !defined(_GLIBCXX_HAS_GTHREADS))
 #include <mutex>
 #endif
 
-#include "App.h"
 #include "agent_delta_generated.h" // FlatBuffers generated header
 
 namespace nexussim {
