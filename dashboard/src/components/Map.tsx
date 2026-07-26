@@ -8,7 +8,7 @@ import { MetricsPanel } from './MetricsPanel';
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting } = useWebSocket('ws://localhost:9002');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
 
   useEffect(() => {
