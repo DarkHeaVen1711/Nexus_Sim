@@ -52,11 +52,12 @@ int main(int argc, char** argv) {
         if (i % 500 == 0)
             std::cout << "Tick " << i << "/" << ticks
                       << " active=" << sim.active_agents() << "\n";
-        
+
+        // Pace at ~60fps so dashboard can visualize in real-time
 #ifdef _WIN32
-        Sleep(static_cast<DWORD>(dt * 1000));
+        Sleep(16);
 #else
-        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(dt * 1000))); // Basic rate limiting for real-time visualization
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
 #endif
     }
 

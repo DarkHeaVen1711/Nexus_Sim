@@ -115,45 +115,69 @@ public:
 
     void broadcast_state(network::WebSocketServer* ws_server) {
         if (!ws_server) return;
-        flatbuffers::FlatBufferBuilder builder(1024);
-        std::vector<flatbuffers::Offset<nexussim::fbs::AgentDelta>> deltas;
 
+        std::string json = "{\"tick\":";
+        json += std::to_string(tick_count_);
+        json += ",\"agents\":[";
+
+        bool first = true;
         for (size_t i = 0; i < agents_.size(); ++i) {
             if (snap_state_[i] != AgentState::Navigating && snap_state_[i] != AgentState::Spawned)
                 continue;
-            
-            // Map AgentType to FlatBuffers AgentType
-            nexussim::fbs::AgentType fbs_type = static_cast<nexussim::fbs::AgentType>(static_cast<int>(agents_.type[i]));
-            
-            // Calculate heading from velocity vector or path direction
-            float heading = std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]);
-
-            deltas.push_back(nexussim::fbs::CreateAgentDelta(
-                builder,
-                agents_.id[i],
-                static_cast<float>(snap_y_[i]), // Map coordinate (lat)
-                static_cast<float>(snap_x_[i]), // Map coordinate (lon)
-                heading,
-                fbs_type
-            ));
+            if (!first) json += ",";
+            first = false;
+            json += "{\"id\":";
+            json += std::to_string(agents_.id[i]);
+            json += ",\"lat\":";
+            json += std::to_string(snap_y_[i]);
+            json += ",\"lon\":";
+            json += std::to_string(snap_x_[i]);
+            json += ",\"heading\":";
+            json += std::to_string(std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]));
+            json += ",\"type\":";
+            json += std::to_string(static_cast<int>(agents_.type[i]));
+            json += ",\"speed\":";
+            json += std::to_string(agents_.velocity[i]);
+            json += "}";
         }
 
-        auto agents_vec = builder.CreateVector(deltas);
-        auto frame = nexussim::fbs::CreateFrame(builder, tick_count_, agents_vec);
-        builder.Finish(frame);
+        json += "],\"metrics\":{\"avg_speed\":";
+        double total_v = 0;
+        size_t nav_count = 0;
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (snap_state_[i] == AgentState::Navigating || snap_state_[i] == AgentState::Spawned) {
+                total_v += agents_.velocity[i];
+                nav_count++;
+            }
+        }
+        json += std::to_string(nav_count > 0 ? total_v / nav_count : 0.0);
+        json += ",\"active_agents\":";
+        json += std::to_string(nav_count);
+        json += ",\"completed_agents\":";
+        size_t arrived = 0;
+        for (auto s : agents_.state)
+            if (s == AgentState::Arrived) arrived++;
+        json += std::to_string(arrived);
+        json += "},\"zone_metrics\":[]}";
 
-        ws_server->broadcast(builder.GetBufferPointer(), builder.GetSize());
+        ws_server->broadcast_text(json);
     }
 
     void log_journey_times(const std::string& filepath) {
         std::ofstream file(filepath);
         file << "agent_id,type,origin,destination,status\n";
         for (size_t i = 0; i < agents_.size(); ++i) {
-            if (agents_.state[i] == AgentState::Arrived)
-                file << agents_.id[i] << ","
-                     << static_cast<int>(agents_.type[i]) << ","
-                     << agents_.origin[i] << ","
-                     << agents_.destination[i] << ",Arrived\n";
+            const char* status = "Unknown";
+            switch (agents_.state[i]) {
+                case AgentState::Spawned:   status = "Spawned"; break;
+                case AgentState::Navigating: status = "Navigating"; break;
+                case AgentState::Arrived:   status = "Arrived"; break;
+            }
+            file << agents_.id[i] << ","
+                 << static_cast<int>(agents_.type[i]) << ","
+                 << agents_.origin[i] << ","
+                 << agents_.destination[i] << ","
+                 << status << "\n";
         }
     }
 

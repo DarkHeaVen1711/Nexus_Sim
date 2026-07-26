@@ -34,7 +34,6 @@ export function useWebSocket(url: string): UseWebSocketResult {
   const connect = useCallback(() => {
     try {
       const ws = new WebSocket(url);
-      ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
         setIsConnected(true);
@@ -45,15 +44,11 @@ export function useWebSocket(url: string): UseWebSocketResult {
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          // If we receive the new payload structure with metrics:
+          const data = JSON.parse(typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data));
           if (data.agents && data.metrics) {
             setAgents(data.agents);
             setMetrics(data.metrics);
-            setZoneMetrics(data.zone_metrics);
-          } else {
-            // Fallback for old mock_engine that just sends raw array
-            setAgents(data);
+            setZoneMetrics(data.zone_metrics || []);
           }
         } catch (e) {
           console.error("Failed to parse websocket message", e);

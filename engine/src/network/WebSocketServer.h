@@ -58,6 +58,13 @@ public:
         }
     }
 
+    void broadcast_text(const std::string& msg) {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        for (auto *ws : clients_) {
+            ws->send(msg, uWS::OpCode::TEXT);
+        }
+    }
+
     ~WebSocketServer() {
         if (thread_.joinable()) {
             thread_.detach(); // In a real app we should gracefully shut down the uWS loop

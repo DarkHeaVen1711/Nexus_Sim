@@ -10,3 +10,4 @@ test_cmake/build*/
 test_clone_usockets/
 pdf_text.txt
 engine/journey_times.csv
+journey_times.csv
