@@ -96,14 +96,6 @@ public:
             insert(xs[i], ys[i], indices[i]);
     }
 
-    size_t point_count() const {
-        size_t c = points_.size();
-        if (divided_)
-            c += nw_->point_count() + ne_->point_count()
-               + sw_->point_count() + se_->point_count();
-        return c;
-    }
-
 private:
     void subdivide() {
         T hx = bounds_.w / static_cast<T>(2);
