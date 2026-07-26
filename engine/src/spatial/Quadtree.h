@@ -75,6 +75,15 @@ public:
         divided_ = false;
     }
 
+    size_t point_count() const {
+        size_t count = points_.size();
+        if (divided_) {
+            count += nw_->point_count() + ne_->point_count()
+                   + sw_->point_count() + se_->point_count();
+        }
+        return count;
+    }
+
     void rebuild(const std::vector<T>& xs,
                  const std::vector<T>& ys,
                  const std::vector<size_t>& indices) {
