@@ -7,3 +7,5 @@ data/
 engine.exe
 pipeline/cache/
 test_cmake/build*/
+test_clone_usockets/
+pdf_text.txt
