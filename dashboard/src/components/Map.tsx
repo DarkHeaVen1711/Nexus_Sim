@@ -86,7 +86,7 @@ export const Map: React.FC = () => {
         </button>
       </div>
 
-      <MetricsPanel metrics={metrics} />
+      <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} />
 
       <MapContainer
         center={CITY_CENTER}
