@@ -28,23 +28,28 @@ TEST_F(SignalControllerTest, TransitionsGreenToYellow) {
 }
 
 TEST_F(SignalControllerTest, TransitionsYellowToRed) {
-    double green_time = sc->phases[0].green_time;
-    double yellow_time = sc->phases[0].yellow_time;
-    sc->tick(green_time + yellow_time + 0.1);
+    sc->tick(sc->phases[0].green_time + 0.1);
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::YELLOW);
+    sc->tick(sc->phases[0].yellow_time + 0.1);
     EXPECT_EQ(sc->current_state, SignalController::PhaseState::RED);
 }
 
 TEST_F(SignalControllerTest, TransitionsRedToNextGreen) {
-    double total = sc->phases[0].get_total_time();
-    sc->tick(total + 0.1);
+    sc->tick(sc->phases[0].green_time + 0.1);
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::YELLOW);
+    sc->tick(sc->phases[0].yellow_time + 0.1);
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::RED);
+    sc->tick(sc->phases[0].red_clearance + 0.1);
     EXPECT_EQ(sc->current_state, SignalController::PhaseState::GREEN);
     EXPECT_EQ(sc->current_phase_idx, 1);
 }
 
 TEST_F(SignalControllerTest, FullCycleBackToFirstPhase) {
-    double t1 = sc->phases[0].get_total_time();
-    double t2 = sc->phases[1].get_total_time();
-    sc->tick(t1 + t2 + 0.2);
+    for (const auto& p : sc->phases) {
+        sc->tick(p.green_time + 0.1);
+        sc->tick(p.yellow_time + 0.1);
+        sc->tick(p.red_clearance + 0.1);
+    }
     EXPECT_EQ(sc->current_phase_idx, 0);
 }
 
@@ -88,7 +93,9 @@ TEST(GiniTest, ExtremeDistribution) {
 
 TEST(GiniTest, TwoElements) {
     std::vector<double> v = {1.0, 3.0};
-    double expected = std::abs(1.0 - 3.0) / (2.0 * 2.0 * 4.0);
+    double expected = (std::abs(1.0 - 1.0) + std::abs(1.0 - 3.0)
+                     + std::abs(3.0 - 1.0) + std::abs(3.0 - 3.0))
+                    / (2.0 * 2.0 * 4.0);
     EXPECT_NEAR(Simulation::compute_gini(v), expected, 1e-10);
 }
 
