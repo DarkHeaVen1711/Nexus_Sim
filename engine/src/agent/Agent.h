@@ -29,6 +29,7 @@ struct AgentSystem {
     alignas(64) std::vector<double> target_speed;
     alignas(64) std::vector<int64_t> current_edge_idx;
     alignas(64) std::vector<int32_t> lane;
+    alignas(64) std::vector<double> wait_time;
     alignas(64) std::vector<std::vector<int64_t>> path;
 
     size_t add_agent(int64_t agent_id, int64_t orig, int64_t dest,
@@ -44,6 +45,7 @@ struct AgentSystem {
         target_speed.push_back(0.0);
         current_edge_idx.push_back(0);
         lane.push_back(0);
+        wait_time.push_back(0.0);
         path.push_back({});
         return idx;
     }
