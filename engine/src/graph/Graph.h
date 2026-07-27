@@ -14,6 +14,7 @@ struct Node {
     double x; // Precomputed pseudo-meters for fast heuristic
     double y; // Precomputed pseudo-meters for fast heuristic
     int32_t zone_id;
+    bool is_signal = false;
 };
 
 struct Edge {
