@@ -212,6 +212,17 @@ public:
         return c;
     }
 
+    static double compute_gini(const std::vector<double>& v) {
+        if (v.size() <= 1) return 0.0;
+        double sum = std::accumulate(v.begin(), v.end(), 0.0);
+        if (sum <= 0.0) return 0.0;
+        double diff_sum = 0.0;
+        for (size_t i = 0; i < v.size(); ++i)
+            for (size_t j = 0; j < v.size(); ++j)
+                diff_sum += std::abs(v[i] - v[j]);
+        return diff_sum / (2.0 * v.size() * sum);
+    }
+
     double avg_tick_ms() const {
         if (tick_times_.empty()) return 0.0;
         return std::accumulate(tick_times_.begin(),
@@ -523,17 +534,6 @@ private:
         int64_t node_id = (ei < p.size()) ? p[ei] : p.back();
         const Node* n = graph_.get_node(node_id);
         return n ? n->zone_id : 0;
-    }
-
-    static double compute_gini(const std::vector<double>& v) {
-        if (v.size() <= 1) return 0.0;
-        double sum = std::accumulate(v.begin(), v.end(), 0.0);
-        if (sum <= 0.0) return 0.0;
-        double diff_sum = 0.0;
-        for (size_t i = 0; i < v.size(); ++i)
-            for (size_t j = 0; j < v.size(); ++j)
-                diff_sum += std::abs(v[i] - v[j]);
-        return diff_sum / (2.0 * v.size() * sum);
     }
 
     void compute_zone_metrics() {
