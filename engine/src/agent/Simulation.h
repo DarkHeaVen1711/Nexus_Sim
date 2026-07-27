@@ -61,6 +61,9 @@ public:
         auto t0 = std::chrono::high_resolution_clock::now();
         const size_t N = agents_.size();
 
+        // Tick signal controllers
+        for (auto& [id, sc] : signals_) sc->tick(dt);
+
         // Snapshot phase (sequential) — safe reads for parallel updates
         snap_x_.resize(N);
         snap_y_.resize(N);
@@ -359,6 +362,22 @@ private:
                                               v_lead, s);
         agents_.velocity[i] += acc * dt;
         agents_.velocity[i] = std::max(0.0, agents_.velocity[i]);
+
+        // Signal check: stop at red lights
+        const auto& path = agents_.path[i];
+        size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+        if (ei + 1 < path.size()) {
+            int64_t next_node = path[ei + 1];
+            auto sig_it = signals_.find(next_node);
+            if (sig_it != signals_.end()) {
+                int64_t u = path[ei];
+                if (!sig_it->second->is_green(u)) {
+                    agents_.velocity[i] = 0.0;
+                    agents_.wait_time[i] += dt;
+                    return;
+                }
+            }
+        }
 
         double dist = agents_.velocity[i] * dt;
         agents_.position[i] += dist;
