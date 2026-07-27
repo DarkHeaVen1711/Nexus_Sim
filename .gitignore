@@ -30,3 +30,7 @@ test_cmake/build*/
 test_clone_usockets/
 pdf_text.txt
 gh_log.txt
+build_*.txt
+*_log.txt
+*_err.txt
+cmake_config.txt
