@@ -13,11 +13,13 @@
 #include "Agent.h"
 #include "IDM.h"
 #include "Pathfinder.h"
+#include "SignalController.h"
 #include "../graph/Graph.h"
 #include "../spatial/Quadtree.h"
 #include "../network/WebSocketServer.h"
 #include "agent_delta_generated.h"
 #include "flatbuffers/flatbuffers.h"
+#include <memory>
 
 namespace nexussim {
 
@@ -28,6 +30,7 @@ public:
         for (const auto& pair : graph_.get_nodes())
             valid_nodes_.push_back(pair.first);
         precompute_edge_lengths();
+        init_signals();
     }
 
     void spawn_agents(size_t target_count) {
@@ -227,6 +230,9 @@ private:
     };
     std::unordered_map<std::pair<int64_t,int64_t>,double,PairHash> edge_len_;
 
+    // Signal controllers (one per signalized intersection)
+    std::unordered_map<int64_t, std::unique_ptr<SignalController>> signals_;
+
     // FPS tracking
     std::vector<double> tick_times_;
     uint64_t tick_count_ = 0;
@@ -239,6 +245,50 @@ private:
     double lookup_edge_len(int64_t u, int64_t v) const {
         auto it = edge_len_.find(std::make_pair(u, v));
         return it != edge_len_.end() ? it->second : 100.0;
+    }
+
+    void init_signals() {
+        for (const auto& [id, node] : graph_.get_nodes()) {
+            int degree = static_cast<int>(graph_.get_edges_from(id).size());
+            for (const auto& e : graph_.get_edges())
+                if (e.v == id) degree++;
+
+            if (!node.is_signal && degree < 7) continue;
+
+            auto sc = std::make_unique<SignalController>(id);
+
+            std::vector<int64_t> incoming;
+            for (const auto& e : graph_.get_edges())
+                if (e.v == id) incoming.push_back(e.u);
+
+            if (incoming.size() < 2) continue;
+
+            struct EdgeAngle { int64_t from; double angle; };
+            std::vector<EdgeAngle> ea;
+            for (int64_t u : incoming) {
+                const Node* nu = graph_.get_node(u);
+                if (!nu) continue;
+                double dx = node.x - nu->x;
+                double dy = node.y - nu->y;
+                ea.push_back({u, std::atan2(dy, dx)});
+            }
+            std::sort(ea.begin(), ea.end(),
+                [](const EdgeAngle& a, const EdgeAngle& b) { return a.angle < b.angle; });
+
+            size_t split = ea.size() / 2;
+            std::vector<std::vector<int64_t>> phase_edges(2);
+            std::vector<double> phase_volumes(2);
+            for (size_t i = 0; i < ea.size(); ++i) {
+                int ph = (i < split) ? 0 : 1;
+                phase_edges[ph].push_back(ea[i].from);
+                phase_volumes[ph] += 200.0 + degree * 30.0;
+            }
+
+            sc->calculate_webster_timing(phase_edges, phase_volumes);
+            signals_[id] = std::move(sc);
+        }
+        if (!signals_.empty())
+            std::cout << "Initialized " << signals_.size() << " signal controllers\n";
     }
 
     int32_t get_num_lanes(int64_t u, int64_t v) const {
