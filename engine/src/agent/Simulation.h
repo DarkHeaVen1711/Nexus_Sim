@@ -169,7 +169,20 @@ public:
         for (auto s : agents_.state)
             if (s == AgentState::Arrived) arrived++;
         json += std::to_string(arrived);
-        json += "},\"zone_metrics\":[]}";
+        json += ",\"avg_wait_time\":";
+        json += std::to_string(avg_wait_time_);
+        json += ",\"gini_coefficient\":";
+        json += std::to_string(gini_coefficient_);
+        json += "},\"zone_metrics\":[";
+        for (size_t z = 0; z < zone_wait_times_.size(); ++z) {
+            if (z > 0) json += ",";
+            json += "{\"zone_id\":";
+            json += std::to_string(zone_wait_times_[z].first);
+            json += ",\"wait_time\":";
+            json += std::to_string(zone_wait_times_[z].second);
+            json += "}";
+        }
+        json += "]}";
 
         ws_server->broadcast_text(json);
     }
