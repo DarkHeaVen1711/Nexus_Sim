@@ -119,6 +119,9 @@ public:
         tick_times_.push_back(ms);
         tick_count_++;
         if (tick_count_ % 500 == 0) log_fps();
+
+        // Update zone metrics every 10 ticks
+        if (tick_count_ % 10 == 0) compute_zone_metrics();
     }
 
     void broadcast_state(network::WebSocketServer* ws_server) {
@@ -235,6 +238,11 @@ private:
 
     // Signal controllers (one per signalized intersection)
     std::unordered_map<int64_t, std::unique_ptr<SignalController>> signals_;
+
+    // Metrics
+    double avg_wait_time_ = 0.0;
+    double gini_coefficient_ = 0.0;
+    std::vector<std::pair<int32_t, double>> zone_wait_times_;
 
     // FPS tracking
     std::vector<double> tick_times_;
@@ -493,6 +501,50 @@ private:
                 agents_.lane[i] = 0;
             }
         }
+    }
+
+    int32_t get_agent_zone(size_t i) const {
+        size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+        const auto& p = agents_.path[i];
+        if (p.empty()) return 0;
+        int64_t node_id = (ei < p.size()) ? p[ei] : p.back();
+        const Node* n = graph_.get_node(node_id);
+        return n ? n->zone_id : 0;
+    }
+
+    static double compute_gini(const std::vector<double>& v) {
+        if (v.size() <= 1) return 0.0;
+        double sum = std::accumulate(v.begin(), v.end(), 0.0);
+        if (sum <= 0.0) return 0.0;
+        double diff_sum = 0.0;
+        for (size_t i = 0; i < v.size(); ++i)
+            for (size_t j = 0; j < v.size(); ++j)
+                diff_sum += std::abs(v[i] - v[j]);
+        return diff_sum / (2.0 * v.size() * sum);
+    }
+
+    void compute_zone_metrics() {
+        std::unordered_map<int32_t, std::vector<double>> zone_waits;
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (agents_.state[i] != AgentState::Navigating
+                && agents_.state[i] != AgentState::Spawned)
+                continue;
+            zone_waits[get_agent_zone(i)].push_back(agents_.wait_time[i]);
+        }
+        zone_wait_times_.clear();
+        double total_wait = 0.0;
+        size_t total_count = 0;
+        for (auto& [z, waits] : zone_waits) {
+            double avg = std::accumulate(waits.begin(), waits.end(), 0.0)
+                         / waits.size();
+            zone_wait_times_.push_back({z, avg});
+            total_wait += std::accumulate(waits.begin(), waits.end(), 0.0);
+            total_count += waits.size();
+        }
+        avg_wait_time_ = total_count > 0 ? total_wait / total_count : 0.0;
+        std::vector<double> zone_avgs;
+        for (auto& [z, avg] : zone_wait_times_) zone_avgs.push_back(avg);
+        gini_coefficient_ = compute_gini(zone_avgs);
     }
 
     void log_fps() {
