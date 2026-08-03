@@ -1,0 +1,145 @@
+{
+  "city": "chicago",
+  "generated_at": "2026-08-03T11:30:06Z",
+  "checkpoint": "MAPE <= 25% AND >= 75% of corridor mean journey times within 25% of ground truth",
+  "methodology": "Engine run headless with OD-driven demand; mean journey time of completed agents per OD pair compared to observed mean travel time (seconds) at the simulated hour from the ground-truth dataset.",
+  "ground_truth_source": "Uber/Lyft Transportation Network Provider trips published by the City of Chicago open-data portal (2018-2022). Same underlying rideshare data that Uber Movement was built on. Uber Movement itself was decommissioned in 2023.",
+  "run_config": {
+    "duration_min": 60,
+    "start_hour": 8.0,
+    "comparison_hour": 8,
+    "demand_scale": 0.094346,
+    "speed_factor": 0.55,
+    "route_spread": 0.2
+  },
+  "summary": {
+    "corridor_count": 11,
+    "within_25_count": 7,
+    "within_25_pct": 63.6,
+    "mape_pct": 21.6,
+    "passes_checkpoint": false
+  },
+  "corridors": [
+    {
+      "origin": 41,
+      "destination": 41,
+      "zone_name_o": "HYDE PARK",
+      "zone_name_d": "HYDE PARK",
+      "samples": 5,
+      "sim_mean_tt_seconds": 354.2,
+      "observed_mean_tt_seconds": 410.0,
+      "error_pct": -13.6,
+      "within_25": true
+    },
+    {
+      "origin": 31,
+      "destination": 28,
+      "zone_name_o": "LOWER WEST SIDE",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 3,
+      "sim_mean_tt_seconds": 720.1,
+      "observed_mean_tt_seconds": 769.5,
+      "error_pct": -6.4,
+      "within_25": true
+    },
+    {
+      "origin": 7,
+      "destination": 7,
+      "zone_name_o": "LINCOLN PARK",
+      "zone_name_d": "LINCOLN PARK",
+      "samples": 3,
+      "sim_mean_tt_seconds": 469.3,
+      "observed_mean_tt_seconds": 463.0,
+      "error_pct": 1.4,
+      "within_25": true
+    },
+    {
+      "origin": 7,
+      "destination": 8,
+      "zone_name_o": "LINCOLN PARK",
+      "zone_name_d": "NEAR NORTH SIDE",
+      "samples": 6,
+      "sim_mean_tt_seconds": 1001.9,
+      "observed_mean_tt_seconds": 986.2,
+      "error_pct": 1.6,
+      "within_25": true
+    },
+    {
+      "origin": 28,
+      "destination": 28,
+      "zone_name_o": "NEAR WEST SIDE",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 21,
+      "sim_mean_tt_seconds": 525.4,
+      "observed_mean_tt_seconds": 513.6,
+      "error_pct": 2.3,
+      "within_25": true
+    },
+    {
+      "origin": 7,
+      "destination": 28,
+      "zone_name_o": "LINCOLN PARK",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 3,
+      "sim_mean_tt_seconds": 1527.0,
+      "observed_mean_tt_seconds": 1441.7,
+      "error_pct": 5.9,
+      "within_25": true
+    },
+    {
+      "origin": 24,
+      "destination": 28,
+      "zone_name_o": "WEST TOWN",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 9,
+      "sim_mean_tt_seconds": 1049.3,
+      "observed_mean_tt_seconds": 925.6,
+      "error_pct": 13.4,
+      "within_25": true
+    },
+    {
+      "origin": 8,
+      "destination": 32,
+      "zone_name_o": "NEAR NORTH SIDE",
+      "zone_name_d": "LOOP",
+      "samples": 40,
+      "sim_mean_tt_seconds": 1007.1,
+      "observed_mean_tt_seconds": 735.8,
+      "error_pct": 36.9,
+      "within_25": false
+    },
+    {
+      "origin": 33,
+      "destination": 28,
+      "zone_name_o": "NEAR SOUTH SIDE",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 3,
+      "sim_mean_tt_seconds": 1327.0,
+      "observed_mean_tt_seconds": 929.9,
+      "error_pct": 42.7,
+      "within_25": false
+    },
+    {
+      "origin": 28,
+      "destination": 32,
+      "zone_name_o": "NEAR WEST SIDE",
+      "zone_name_d": "LOOP",
+      "samples": 6,
+      "sim_mean_tt_seconds": 1003.4,
+      "observed_mean_tt_seconds": 691.8,
+      "error_pct": 45.0,
+      "within_25": false
+    },
+    {
+      "origin": 8,
+      "destination": 28,
+      "zone_name_o": "NEAR NORTH SIDE",
+      "zone_name_d": "NEAR WEST SIDE",
+      "samples": 15,
+      "sim_mean_tt_seconds": 1495.2,
+      "observed_mean_tt_seconds": 889.9,
+      "error_pct": 68.0,
+      "within_25": false
+    }
+  ]
+}

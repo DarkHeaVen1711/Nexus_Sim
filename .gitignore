@@ -10,10 +10,17 @@ __pycache__/
 
 # Pipeline intermediate files
 data/**/*.graphml
-data/chicago/
+data/chicago/*
 data/ahmedabad/
 data/paris/
 pipeline/cache/
+
+# Keep the small Phase 6 deliverables in the repo (the graphml/OSM cache stays out)
+!data/chicago/od_matrix.json
+!data/chicago/validation_report.json
+!data/chicago/calibration_notes.md
+!data/uber-movement-chicago/od_counts.csv
+!data/uber-movement-chicago/community_areas.json
 
 # Generated files
 *.onnx
@@ -30,3 +37,7 @@ test_cmake/build*/
 test_clone_usockets/
 pdf_text.txt
 gh_log.txt
+build_*.txt
+*_log.txt
+*_err.txt
+cmake_config.txt

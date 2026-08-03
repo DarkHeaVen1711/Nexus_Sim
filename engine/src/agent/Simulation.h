@@ -13,11 +13,14 @@
 #include "Agent.h"
 #include "IDM.h"
 #include "Pathfinder.h"
+#include "SignalController.h"
 #include "../graph/Graph.h"
 #include "../spatial/Quadtree.h"
 #include "../network/WebSocketServer.h"
+#include "../nlohmann/json.hpp"
 #include "agent_delta_generated.h"
 #include "flatbuffers/flatbuffers.h"
+#include <memory>
 
 namespace nexussim {
 
@@ -28,7 +31,11 @@ public:
         for (const auto& pair : graph_.get_nodes())
             valid_nodes_.push_back(pair.first);
         precompute_edge_lengths();
+        init_signals();
     }
+
+    void set_speed_factor(double f) { speed_factor_ = f; }
+    void set_route_spread(double s) { route_spread_ = s; }
 
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
@@ -48,15 +55,81 @@ public:
             if (agents_.path[idx].size() < 2)
                 agents_.state[idx] = AgentState::Arrived;
             agents_.target_speed[idx] =
-                get_default_idm_params(t, chaos_coefficient_).v0;
+                get_default_idm_params(t, chaos_coefficient_).v0
+                * speed_factor_;
             agents_.lane[idx] =
                 static_cast<int32_t>(rng() % std::max(1, get_num_lanes(start, end)));
+            agents_.start_time[idx] = 0.0;
         }
+    }
+
+    // Phase 6: spawn agents from a real OD demand matrix. Agents are emitted
+    // over sim time at the OD pair's hourly rate for the current time-of-day
+    // (start_hour + elapsed sim time), scaled by demand_scale for tractability.
+    void spawn_agents_from_od(const std::string& od_path,
+                              double demand_scale = 1.0,
+                              double start_hour = 8.0) {
+        demand_scale_ = demand_scale;
+        start_hour_ = start_hour;
+
+        std::ifstream f(od_path);
+        if (!f.good()) {
+            std::cerr << "OD file not found: " << od_path << "\n";
+            return;
+        }
+        nlohmann::json j;
+        f >> j;
+
+        for (const auto& [id, node] : graph_.get_nodes())
+            zone_nodes_[node.zone_id].push_back(node.id);
+
+        int zones_without_nodes = 0;
+        for (const auto& z : j["zones"].items()) {
+            int32_t zid = std::stoi(z.key());
+            if (zone_nodes_.find(zid) == zone_nodes_.end()
+                || zone_nodes_[zid].empty())
+                zones_without_nodes++;
+        }
+
+        int skipped = 0;
+        for (const auto& e : j["od"]) {
+            int32_t o = e["origin"];
+            int32_t d = e["destination"];
+            auto oit = zone_nodes_.find(o);
+            auto dit = zone_nodes_.find(d);
+            if (oit == zone_nodes_.end() || dit == zone_nodes_.end()
+                || oit->second.empty() || dit->second.empty()) {
+                skipped++;
+                continue;
+            }
+            ODPair p;
+            p.origin = o;
+            p.destination = d;
+            p.hourly.resize(24);
+            for (int h = 0; h < 24; ++h)
+                p.hourly[h] = e["hourly"].at(h);
+            od_pairs_.push_back(std::move(p));
+        }
+
+        std::cout << "Loaded " << od_pairs_.size() << " OD pairs"
+                  << " (demand_scale=" << demand_scale_
+                  << ", start_hour=" << start_hour_ << ")\n";
+        if (skipped)
+            std::cout << "Skipped " << skipped
+                      << " OD pairs with no graph nodes in a zone\n";
+        if (zones_without_nodes)
+            std::cout << "Zones without graph nodes: "
+                      << zones_without_nodes << "\n";
     }
 
     void tick(double dt) {
         auto t0 = std::chrono::high_resolution_clock::now();
+        sim_time_ += dt;
+        update_od_spawns(dt);
         const size_t N = agents_.size();
+
+        // Tick signal controllers
+        for (auto& [id, sc] : signals_) sc->tick(dt);
 
         // Snapshot phase (sequential) — safe reads for parallel updates
         snap_x_.resize(N);
@@ -113,6 +186,9 @@ public:
         tick_times_.push_back(ms);
         tick_count_++;
         if (tick_count_ % 500 == 0) log_fps();
+
+        // Update zone metrics every 10 ticks
+        if (tick_count_ % 10 == 0) compute_zone_metrics();
     }
 
     void broadcast_state(network::WebSocketServer* ws_server) {
@@ -160,14 +236,27 @@ public:
         for (auto s : agents_.state)
             if (s == AgentState::Arrived) arrived++;
         json += std::to_string(arrived);
-        json += "},\"zone_metrics\":[]}";
+        json += ",\"avg_wait_time\":";
+        json += std::to_string(avg_wait_time_);
+        json += ",\"gini_coefficient\":";
+        json += std::to_string(gini_coefficient_);
+        json += "},\"zone_metrics\":[";
+        for (size_t z = 0; z < zone_wait_times_.size(); ++z) {
+            if (z > 0) json += ",";
+            json += "{\"zone_id\":";
+            json += std::to_string(zone_wait_times_[z].first);
+            json += ",\"wait_time\":";
+            json += std::to_string(zone_wait_times_[z].second);
+            json += "}";
+        }
+        json += "]}";
 
         ws_server->broadcast_text(json);
     }
 
     void log_journey_times(const std::string& filepath) {
         std::ofstream file(filepath);
-        file << "agent_id,type,origin,destination,status\n";
+        file << "agent_id,type,origin,destination,origin_zone,destination_zone,start_time,journey_time_seconds,status\n";
         for (size_t i = 0; i < agents_.size(); ++i) {
             const char* status = "Unknown";
             switch (agents_.state[i]) {
@@ -175,10 +264,16 @@ public:
                 case AgentState::Navigating: status = "Navigating"; break;
                 case AgentState::Arrived:   status = "Arrived"; break;
             }
+            const Node* on = graph_.get_node(agents_.origin[i]);
+            const Node* dn = graph_.get_node(agents_.destination[i]);
             file << agents_.id[i] << ","
                  << static_cast<int>(agents_.type[i]) << ","
                  << agents_.origin[i] << ","
                  << agents_.destination[i] << ","
+                 << (on ? on->zone_id : 0) << ","
+                 << (dn ? dn->zone_id : 0) << ","
+                 << agents_.start_time[i] << ","
+                 << agents_.journey_time[i] << ","
                  << status << "\n";
         }
     }
@@ -188,6 +283,17 @@ public:
         for (auto s : agents_.state)
             if (s != AgentState::Arrived) c++;
         return c;
+    }
+
+    static double compute_gini(const std::vector<double>& v) {
+        if (v.size() <= 1) return 0.0;
+        double sum = std::accumulate(v.begin(), v.end(), 0.0);
+        if (sum <= 0.0) return 0.0;
+        double diff_sum = 0.0;
+        for (size_t i = 0; i < v.size(); ++i)
+            for (size_t j = 0; j < v.size(); ++j)
+                diff_sum += std::abs(v[i] - v[j]);
+        return diff_sum / (2.0 * v.size() * sum);
     }
 
     double avg_tick_ms() const {
@@ -209,8 +315,25 @@ private:
     const Graph& graph_;
     AgentSystem agents_;
     double chaos_coefficient_;
+    double speed_factor_ = 1.0;
+    double route_spread_ = 0.0;
     std::vector<int64_t> valid_nodes_;
     Quadtree<double> qt_{0, 0, 1, 1};
+
+    // Phase 6: OD demand-driven spawning
+    struct ODPair {
+        int32_t origin;
+        int32_t destination;
+        std::vector<double> hourly;
+        double accum = 0.0;
+    };
+    std::vector<ODPair> od_pairs_;
+    std::unordered_map<int32_t, std::vector<int64_t>> zone_nodes_;
+    double demand_scale_ = 1.0;
+    double start_hour_ = 8.0;
+    double sim_time_ = 0.0;
+    std::mt19937 od_rng_{20240607};
+    int64_t next_agent_id_ = 0;
 
     // Snapshots for thread-safe parallel reads
     std::vector<double> snap_x_, snap_y_, snap_v_;
@@ -227,6 +350,14 @@ private:
     };
     std::unordered_map<std::pair<int64_t,int64_t>,double,PairHash> edge_len_;
 
+    // Signal controllers (one per signalized intersection)
+    std::unordered_map<int64_t, std::unique_ptr<SignalController>> signals_;
+
+    // Metrics
+    double avg_wait_time_ = 0.0;
+    double gini_coefficient_ = 0.0;
+    std::vector<std::pair<int32_t, double>> zone_wait_times_;
+
     // FPS tracking
     std::vector<double> tick_times_;
     uint64_t tick_count_ = 0;
@@ -239,6 +370,106 @@ private:
     double lookup_edge_len(int64_t u, int64_t v) const {
         auto it = edge_len_.find(std::make_pair(u, v));
         return it != edge_len_.end() ? it->second : 100.0;
+    }
+
+    void update_od_spawns(double dt) {
+        if (od_pairs_.empty()) return;
+        double hour = std::fmod(start_hour_ + sim_time_ / 3600.0, 24.0);
+        if (hour < 0) hour += 24.0;
+        int h0 = static_cast<int>(hour);
+        int h1 = (h0 + 1) % 24;
+        double frac = hour - h0;
+        for (auto& p : od_pairs_) {
+            double rate = (p.hourly[h0] * (1.0 - frac)
+                           + p.hourly[h1] * frac) * demand_scale_;
+            if (rate <= 0.0) continue;
+            p.accum += rate * dt / 3600.0;
+            while (p.accum >= 1.0) {
+                p.accum -= 1.0;
+                spawn_od_agent(p.origin, p.destination);
+            }
+        }
+    }
+
+    void spawn_od_agent(int32_t zone_o, int32_t zone_d) {
+        auto oit = zone_nodes_.find(zone_o);
+        auto dit = zone_nodes_.find(zone_d);
+        if (oit == zone_nodes_.end() || dit == zone_nodes_.end()) return;
+        const auto& onodes = oit->second;
+        const auto& dnodes = dit->second;
+        if (onodes.empty() || dnodes.empty()) return;
+
+        for (int attempt = 0; attempt < 8; ++attempt) {
+            int64_t start = onodes[od_rng_() % onodes.size()];
+            int64_t end = dnodes[od_rng_() % dnodes.size()];
+            if (start == end) continue;
+
+            AgentType t = AgentType::Car;
+            size_t idx = agents_.add_agent(next_agent_id_++, start, end, t);
+            agents_.path[idx] = Pathfinder::compute_path_stochastic(
+                graph_, start, end, od_rng_, route_spread_);
+            if (agents_.path[idx].size() < 2) {
+                agents_.state[idx] = AgentState::Arrived;
+                agents_.journey_time[idx] = -1.0;
+                return;
+            }
+            agents_.target_speed[idx] =
+                get_default_idm_params(t, chaos_coefficient_).v0
+                * speed_factor_;
+            agents_.lane[idx] = 0;
+            agents_.start_time[idx] = sim_time_;
+            return;
+        }
+    }
+
+    void mark_arrived(size_t i) {
+        agents_.state[i] = AgentState::Arrived;
+        if (agents_.start_time[i] >= 0.0)
+            agents_.journey_time[i] = sim_time_ - agents_.start_time[i];
+    }
+
+    void init_signals() {
+        for (const auto& [id, node] : graph_.get_nodes()) {
+            int degree = static_cast<int>(graph_.get_edges_from(id).size());
+            for (const auto& e : graph_.get_edges())
+                if (e.v == id) degree++;
+
+            if (!node.is_signal && degree < 7) continue;
+
+            auto sc = std::make_unique<SignalController>(id);
+
+            std::vector<int64_t> incoming;
+            for (const auto& e : graph_.get_edges())
+                if (e.v == id) incoming.push_back(e.u);
+
+            if (incoming.size() < 2) continue;
+
+            struct EdgeAngle { int64_t from; double angle; };
+            std::vector<EdgeAngle> ea;
+            for (int64_t u : incoming) {
+                const Node* nu = graph_.get_node(u);
+                if (!nu) continue;
+                double dx = node.x - nu->x;
+                double dy = node.y - nu->y;
+                ea.push_back({u, std::atan2(dy, dx)});
+            }
+            std::sort(ea.begin(), ea.end(),
+                [](const EdgeAngle& a, const EdgeAngle& b) { return a.angle < b.angle; });
+
+            size_t split = ea.size() / 2;
+            std::vector<std::vector<int64_t>> phase_edges(2);
+            std::vector<double> phase_volumes(2);
+            for (size_t i = 0; i < ea.size(); ++i) {
+                int ph = (i < split) ? 0 : 1;
+                phase_edges[ph].push_back(ea[i].from);
+                phase_volumes[ph] += 200.0 + degree * 30.0;
+            }
+
+            sc->calculate_webster_timing(phase_edges, phase_volumes);
+            signals_[id] = std::move(sc);
+        }
+        if (!signals_.empty())
+            std::cout << "Initialized " << signals_.size() << " signal controllers\n";
     }
 
     int32_t get_num_lanes(int64_t u, int64_t v) const {
@@ -299,6 +530,7 @@ private:
 
         IDMParams p = get_default_idm_params(agents_.type[i],
                                               chaos_coefficient_);
+        p.v0 *= speed_factor_;
         double v_lead = p.v0;
         double s = 10000.0;
 
@@ -309,6 +541,22 @@ private:
                                               v_lead, s);
         agents_.velocity[i] += acc * dt;
         agents_.velocity[i] = std::max(0.0, agents_.velocity[i]);
+
+        // Signal check: stop at red lights
+        const auto& path = agents_.path[i];
+        size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+        if (ei + 1 < path.size()) {
+            int64_t next_node = path[ei + 1];
+            auto sig_it = signals_.find(next_node);
+            if (sig_it != signals_.end()) {
+                int64_t u = path[ei];
+                if (!sig_it->second->is_green(u)) {
+                    agents_.velocity[i] = 0.0;
+                    agents_.wait_time[i] += dt;
+                    return;
+                }
+            }
+        }
 
         double dist = agents_.velocity[i] * dt;
         agents_.position[i] += dist;
@@ -408,7 +656,7 @@ private:
         size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
         auto& path = agents_.path[i];
         if (ei + 1 >= path.size()) {
-            agents_.state[i] = AgentState::Arrived;
+            mark_arrived(i);
             return;
         }
         int64_t u = path[ei], v = path[ei + 1];
@@ -419,11 +667,44 @@ private:
             agents_.current_edge_idx[i]++;
             if (agents_.current_edge_idx[i] + 1
                 >= static_cast<int64_t>(path.size()))
-                agents_.state[i] = AgentState::Arrived;
+                mark_arrived(i);
             else {
                 agents_.lane[i] = 0;
             }
         }
+    }
+
+    int32_t get_agent_zone(size_t i) const {
+        size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+        const auto& p = agents_.path[i];
+        if (p.empty()) return 0;
+        int64_t node_id = (ei < p.size()) ? p[ei] : p.back();
+        const Node* n = graph_.get_node(node_id);
+        return n ? n->zone_id : 0;
+    }
+
+    void compute_zone_metrics() {
+        std::unordered_map<int32_t, std::vector<double>> zone_waits;
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (agents_.state[i] != AgentState::Navigating
+                && agents_.state[i] != AgentState::Spawned)
+                continue;
+            zone_waits[get_agent_zone(i)].push_back(agents_.wait_time[i]);
+        }
+        zone_wait_times_.clear();
+        double total_wait = 0.0;
+        size_t total_count = 0;
+        for (auto& [z, waits] : zone_waits) {
+            double avg = std::accumulate(waits.begin(), waits.end(), 0.0)
+                         / waits.size();
+            zone_wait_times_.push_back({z, avg});
+            total_wait += std::accumulate(waits.begin(), waits.end(), 0.0);
+            total_count += waits.size();
+        }
+        avg_wait_time_ = total_count > 0 ? total_wait / total_count : 0.0;
+        std::vector<double> zone_avgs;
+        for (auto& [z, avg] : zone_wait_times_) zone_avgs.push_back(avg);
+        gini_coefficient_ = compute_gini(zone_avgs);
     }
 
     void log_fps() {

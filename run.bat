@@ -12,12 +12,22 @@ set CITY=piedmont
 set AGENTS=500
 set DURATION=5
 set BUILD_TYPE=Release
+set OD_PATH=
+set DEMAND_SCALE=
+set START_HOUR=8.0
+set SPEED_FACTOR=0.55
+set ROUTE_SPREAD=0.2
 
 :parse_args
 if "%~1"=="" goto build
 if "%~1"=="--city" ( set CITY=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--agents" ( set AGENTS=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--duration" ( set DURATION=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--od" ( set OD_PATH=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--demand-scale" ( set DEMAND_SCALE=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--start-hour" ( set START_HOUR=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--speed-factor" ( set SPEED_FACTOR=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--route-spread" ( set ROUTE_SPREAD=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--debug" ( set BUILD_TYPE=Debug & shift & goto parse_args )
 if "%~1"=="--dashboard-only" ( goto dashboard_only )
 if "%~1"=="--help" goto show_help
@@ -30,8 +40,13 @@ echo Usage: run.bat [OPTIONS]
 echo.
 echo Options:
 echo   --city NAME        City to simulate (default: piedmont)
-echo   --agents N         Number of agents (default: 500)
+echo   --agents N         Number of agents (uniform mode, default: 500)
 echo   --duration N       Duration in minutes (default: 5)
+echo   --od PATH          OD demand matrix (real-traffic mode; e.g. data\chicago\od_matrix.json)
+echo   --demand-scale N   Scale factor for OD demand (auto if omitted)
+echo   --start-hour H     Simulation start hour 0-23 (OD mode, default: 8)
+echo   --speed-factor N   Congestion factor on IDM desired speeds (default: 0.55)
+echo   --route-spread N   Stochastic route-choice spread 0-1 (default: 0.2)
 echo   --debug            Build in Debug mode
 echo   --dashboard-only   Start dashboard only (skip build/run)
 echo   --help, -h         Show this help message
@@ -39,6 +54,7 @@ echo.
 echo Examples:
 echo   run.bat
 echo   run.bat --city chicago --agents 2000 --duration 10
+echo   run.bat --city chicago --od data\chicago\od_matrix.json --duration 60
 echo   run.bat --debug --agents 1000
 echo   run.bat --dashboard-only
 exit /b 0
@@ -90,13 +106,32 @@ cd ..
 echo.
 echo [4/4] Running simulation...
 echo City: %CITY%
-echo Agents: %AGENTS%
+if "%OD_PATH%"=="" (
+    echo Mode: uniform   Agents: %AGENTS%
+) else (
+    echo Mode: OD-driven   Matrix: %OD_PATH%
+    echo Demand scale: %DEMAND_SCALE%   Start hour: %START_HOUR%
+    echo Speed factor: %SPEED_FACTOR%   Route spread: %ROUTE_SPREAD%
+)
 echo Duration: %DURATION% min
 echo.
 echo Dashboard: http://localhost:5173
 echo WebSocket: ws://localhost:9001
 echo.
-engine\build\engine.exe --city %CITY% --agents %AGENTS% --duration %DURATION%
+echo NOTE: The engine stays alive after the simulation so the dashboard
+echo stays connected. Press Ctrl+C to stop the engine.
+echo.
+
+set "ENGINE_ARGS=--city %CITY% --duration %DURATION%"
+if "%OD_PATH%"=="" (
+    set "ENGINE_ARGS=!ENGINE_ARGS! --agents %AGENTS%"
+) else (
+    set "ENGINE_ARGS=!ENGINE_ARGS! --od %OD_PATH%"
+    if not "%DEMAND_SCALE%"=="" set "ENGINE_ARGS=!ENGINE_ARGS! --demand-scale %DEMAND_SCALE%"
+    set "ENGINE_ARGS=!ENGINE_ARGS! --start-hour %START_HOUR% --speed-factor %SPEED_FACTOR% --route-spread %ROUTE_SPREAD%"
+)
+
+engine\build\engine.exe %ENGINE_ARGS%
 if errorlevel 1 (
     echo ERROR: Simulation failed!
     exit /b 1

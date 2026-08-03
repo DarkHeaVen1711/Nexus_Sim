@@ -174,7 +174,7 @@ target_link_libraries(engine PRIVATE engine_lib ${ZLIB_LIBRARIES})
 # Testing
 if(ENABLE_TESTING)
   enable_testing()
-  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp)
+  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_od_spawner.cpp)
   target_link_libraries(engine_test gtest_main engine_lib)
 
   include(GoogleTest)

@@ -1,4 +1,25 @@
 chicago:
   query: "Chicago, Illinois, USA"
+  od_source:
+    type: socrata
+    dataset: m6dm-c72p
+    origin_column: pickup_community_area
+    destination_column: dropoff_community_area
+    timestamp_column: trip_start_timestamp
+    trip_seconds_column: trip_seconds
+    zones_dataset: igwz-8jzy
+    zone_column: area_numbe
+    zone_name_column: community
+    zone_geometry_column: the_geom
+    zone_type: community-area
+    default_year: 2019
+    default_month: 10
+    note: >-
+      Uber/Lyft Transportation Network Provider trips published by the City of
+      Chicago open-data portal (2018-2022). Same underlying rideshare data that
+      Uber Movement was built on. Uber Movement itself was decommissioned in 2023.
 piedmont:
   query: "Piedmont, California, USA"
+  od_source:
+    type: uniform
+    note: "Fallback: no real OD data; engine uses uniform random spawning."
