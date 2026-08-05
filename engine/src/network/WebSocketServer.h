@@ -56,9 +56,16 @@ public:
                                    j.at("max_lat").get<double>(),
                                    j.at("max_lon").get<double>()};
                     }
+                    return;
                 }
             } catch (const std::exception&) {
                 // Ignore malformed messages; keep last known bounds.
+            }
+            // Not a message the server itself handles (e.g. city selection):
+            // forward it to the simulation owner on the main thread.
+            if (message_handler_) {
+                std::string payload(message);
+                message_handler_(payload);
             }
         };
         behavior.close = [this](uWS::WebSocket<false, true, int> *ws, int code, std::string_view message) {
@@ -94,6 +101,13 @@ public:
     void broadcast_text(const std::string& msg) {
         auto shared = std::make_shared<std::string>(msg);
         send_on_loop(shared, uWS::OpCode::TEXT);
+    }
+
+    // Called on the uWS event-loop thread for messages this server does not
+    // interpret itself (e.g. {"type":"city","city":"chicago"}). The callback
+    // must be thread-safe; it runs concurrently with the simulation thread.
+    void set_message_handler(std::function<void(const std::string&)> handler) {
+        message_handler_ = std::move(handler);
     }
 
     // Returns false when no viewport bounds have been received (broadcast all).
@@ -142,6 +156,7 @@ private:
     std::unique_ptr<uWS::App> app_;
     std::vector<uWS::WebSocket<false, true, int>*> clients_;
     std::mutex clients_mutex_;
+    std::function<void(const std::string&)> message_handler_;
 
     struct Bounds {
         bool set = false;
