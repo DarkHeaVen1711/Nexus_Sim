@@ -5,8 +5,10 @@
 #include <functional>
 #include <memory>
 #include <atomic>
+#include <mutex>
 #include "../mingw_thread_compat.h"
 #include "App.h"
+#include <nlohmann/json.hpp>
 
 #if !(defined(_WIN32) && !defined(_GLIBCXX_HAS_GTHREADS))
 #include <mutex>
@@ -23,7 +25,11 @@ public:
 
     void start() {
         uWS::TemplatedApp<false>::WebSocketBehavior<int> behavior;
-        behavior.compression = uWS::SHARED_COMPRESSOR;
+        // Compression (permessage-deflate) is disabled: the SHARED_COMPRESSOR
+        // stream is a known source of "WebSocket Protocol Error 1002" closes
+        // from browsers (corrupt deflate stream on MinGW/libuv builds). The
+        // dashboard payload is small text JSON, so compression buys nothing.
+        behavior.compression = uWS::DISABLED;
         behavior.maxPayloadLength = 16 * 1024 * 1024;
         behavior.idleTimeout = 120;
         // The server streams continuously; reset the idle timer on every send so
@@ -34,8 +40,26 @@ public:
             clients_.push_back(ws);
             std::cout << "Client connected\n";
         };
-        behavior.message = [](uWS::WebSocket<false, true, int> *ws, std::string_view message, uWS::OpCode opCode) {
-            // Handle LOD bounds from client if needed
+        behavior.message = [this](uWS::WebSocket<false, true, int> *ws, std::string_view message, uWS::OpCode opCode) {
+            // LOD culling: the dashboard sends its current viewport bounds and
+            // the engine only includes agents inside them in the next broadcast.
+            try {
+                auto j = nlohmann::json::parse(message);
+                if (j.contains("type") && j["type"] == "bounds") {
+                    std::lock_guard<std::mutex> lock(bounds_mutex_);
+                    if (j.contains("clear") && j["clear"].get<bool>()) {
+                        bounds_.set = false;
+                    } else {
+                        bounds_ = {true,
+                                   j.at("min_lat").get<double>(),
+                                   j.at("min_lon").get<double>(),
+                                   j.at("max_lat").get<double>(),
+                                   j.at("max_lon").get<double>()};
+                    }
+                }
+            } catch (const std::exception&) {
+                // Ignore malformed messages; keep last known bounds.
+            }
         };
         behavior.close = [this](uWS::WebSocket<false, true, int> *ws, int code, std::string_view message) {
             {
@@ -72,6 +96,18 @@ public:
         send_on_loop(shared, uWS::OpCode::TEXT);
     }
 
+    // Returns false when no viewport bounds have been received (broadcast all).
+    bool get_bounds(double& min_lat, double& min_lon,
+                    double& max_lat, double& max_lon) const {
+        std::lock_guard<std::mutex> lock(bounds_mutex_);
+        if (!bounds_.set) return false;
+        min_lat = bounds_.min_lat;
+        min_lon = bounds_.min_lon;
+        max_lat = bounds_.max_lat;
+        max_lon = bounds_.max_lon;
+        return true;
+    }
+
     ~WebSocketServer() {
         // Gracefully stop the uWS loop so no queued callbacks outlive this object.
         // close() must run on the event-loop thread; deferring it is thread-safe.
@@ -106,6 +142,16 @@ private:
     std::unique_ptr<uWS::App> app_;
     std::vector<uWS::WebSocket<false, true, int>*> clients_;
     std::mutex clients_mutex_;
+
+    struct Bounds {
+        bool set = false;
+        double min_lat = 0.0;
+        double min_lon = 0.0;
+        double max_lat = 0.0;
+        double max_lon = 0.0;
+    };
+    mutable std::mutex bounds_mutex_;
+    Bounds bounds_;
 };
 
 } // namespace network

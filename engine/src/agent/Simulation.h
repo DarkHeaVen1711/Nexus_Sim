@@ -195,6 +195,12 @@ public:
     void broadcast_state(network::WebSocketServer* ws_server) {
         if (!ws_server) return;
 
+        // Phase 4.3 LOD culling: when the dashboard has sent viewport bounds,
+        // only include agents inside them in the marker payload. Global metrics
+        // are still computed over every agent so the numbers stay correct.
+        bool has_bounds = ws_server->get_bounds(min_lat_, min_lon_,
+                                                max_lat_, max_lon_);
+
         std::string json = "{\"tick\":";
         json += std::to_string(tick_count_);
         json += ",\"agents\":[";
@@ -202,6 +208,10 @@ public:
         bool first = true;
         for (size_t i = 0; i < agents_.size(); ++i) {
             if (snap_state_[i] != AgentState::Navigating && snap_state_[i] != AgentState::Spawned)
+                continue;
+            if (has_bounds
+                && (snap_lat_[i] < min_lat_ || snap_lat_[i] > max_lat_
+                    || snap_lon_[i] < min_lon_ || snap_lon_[i] > max_lon_))
                 continue;
             if (!first) json += ",";
             first = false;
@@ -320,6 +330,12 @@ private:
     double route_spread_ = 0.0;
     std::vector<int64_t> valid_nodes_;
     Quadtree<double> qt_{0, 0, 1, 1};
+
+    // Phase 4.3 LOD culling: viewport bounds received from the dashboard.
+    double min_lat_ = 0.0;
+    double min_lon_ = 0.0;
+    double max_lat_ = 0.0;
+    double max_lon_ = 0.0;
 
     // Phase 6: OD demand-driven spawning
     struct ODPair {
