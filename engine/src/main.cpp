@@ -57,6 +57,101 @@ static std::string graph_path_for(const std::string& city) {
     return filepath;
 }
 
+// Runs the simulation for one city until the dashboard asks for a different
+// city (interactive mode) or the configured duration elapses (headless mode).
+static void run_city(const std::string& city, int agent_count, int duration_min,
+                     double chaos, double speed_factor, double route_spread,
+                     double dt, bool fast, bool no_ws,
+                     const std::string& journey_csv,
+                     nexussim::network::WebSocketServer* ws_server) {
+    std::string filepath = graph_path_for(city);
+    std::ifstream test(filepath);
+    if (!test.good()) {
+        std::cerr << "No graph data for city: " << city << " (" << filepath << ")\n";
+        if (ws_server) {
+            ws_server->broadcast_text(
+                "{\"type\":\"error\",\"message\":\"No graph data for city "
+                + city + "\"}");
+        }
+        return;
+    }
+
+    std::cout << "Loading graph for " << city << "...\n";
+    auto g = std::make_shared<nexussim::Graph>(
+        nexussim::load_from_json(filepath));
+
+    {
+        std::lock_guard<std::mutex> lock(g_current_city.m);
+        g_current_city.city = city;
+    }
+
+    std::cout << "Nodes: " << g->node_count()
+              << " Edges: " << g->edge_count()
+              << " Lanes: " << g->total_lanes()
+              << " Zones: " << g->zone_count() << "\n";
+
+    nexussim::Simulation sim(*g, chaos);
+    sim.set_chaos(chaos);
+    sim.set_speed_factor(speed_factor);
+    sim.set_route_spread(route_spread);
+    sim.set_city_name(city);
+
+    std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
+    sim.spawn_agents(agent_count);
+
+    if (ws_server) {
+        ws_server->broadcast_text(
+            "{\"type\":\"city_loaded\",\"city\":\"" + city
+            + "\",\"nodes\":" + std::to_string(g->node_count())
+            + ",\"edges\":" + std::to_string(g->edge_count()) + "}");
+    }
+
+    if (fast) {
+        int ticks = static_cast<int>((duration_min * 60.0) / dt);
+        std::cout << "Running " << duration_min << "-min sim ("
+                  << ticks << " ticks, dt=" << dt << "s) [fast/headless]...\n";
+        for (int i = 0; i < ticks; ++i) {
+            sim.tick(dt);
+            if (!no_ws) sim.broadcast_state(ws_server);
+            if (i % 500 == 0)
+                std::cout << "Tick " << i << "/" << ticks
+                          << " active=" << sim.active_agents() << "\n";
+        }
+        sim.log_journey_times(journey_csv);
+        std::cout << "Avg tick: " << sim.avg_tick_ms() << "ms"
+                  << " p95: " << sim.p95_tick_ms() << "ms\n";
+        std::cout << "Saved " << journey_csv << "\n";
+        return;
+    }
+
+    // Interactive mode: keep simulating (respawn completed agents so traffic
+    // stays live) until the dashboard picks another city or the engine stops.
+    std::cout << "Running " << city << " continuously. "
+              << "Select a city on the dashboard to switch.\n";
+    int tick = 0;
+    for (;;) {
+        if (g_stop) break;
+        if (city_change_requested()) {
+            std::cout << "City switch requested; reloading...\n";
+            break;
+        }
+        sim.tick(dt);
+        sim.respawn_arrived();
+        if (!no_ws) sim.broadcast_state(ws_server);
+        if (++tick % 500 == 0)
+            std::cout << "Tick " << tick
+                      << " active=" << sim.active_agents()
+                      << " completed=" << sim.completed_agents() << "\n";
+
+        // Pace at ~60fps so dashboard can visualize in real-time
+#ifdef _WIN32
+        Sleep(16);
+#else
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+#endif
+    }
+}
+
 int main(int argc, char** argv) {
     std::string city = "chicago";
     size_t agent_count = 500;
@@ -176,4 +271,5 @@ int main(int argc, char** argv) {
     std::cout << "Shutting down.\n";
     return 0;
 }
+
 
