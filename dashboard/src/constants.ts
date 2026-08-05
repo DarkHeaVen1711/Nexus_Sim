@@ -1,3 +1,13 @@
+export interface CityOption {
+  id: string;
+  label: string;
+}
+
+export const CITIES: CityOption[] = [
+  { id: 'chicago', label: 'Chicago' },
+  { id: 'piedmont', label: 'Piedmont' },
+];
+
 export const GINI_THRESHOLDS = {
   LOW: 0.25,
   MODERATE: 0.45,
