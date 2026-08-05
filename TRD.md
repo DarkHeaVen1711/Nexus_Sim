@@ -215,3 +215,70 @@ Origin–destination demand keyed by zone pair with hourly rates. `socrata` matr
 | NFR-8 | Reproducibility | `make demo` from clean clone < 30 min; all deps pinned | Ph 11; `package-lock.json`, pinned `requirements.txt` |
 | NFR-9 | Test completeness | `make test` (GoogleTest + pytest + Vitest) green in < 3 min; CI gate on every push/PR | Ph 0, 11.7 |
 | NFR-10 | Config-driven cities | New city or per-city key = edit `pipeline/cities.yaml` only | Ph 1.8, 6.8; root `cities.yaml` is a pointer stub |
+
+---
+
+## 7. Data Requirements
+
+| Data | Source | Schema | Notes |
+|------|--------|--------|-------|
+| Road network | OpenStreetMap via `osmnx` | [5] `graph.json` | Cleaned, largest SCC, lane confidence |
+| OD demand | Chicago Socrata TNP; density proxy for Paris/Ahmedabad | [6] `od_matrix.json` | Proxy flagged `validation_safe: false` |
+| Ground truth journey times | Chicago TNP | `validation_report.json` | Used by `validate.py` checkpoint |
+| Calibration search space | Manual Phase 6 sweep | `ga_calibration_report.json` | GA output (Ph 13) |
+| Congestion tiles | Mapbox Traffic Tiles / TomTom Traffic Flow | `cv_congestion.json` | ToS-compliant; API key via env var (Ph 14) |
+| Trained policy | PyTorch → ONNX | `policy.onnx` | Validated vs PyTorch outputs (Ph 8) |
+| City config | `pipeline/cities.yaml` | YAML | Single source of truth (TR-7) |
+
+---
+
+## 8. Environments
+
+| Env | Stack | Notes |
+|-----|-------|-------|
+| Windows dev | MSYS2 MinGW-w64 GCC 13+, CMake ≥ 3.25, Ninja, Python 3.11+, Node 18+ | `run.bat`; MinGW test DLLs on PATH for `ctest` |
+| Linux/macOS dev | GCC 11+/Clang 14+, CMake, Ninja, Python 3.11+, Node 18+ | `make test`, `make demo` |
+| CI | GitHub Actions `ubuntu-latest` | build + lint + test all three subsystems on push/PR |
+| Sidecars | Python 3.11 + FastAPI/OpenCV | Ports 9003/9004; separate venv deps |
+
+---
+
+## 9. Verification and Acceptance Mapping
+
+Each requirement above is accepted via its plan-phase checkpoint artifact
+(`IMPLEMENTATION_PLAN.md` Phase Summary) and the phase-gated `docs/e2e_checklist.md`:
+
+| Phase | Checkpoint artifact | Verifies |
+|-------|---------------------|----------|
+| 3 | Quadtree benchmark table | NFR-3, TR-ENG-05 |
+| 6 | Chicago `validation_report.json` with `passes_checkpoint` | FR-4, NFR-7, TR-PIPE-06 |
+| 8 | `bench_inference.cpp` p95 ≤ 8 ms | NFR-4, TR-ENG-12, TR-ML-07 |
+| 11 | `make demo` clean-clone < 30 min | NFR-8 |
+| 12 | `policy_switch` visible in next frame, byte-identical Webster extraction | FR-7, TR-ENG-09/10 |
+| 13 | `ga_calibration_report.json`; fuzzy live via `--signal-policy fuzzy` | FR-9/10, TR-PIPE-07, TR-ENG-11 |
+| 14 | `cv_congestion.json` + classical-vs-CNN accuracy table | FR-11, TR-PIPE-08, NFR-6 |
+| 15 | Live annotated detection panel, count error % logged | FR-12, TR-ML-08 |
+| 16 | Held-out query accuracy (rule-based vs LLM) | FR-13, TR-ML-09 |
+| 17 | Incident visibly mutates routing, expires correctly | FR-14, TR-ENG-13, TR-ML-10 |
+| 18 | One continuous integrated demo (incident → RL → metrics, all four subjects live) | BR-1–BR-3, TR-DASH-05…10 |
+
+---
+
+## 10. Traceability Matrix (summary)
+
+| Requirement (PRD goal / BR) | Primary technical requirements | Key phases |
+|------------------------------|-------------------------------|------------|
+| G1 (20k agents @ 60 fps) | TR-ENG-05/06, NFR-1/2/3 | 3, 4 |
+| G2 (MARL beats baseline) | TR-ML-01…07, TR-ENG-09/12 | 7, 8, 12 |
+| G3 (equity measurable) | TR-ENG-14, TR-DASH-03, TR-ML-04 | 5, 9 |
+| G4 (multi-city) | TR-PIPE-01…05, NFR-10 | 1, 6, 9 |
+| G6 (pluggable signals) | TR-ENG-09/10, TR-DASH-05 | 12 |
+| G7 (GA + fuzzy) | TR-PIPE-07, TR-ENG-11 | 13 |
+| G8 (CV real-world) | TR-PIPE-08, TR-DASH-07 | 14 |
+| G9 (virtual camera) | TR-ML-08, TR-DASH-08 | 15 |
+| G10 (NLP chat) | TR-ML-09, TR-DASH-09 | 16 |
+| G11 (incidents) | TR-ENG-13, TR-ML-10, TR-DASH-10 | 17 |
+| G12 (integration) | all TR, e2e checklist v2 | 18 |
+| BR-1…BR-6 | TR-ML-01…10, TR-PIPE-07/08, TR-ENG-09/11/13, TR-DASH-05…10 | 12–18 |
+
+Full FR/NFR/TR/BR definitions with acceptance criteria: `docs/NexusSim_Explained.md §3`.
