@@ -1,15 +1,60 @@
 #include <iostream>
 #include <string>
+#include <memory>
 #include <cstdlib>
 #include <csignal>
+#include <fstream>
+#include <mutex>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
 #include "network/WebSocketServer.h"
+#include <nlohmann/json.hpp>
 
 static volatile std::sig_atomic_t g_stop = 0;
 
 static void handle_signal(int) {
     g_stop = 1;
+}
+
+// A city-selection request coming from the dashboard over WebSocket. Written on
+// the uWS event-loop thread, read on the main simulation thread.
+struct CityRequest {
+    std::mutex m;
+    std::string city;
+    bool pending = false;
+};
+static CityRequest g_city_req;
+
+// Current city the engine is simulating (for the get_city probe). Empty when
+// the engine is idling and no simulation is running yet.
+struct CurrentCity {
+    std::mutex m;
+    std::string city;
+};
+static CurrentCity g_current_city;
+
+static std::string current_city() {
+    std::lock_guard<std::mutex> lock(g_current_city.m);
+    return g_current_city.city;
+}
+
+static bool city_change_requested() {
+    std::lock_guard<std::mutex> lock(g_city_req.m);
+    return g_city_req.pending;
+}
+
+static std::string take_city_request() {
+    std::lock_guard<std::mutex> lock(g_city_req.m);
+    if (!g_city_req.pending) return "";
+    g_city_req.pending = false;
+    return g_city_req.city;
+}
+
+static std::string graph_path_for(const std::string& city) {
+    std::string filepath = "data/" + city + "/graph.json";
+    std::ifstream test(filepath);
+    if (!test.good()) filepath = "../data/" + city + "/graph.json";
+    return filepath;
 }
 
 int main(int argc, char** argv) {
@@ -131,3 +176,4 @@ int main(int argc, char** argv) {
     std::cout << "Shutting down.\n";
     return 0;
 }
+
