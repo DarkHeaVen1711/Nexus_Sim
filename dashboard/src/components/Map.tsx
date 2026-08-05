@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { MetricsPanel } from './MetricsPanel';
 import { EquityOverlay } from './EquityOverlay';
 import { ViewportBoundsSender } from './ViewportBoundsSender';
+import { CitySelector } from './CitySelector';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
@@ -50,22 +51,46 @@ const buildGraphFeature = (data: any): any => {
 };
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, sendMessage } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, sendMessage, resetState } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [graphLoading, setGraphLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('efficiency');
+  // While a city switch is in flight the engine still broadcasts the OLD city's
+  // frames until it reloads. Track the requested city so those stale frames
+  // never bounce the dashboard's selection back to the previous city.
+  const pendingSwitchRef = useRef<string | null>(null);
 
   // Follow the engine's authoritative city (announced when it starts/loads a
   // city, or answered to the get_city probe on connect). When the engine is
   // idling it reports null and the dashboard stays on the "select a city" view.
   useEffect(() => {
     if (!engineCity) return;
+    if (pendingSwitchRef.current) {
+      if (engineCity === pendingSwitchRef.current) {
+        pendingSwitchRef.current = null;
+        if (selectedCity !== engineCity) setSelectedCity(engineCity);
+      }
+      return;
+    }
     if (engineCity !== selectedCity) {
       setSelectedCity(engineCity);
     }
   }, [engineCity, selectedCity]);
+
+  // If the engine rejects the requested city, drop the pending guard so the
+  // selection is stable again (the error banner explains what happened).
+  useEffect(() => {
+    if (engineError) pendingSwitchRef.current = null;
+  }, [engineError]);
+
+  // Loading a new city invalidates the previous city's agents and viewport
+  // bounds, so old markers and stale LOD culling never leak into the new map.
+  useEffect(() => {
+    resetState();
+    sendMessage(JSON.stringify({ type: 'bounds', clear: true }));
+  }, [selectedCity, sendMessage, resetState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +123,13 @@ export const Map: React.FC = () => {
     return () => { cancelled = true; };
   }, [selectedCity]);
 
+  const switchCity = useCallback((city: string) => {
+    if (city === selectedCity) return;
+    pendingSwitchRef.current = city;
+    setSelectedCity(city);
+    sendMessage(JSON.stringify({ type: 'city', city }));
+  }, [selectedCity, sendMessage]);
+
   const getAgentColor = (type: number) => {
     switch (type) {
       case 0: return '#3b82f6';
@@ -125,14 +157,20 @@ export const Map: React.FC = () => {
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       {isReconnecting && (
-        <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#eab308', color: '#000', padding: '8px 16px', borderRadius: '6px', fontWeight: 600 }}>
+        <div style={{ position: 'absolute', top: '68px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#eab308', color: '#000', padding: '8px 16px', borderRadius: '6px', fontWeight: 600 }}>
           Reconnecting to Engine...
         </div>
       )}
 
       {!isConnected && !isReconnecting && (
-        <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '6px' }}>
+        <div style={{ position: 'absolute', top: '68px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '6px' }}>
           Disconnected
+        </div>
+      )}
+
+      {engineError && (
+        <div style={{ position: 'absolute', top: '68px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '6px' }}>
+          {engineError}
         </div>
       )}
 
@@ -141,6 +179,14 @@ export const Map: React.FC = () => {
           Loading {selectedCity} road network...
         </div>
       )}
+
+      {!selectedCity && isConnected && (
+        <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: 'rgba(17, 24, 39, 0.9)', color: '#e5e7eb', padding: '10px 18px', borderRadius: '8px', border: '1px solid #374151', fontSize: '14px', fontWeight: 600 }}>
+          Select a city above to start the simulation
+        </div>
+      )}
+
+      <CitySelector activeCity={selectedCity} disabled={graphLoading} onSelect={switchCity} />
 
       <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000, display: 'flex', gap: '4px', backgroundColor: 'rgba(17, 24, 39, 0.9)', padding: '4px', borderRadius: '8px', border: '1px solid #374151' }}>
         <button style={toggleStyle(viewMode === 'efficiency')} onClick={() => setViewMode('efficiency')}>
@@ -169,6 +215,7 @@ export const Map: React.FC = () => {
         {graphData && (
           <GeoJSON
             data={graphData}
+            interactive={false}
             style={{ color: '#4b5563', weight: 2 }}
           />
         )}
