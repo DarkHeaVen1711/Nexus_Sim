@@ -67,3 +67,87 @@ Views the dashboard. Needs plain-language metrics, no jargon. Interacts with pol
 
 ### Evaluator — Technical Interviewer
 Reviews code architecture, model design decisions, and validation methodology across all four subjects. Needs clean interfaces, documented choices, ablation results, and one integrated demo (Phase 18).
+
+---
+
+## 5. Core Features
+
+### F1 — C++ Simulation Engine (Phases 0–4)
+- Directed graph loaded from a cleaned OpenStreetMap export
+- Agent types: car, bus, auto-rickshaw, two-wheeler, informal shuttle, pedestrian
+- Quadtree spatial index for O(N log N) proximity detection
+- Thread pool with Structure-of-Arrays (SoA) memory layout
+- Outputs delta-compressed binary state stream over WebSocket
+- OD-driven agent spawning from real trip demand (Phase 6)
+
+### F2 — OSM Data Pipeline (Python) (Phases 1, 6)
+- Downloads and cleans raw `.osm.pbf` files via `osmnx`
+- Extracts largest strongly-connected component
+- Lane-inference fallback chain with per-edge confidence scores
+- Ward/equity-zone tagging from census or building-density proxy
+- OD demand matrix per city: real measured feed (Socrata) or density-proxy fallback with `validation_safe: false`
+- Outputs a single `graph.json` + `od_matrix.json` consumed by the C++ engine
+
+### F3 — MARL Training Environment (Python / PyTorch) (Phase 7)
+- Gym-compatible environment wrapping the simulation state
+- Decentralized agents: one per signalised intersection (BR-5)
+- Pressure-based local reward + equity-weighted global reward
+- MAPPO (Multi-Agent Proximal Policy Optimization) trainer
+- MLflow logging of reward, pressure term, equity term, Gini per checkpoint
+- Exports trained policy to ONNX
+
+### F4 — ONNX Inference in C++ (Phase 8)
+- Loads ONNX policy graph via ONNX Runtime C++ API
+- Batches all intersection state observations into one tensor call per tick
+- Runs on a background thread; engine consumes via shared-memory ring buffer
+- No live Python process in the simulation hot path
+
+### F5 — React Dashboard (Phases 4, 5, 10)
+- Real-time map rendered with Mapbox GL or Leaflet + WebGL
+- Dual view toggle: Efficiency mode / Equity mode
+- Policy toggles: bus lane, congestion pricing zone, EV fleet ratio, chaos coefficient
+- Equity panel: per-zone wait times + Gini coefficient gauge
+- Efficiency/equity tradeoff curve chart (varies β weight)
+- Policy comparison panel (Phase 12), calibration report panel (Phase 13), CV overlay (Phase 14), virtual camera panel (Phase 15), chat panel (Phase 16), incident report panel (Phase 17)
+
+### F6 — Validation Layer (Phases 6, 9)
+- Calibrate simulation against real OD matrices (Chicago TNP / Socrata; OpenTraffic-decommissioned fallback documented)
+- Compare simulated corridor journey times vs. ground truth per city
+- Compute Gini coefficient across zones, reported per training checkpoint
+- Machine-checked checkpoint: MAPE ≤ 25% AND ≥ 75% of corridors within 25%
+- Support 3 validation cities: Chicago (grid), Paris (radial), Ahmedabad (organic); refuses to validate density-proxy matrices (circular-MAPE guard)
+
+### F7 — Pluggable Signal Policies (Phase 12)
+- `SignalPolicy` interface; Webster's extracted behavior-preserving as `WebsterPolicy`
+- `--signal-policy webster|fuzzy|rl` at startup; live `policy_switch` WebSocket message flips an intersection or the whole network with no restart
+- Broadcast gains `mode` and `signals[]`; dashboard gains `PolicyComparisonPanel.tsx`
+
+### F8 — Soft Computing: GA Calibration + Fuzzy Controller (Phase 13)
+- Genetic algorithm over `[speed_factor, route_spread, chaos, demand_scale]` using the existing validation checkpoint as fitness; parallel evaluation
+- `ga_calibration_report.json` with convergence curve; GA-tuned MAPE ≤ manually-tuned MAPE
+- `FuzzyPolicy.h`: Mamdani inference over queue length + wait time, centroid defuzzification; runs via `--signal-policy fuzzy`
+
+### F9 — CV: Real-World Congestion Classification (Phase 14)
+- Fetch traffic-flow tiles via Mapbox Traffic Tiles / TomTom Traffic Flow API (ToS-compliant)
+- Classical HSV thresholding + CNN comparison on a small hand-labeled set
+- `cv_congestion.json` per zone per hour; feeds the GA as an extra fitness term
+
+### F10 — CV: Synthetic Virtual Camera (Phase 15)
+- Top-down frame rendered from the live agent stream (roads + agents as colored shapes)
+- Genuine OpenCV detection/counting on rendered pixels; independent service on port 9003
+- Accuracy vs. ground-truth count logged as running error %
+
+### F11 — NLP: Live Metrics Chat (Phase 16)
+- FastAPI sidecar that is itself a WS client of the engine, caching latest metrics
+- Rule-based intent classifier over a fixed intent set; optional LLM tool-calling layer falls back when no API key configured
+- `POST /chat`; `ChatPanel.tsx` in the dashboard; held-out query accuracy report
+
+### F12 — NLP: Incident Reports → Simulation Mutation (Phase 17)
+- Free-text incident → structured spec via street-name gazetteer + fuzzy matching
+- `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to the engine
+- `Simulation::apply_incident()` applies temporary per-edge speed/capacity multipliers that expire after `duration_s`; `incidents[]` added to broadcast
+
+### F13 — Cross-Subsystem Integration (Phase 18)
+- `make demo` launches chat + virtual-camera services, runs GA calibration on the mini-graph, loads RL checkpoint if present
+- Single continuous demo: incident → RL reaction → metrics update, with CV/GA/chat live together
+- Extended `docs/e2e_checklist.md` covering all four subjects together
