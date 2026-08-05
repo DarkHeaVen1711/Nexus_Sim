@@ -121,3 +121,33 @@ phases is given per row.
 | TR-PIPE-06 | `validate.py` computes per-corridor simulated-vs-observed MAPE and a machine-checked checkpoint: `MAPE ≤ 25% AND ≥ 75% corridors within 25%`; **refuses** proxy matrices (circular-MAPE guard) | DONE | FR-4, NFR-7 | Ph 6 |
 | TR-PIPE-07 | **GA calibration** `optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation, `multiprocessing.Pool` parallel eval (independent `--fast --no-ws` engine subprocesses), output `ga_calibration_report.json` | PLANNED | FR-9 | Ph 13 |
 | TR-PIPE-08 | **CV congestion** `cv_congestion.py`: fetch traffic tiles via Mapbox Traffic Tiles / TomTom Traffic Flow API (ToS-compliant, key via env var, never committed); classical HSV thresholding + CNN comparison; `cv_congestion.json` per zone per hour; feeds GA as blended fitness term | PLANNED | FR-11, BR-6, NFR-6 | Ph 14 |
+
+### 4.3 ML (Python) — `ml/`
+
+| ID | Requirement | Status | Maps to | Plan |
+|----|-------------|--------|---------|------|
+| TR-ML-01 | Gym-compatible `NexusSimEnv` (`reset`, `step`, observation/action spaces) wrapping engine state snapshots — no live C++ call during training | PLANNED | FR-8 | Ph 7.3 |
+| TR-ML-02 | Observation: per-approach queue length (from quadtree), current phase, time in phase, time of day, neighbor pressure | PLANNED | FR-8 | Ph 7.1 |
+| TR-ML-03 | Action space `{EXTEND current phase, SWITCH to next phase}` at phase boundaries (matches `SignalController` state machine granularity) | PLANNED | BR-5 | Ph 7 |
+| TR-ML-04 | Reward = `α × pressure_i + β × equity_global`; equity term reuses engine Gini/zone wait metrics; α/β tunable, tradeoff curve a deliverable | PLANNED | FR-8, G3 | Ph 7.2 |
+| TR-ML-05 | MAPPO trainer: 3-layer MLP policy + value network, shared initial weights, one independent agent per intersection | PLANNED | FR-8, BR-5 | Ph 7.5 |
+| TR-ML-06 | MLflow logging (episode reward, pressure, equity, Gini); checkpoint save/resume every 500 episodes | PLANNED | US-D03 | Ph 7.6–7.7 |
+| TR-ML-07 | ONNX export (`export_onnx.py`) validated to match PyTorch outputs on 10 test inputs | PLANNED | FR-8, TR-5 | Ph 8.1 |
+| TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | PLANNED | FR-12 | Ph 15 |
+| TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | PLANNED | FR-13 | Ph 16 |
+| TR-ML-10 | **NLP incidents** `nlp/incident_parser.py`: `parse(text, graph) -> IncidentSpec` via street-name gazetteer + `rapidfuzz` fuzzy match; `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to engine | PLANNED | FR-14 | Ph 17.1–17.2 |
+
+### 4.4 Dashboard (React + TypeScript) — `dashboard/`
+
+| ID | Requirement | Status | Maps to | Plan |
+|----|-------------|--------|---------|------|
+| TR-DASH-01 | WebSocket client hook with exponential-backoff reconnection capped at `MAX_RECONNECT_DELAY_MS`; tolerates unknown broadcast keys | DONE | FR-5, NFR-5 | Ph 4.2, 4.7 |
+| TR-DASH-02 | Leaflet map base from city config; agent markers colored by type; LOD culling via `bounds` message | DONE | FR-5 | Ph 4.3–4.6 |
+| TR-DASH-03 | Efficiency view (avg wait, top-5 congested corridors) and Equity view (per-zone heatmap bubbles, Gini gauge, plain-language labels) | DONE | G3, US-P02/P04 | Ph 5.6–5.8 |
+| TR-DASH-04 | Policy toggle panel → control message to engine; before/after metric comparison; tradeoff curve chart; city selector; PDF export | PLANNED | G5 | Ph 10 |
+| TR-DASH-05 | **`PolicyComparisonPanel.tsx`**: per-policy dropdown sends `policy_switch`, shows before/after avg-wait/Gini | PLANNED | FR-7 | Ph 12.6 |
+| TR-DASH-06 | **`CalibrationReportPanel.tsx`**: GA convergence chart from static JSON | PLANNED | FR-9 | Ph 13.7 |
+| TR-DASH-07 | **`CongestionCVOverlay.tsx`**: zone bubbles colored by CV-observed congestion (static per-hour data) | PLANNED | FR-11 | Ph 14.7 |
+| TR-DASH-08 | **`VirtualCameraPanel.tsx`**: live annotated feed from virtual-camera service | PLANNED | FR-12 | Ph 15.4 |
+| TR-DASH-09 | **`ChatPanel.tsx`**: REST calls to `chat_service.py` | PLANNED | FR-13 | Ph 16.5 |
+| TR-DASH-10 | **`IncidentReportPanel.tsx`**: free-text box, active incidents list, effect on zone metrics | PLANNED | FR-14 | Ph 17.5 |
