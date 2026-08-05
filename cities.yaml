@@ -1,31 +1,20 @@
-chicago:
-  query: "Chicago, Illinois, USA"
-  od_source:
-    type: socrata
-    dataset: m6dm-c72p
-    origin_column: pickup_community_area
-    destination_column: dropoff_community_area
-    timestamp_column: trip_start_timestamp
-    trip_seconds_column: trip_seconds
-    zones_dataset: igwz-8jzy
-    zone_column: area_numbe
-    zone_name_column: community
-    zone_geometry_column: the_geom
-    zone_type: community-area
-    default_year: 2019
-    default_month: 10
-paris:
-  query: "Paris, France"
-  od_source:
-    type: opentraffic
-    note: >-
-      OpenTraffic data; not yet wired up. Data gaps expected; apply
-      confidence-flagged fallback (building-density proxy) per Phase 6.6.
-ahmedabad:
-  query: "Ahmedabad, Gujarat, India"
-  od_source:
-    type: smart-cities
-    note: >-
-      Smart Cities Mission / AMC data where available; fallback to
-      building-density proxy per Phase 6.7. Higher uncertainty documented
-      in calibration notes.
+# ─────────────────────────────────────────────────────────────────────────────
+# NOT THE ACTIVE CONFIG.
+#
+# The authoritative city configuration lives at:
+#
+#     pipeline/cities.yaml
+#
+# Every consumer reads that file and only that file:
+#   pipeline/src/download.py, download_od.py, od_matrix.py, od_proxy.py,
+#   validate.py, and pipeline/tests/test_pipeline.py
+#
+# This root-level file used to be a hand-maintained second copy. The two drifted
+# apart (Phase 6.8): the root copy declared paris and ahmedabad while the copy
+# the pipeline actually loads declared chicago and piedmont, so paris and
+# ahmedabad were unreachable by every pipeline stage despite appearing to be
+# configured. It is kept as this stub, rather than deleted, so anyone who opens
+# the path they remember lands on this pointer instead of stale city data.
+#
+# To add or edit a city, edit pipeline/cities.yaml.
+# ─────────────────────────────────────────────────────────────────────────────
