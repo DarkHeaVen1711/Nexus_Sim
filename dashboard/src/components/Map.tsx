@@ -1,16 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { MetricsPanel } from './MetricsPanel';
 import { EquityOverlay } from './EquityOverlay';
+import { ViewportBoundsSender } from './ViewportBoundsSender';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
 type ViewMode = 'efficiency' | 'equity';
 
+// Fit the map to the loaded graph's bounding box once so the viewport matches
+// the city the engine is simulating (keeps LOD bounds meaningful out of the box).
+const GraphBoundsFitter: React.FC<{ graph: any }> = ({ graph }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!graph?.nodes?.length) return;
+    const lats = graph.nodes.map((n: any) => n.lat);
+    const lons = graph.nodes.map((n: any) => n.lon);
+    const southWest = [Math.min(...lats), Math.min(...lons)] as [number, number];
+    const northEast = [Math.max(...lats), Math.max(...lons)] as [number, number];
+    map.fitBounds([southWest, northEast]);
+  }, [map, graph]);
+  return null;
+};
+
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, sendMessage } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('efficiency');
@@ -98,6 +114,9 @@ export const Map: React.FC = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {rawGraph && <GraphBoundsFitter graph={rawGraph} />}
+        <ViewportBoundsSender sendMessage={sendMessage} />
+
         {graphData && (
           <GeoJSON
             data={graphData}
@@ -120,7 +139,7 @@ export const Map: React.FC = () => {
             <Popup>
               Agent ID: {agent.id} <br />
               Type: {agent.type} <br />
-              Speed/Heading: {agent.heading.toFixed(2)}
+              Speed: {(agent.speed * 3.6).toFixed(1)} km/h ({(agent.speed * 2.236936).toFixed(1)} mph)
             </Popup>
           </CircleMarker>
         ))}

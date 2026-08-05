@@ -73,7 +73,12 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div>
           <div style={labelStyle}>Avg Speed</div>
-          <div style={valueStyle}>{(metrics.avg_speed ?? 0).toFixed(1)} <span style={{ fontSize: '13px', color: '#6b7280' }}>m/s</span></div>
+          <div style={valueStyle}>
+            {((metrics.avg_speed ?? 0) * 3.6).toFixed(1)} <span style={{ fontSize: '13px', color: '#6b7280' }}>km/h</span>
+          </div>
+          <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '2px' }}>
+            {((metrics.avg_speed ?? 0) * 2.236936).toFixed(1)} mph
+          </div>
         </div>
 
         {divider}
