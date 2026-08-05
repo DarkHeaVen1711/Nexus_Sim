@@ -62,7 +62,20 @@ def _read_journey_times(journey_csv):
 
 def _load_od_matrix(od_path):
     with open(od_path, "r") as f:
-        return json.load(f)
+        odm = json.load(f)
+    # A proxy matrix (od_proxy.py) derives its journey times from the same model
+    # that generates its demand, so validating against it would compare the
+    # simulation to its own assumptions and always "pass". Refuse it outright
+    # rather than emit a MAPE that looks meaningful but isn't.
+    if odm.get("validation_safe") is False:
+        raise SystemExit(
+            "%s is a %s OD matrix (confidence: %s).\n"
+            "Its journey times are modelled, not observed, so a validation "
+            "MAPE computed against it would be circular and meaningless.\n"
+            "Validation requires a city with a real OD feed (e.g. chicago)."
+            % (od_path, odm.get("method", "proxy"),
+               odm.get("confidence", "low")))
+    return odm
 
 
 def _observed_tt(od_matrix, origin, dest, hour):
