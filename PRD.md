@@ -151,3 +151,74 @@ Reviews code architecture, model design decisions, and validation methodology ac
 - `make demo` launches chat + virtual-camera services, runs GA calibration on the mini-graph, loads RL checkpoint if present
 - Single continuous demo: incident → RL reaction → metrics update, with CV/GA/chat live together
 - Extended `docs/e2e_checklist.md` covering all four subjects together
+
+---
+
+## 6. Constraints
+
+| Constraint | Detail |
+|------------|--------|
+| Language | Engine: C++17 (verified in `engine/CMakeLists.txt`; C++20 targeted where supported). ML/pipeline: Python 3.11+. Dashboard: React 18/19 + TypeScript + Vite |
+| Data | All data sources must be open or freely accessible, and ToS-compliant (BR-6) |
+| Performance | Engine must sustain 60 fps with 20,000 agents on a mid-range dev machine |
+| Inference latency | ONNX inference batch must complete within p95 ≤ 8 ms per tick, off the hot path (NFR-4) |
+| Subsystem isolation | ML/CV/NLP services are independent sidecar processes (own ports), never embedded in the dashboard bundle or the C++ engine (TR-6) |
+| Config-driven | New cities and new per-city keys extend `pipeline/cities.yaml` only (FR-6, TR-7) |
+| Commit discipline | No commit exceeds 100 line insertions. Feature branches required. PRs for large changes |
+| Solo build | Architected for handoff: all subsystems behind documented interfaces |
+
+---
+
+## 7. Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Simulation throughput | ≥ 20,000 agents at 60 fps, no frame drops over 10-minute runs |
+| Quadtree vs. naive | ≥ 10× faster proximity search at 10,000 agents |
+| MARL vs. baseline | ≥ 15% reduction in citywide average wait time vs. fixed-cycle baseline |
+| Equity improvement | Gini coefficient across zones decreases by ≥ 10% vs. fixed-cycle baseline |
+| Validation accuracy | Simulated corridor journey times within 20% (checkpoint: ≤ 25% MAPE AND ≥ 75% corridors within 25%) of Chicago TNP ground truth |
+| ONNX inference latency | p95 ≤ 8 ms per tick; < 5 fps drop vs. baseline mode at 20k agents |
+| Cities supported | Chicago, Paris, Ahmedabad all run from the same binary without code changes |
+| Policy hot-swap | `policy_switch` changes visible behavior in the next broadcast frame, no restart |
+| GA calibration | GA-tuned MAPE ≤ manually-tuned MAPE from Phase 6 |
+| Fuzzy controller | Runs live via `--signal-policy fuzzy` |
+| CV real-world | Classical-vs-CNN accuracy comparison table delivered per city |
+| Virtual camera | Detected count tracks actual simulated traffic in view; error % logged |
+| NLP chat | Correct answers on a held-out query test set (rule-based and LLM paths) |
+| NLP incidents | Submitted incident visibly changes routing/queueing; expires after stated duration |
+| Integration | One continuous recording showing incident → RL reaction → metrics update with all four subjects live |
+
+---
+
+## 8. Business / Academic Requirements
+
+| ID | Requirement |
+|----|-------------|
+| BR-1 | The project SHALL demonstrably cover four academic subjects: RL, Computer Vision, NLP, Soft Computing |
+| BR-2 | Depth per subject SHALL be "medium" — a mix of breadth and depth, not a minimal stub nor a full research contribution |
+| BR-3 | The four subjects SHALL form one integrated system suitable for a single demo narrative, not four independently graded modules |
+| BR-4 | Work SHALL be structured for parallel execution across a 3–4 person team with a shared foundation phase first |
+| BR-5 | RL scope SHALL be independent per-intersection agents trained against a shared network-wide reward |
+| BR-6 | The system SHALL NOT depend on data sources that violate third-party Terms of Service (no scripted scraping of Google Maps' live traffic layer) |
+
+---
+
+## 9. Risks
+
+| Risk | Mitigation |
+|------|------------|
+| MARL training instability | Start with heuristic (Webster's method) baseline; MARL only needs to beat it, not be perfect |
+| OSM data gaps in Ahmedabad | Confidence-scored fallback chain; documented uncertainty, not silent guessing |
+| OpenTraffic decommissioned (Paris OD) | Density-proxy generator with `validation_safe: false`; validation refuses circular MAPE |
+| Scope creep | Phase-gated development; each phase has one demoable checkpoint artifact |
+| ONNX latency exceeds budget | Profile early in Phase 8; fall back to smaller policy network if needed |
+| Google traffic-layer scraping temptation | Substituted with Mapbox Traffic Tiles / TomTom Traffic Flow API (BR-6, NFR-6) |
+| Four isolated demos instead of one system | BR-3 enforced at Phase 18 with a single continuous integrated demo recording |
+| Cross-service dependency sprawl | Sidecar pattern (TR-6); engine stays C++-only; dashboards consume via HTTP/WS |
+
+---
+
+## 10. Requirement Traceability
+
+Full requirement-level traceability (FR-1…FR-15, NFR-1…NFR-7, TR-1…TR-7, BR-1…BR-6) with status and acceptance criteria lives in `docs/NexusSim_Explained.md §3`. Mapping to implementation phases is in `IMPLEMENTATION_PLAN.md`. Mapping to technical detail and interfaces is in `TRD.md`.
