@@ -119,7 +119,7 @@ RULE 4  Commit message format
 | 4.5 | React: Mapbox GL (or Leaflet + WebGL) map base layer; centre on city coordinates from config | `feature/dashboard-map-base` | City coordinates from `cities.yaml` |
 | 4.6 | React: render agent markers from WebSocket stream; colour by agent type | `feature/dashboard-agent-markers` | Use WebGL layer for performance; not SVG per-marker |
 | 4.7 | React: reconnection logic; "Reconnecting…" overlay on WebSocket drop | `feature/dashboard-reconnect` | Exponential backoff; max 5 retries then "Connection lost" state |
-| 4.8 | End-to-end smoke test: pipeline → engine → dashboard; manual checklist in `docs/e2e\_checklist.md` | `feature/e2e-smoke-test` | Checklist committed; run before every phase-end |
+| 4.8 | End-to-end smoke test: pipeline → engine → dashboard; manual checklist in `docs/e2e\_checklist.md` | `feature/e2e-smoke-test` | **Done.** `docs/e2e_checklist.md` committed: covers preconditions, all three OD source branches, headless engine run, validation (incl. the proxy-refusal negative check), live dashboard, LOD culling, reconnection, and perf spot-checks |
 
 ---
 
@@ -153,9 +153,10 @@ RULE 4  Commit message format
 | 6.3 | Update agent spawner: read OD matrix; spawn agents by zone pair at correct hourly rate | `feature/od-demand-spawner` | Replace uniform random spawner; parameterised by time-of-day |
 | 6.4 | Calibrate IDM parameters per vehicle type against observed Chicago speeds from OSM speed tags | `data/idm-calibration-chicago` | Document chosen parameters in `data/chicago/calibration_notes.md` |
 | 6.5 | Write validation script: compare simulated vs. Uber Movement corridor journey times | `feature/validation-script` | Output `data/chicago/validation_report.json`; satisfies US-D05, US-E05 |
-| 6.6 | Run Paris OD pipeline: repeat steps 6.1–6.4 for Paris using OpenTraffic data | `data/od-matrix-paris` | Note data gaps; apply confidence-flagged fallbacks |
-| 6.7 | Run Ahmedabad OD pipeline: use Smart Cities Mission / AMC data where available; fallback to building-density proxy | `data/od-matrix-ahmedabad` | Expect higher uncertainty; document in calibration notes |
-| 6.8 | Update `cities.yaml` with OD data source per city; pipeline reads from config | `refactor/city-config-od-source` | Enables any future city to specify its own OD source |
+| 6.6 | Run Paris OD pipeline: repeat steps 6.1–6.4 for Paris using OpenTraffic data | `data/od-matrix-paris` | **Fallback taken.** OpenTraffic was decommissioned with no open successor, so no real feed exists. Paris now uses the density proxy (6.9); config wired, `chaos=0.1`. Remaining: run the Phase 1 OSM pipeline for Paris to produce `graph.json`, then `od_proxy.py --city paris` |
+| 6.7 | Run Ahmedabad OD pipeline: use Smart Cities Mission / AMC data where available; fallback to building-density proxy | `data/od-matrix-ahmedabad` | **Fallback taken.** Smart Cities Mission / AMC data is not exposed as a public API. Ahmedabad now uses the density proxy (6.9); config wired, `chaos=0.4`. Remaining: run the Phase 1 OSM pipeline for Ahmedabad, then `od_proxy.py --city ahmedabad` |
+| 6.8 | Update `cities.yaml` with OD data source per city; pipeline reads from config | `refactor/city-config-od-source` | **Done.** Root and `pipeline/` copies had silently diverged (root declared paris/ahmedabad, pipeline declared chicago/piedmont; only the pipeline copy is ever read, so paris/ahmedabad were unreachable). `pipeline/cities.yaml` is now the single source of truth for all 4 cities; the root file is a pointer stub. `download.py` now resolves the config relative to itself instead of the CWD |
+| 6.9 | Build the density-proxy OD generator that 6.6/6.7 fall back to | `data/od-density-proxy` | **Done.** `pipeline/src/od_proxy.py` — gravity model over per-zone road-node density, schema-1.0 compatible. Emits `confidence: low` / `validation_safe: false`; `validate.py` now refuses such matrices so a circular MAPE can't be reported. `INTRA_ZONE_FACTOR` calibrated against Chicago's measured matrix (11.1% intra-zone share); verified to generalize on Piedmont (11.9%). 19 tests in `pipeline/tests/test_od_proxy.py` |
 
 ---
 
