@@ -18,7 +18,10 @@ interface UseWebSocketResult {
   zoneMetrics: any[];
   isConnected: boolean;
   isReconnecting: boolean;
+  engineCity: string | null;
+  engineError: string | null;
   sendMessage: (data: string) => void;
+  resetState: () => void;
 }
 
 const HEARTBEAT_INTERVAL_MS = 20000;
@@ -30,6 +33,8 @@ export function useWebSocket(url: string): UseWebSocketResult {
   const [zoneMetrics, setZoneMetrics] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [engineCity, setEngineCity] = useState<string | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -46,6 +51,9 @@ export function useWebSocket(url: string): UseWebSocketResult {
         setIsConnected(true);
         setIsReconnecting(false);
         reconnectAttempts.current = 0;
+        // Ask which city the engine is simulating in case we connected after
+        // its startup announcement (or the engine was started with --city).
+        ws.send(JSON.stringify({ type: 'get_city' }));
         // Heartbeat so the server sees client activity and keeps the socket alive.
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
@@ -56,10 +64,20 @@ export function useWebSocket(url: string): UseWebSocketResult {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data));
+          if (data.type === 'city_loaded') {
+            setEngineCity(data.city);
+            setEngineError(null);
+            return;
+          }
+          if (data.type === 'error') {
+            setEngineError(data.message || 'Engine error');
+            return;
+          }
           if (data.agents && data.metrics) {
             setAgents(data.agents);
             setMetrics(data.metrics);
             setZoneMetrics(data.zone_metrics || []);
+            if (data.city) setEngineCity(data.city);
           }
         } catch (e) {
           console.error("Failed to parse websocket message", e);
@@ -111,5 +129,12 @@ export function useWebSocket(url: string): UseWebSocketResult {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
   }, []);
 
-  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, sendMessage };
+  const resetState = useCallback(() => {
+    setAgents([]);
+    setMetrics(null);
+    setZoneMetrics([]);
+    setEngineError(null);
+  }, []);
+
+  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, sendMessage, resetState };
 }
