@@ -37,6 +37,7 @@ public:
     void set_speed_factor(double f) { speed_factor_ = f; }
     void set_route_spread(double s) { route_spread_ = s; }
     void set_chaos(double c) { chaos_coefficient_ = c; }
+    void set_city_name(const std::string& n) { city_name_ = n; }
 
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
@@ -61,6 +62,46 @@ public:
             agents_.lane[idx] =
                 static_cast<int32_t>(rng() % std::max(1, get_num_lanes(start, end)));
             agents_.start_time[idx] = 0.0;
+        }
+    }
+
+    // Open-ended (dashboard) runs: give agents that finished their trip a fresh
+    // origin/destination after a short rest so traffic never dies out. The road
+    // network stays visually live for as long as the dashboard is connected.
+    void respawn_arrived(double min_rest_seconds = 20.0) {
+        if (valid_nodes_.empty()) return;
+        std::uniform_int_distribution<size_t> dist(0, valid_nodes_.size() - 1);
+        std::uniform_int_distribution<int> type_dist(0, 4);
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (agents_.state[i] != AgentState::Arrived) continue;
+            if (agents_.start_time[i] >= 0.0 && agents_.journey_time[i] >= 0.0) {
+                double arrived_at = agents_.start_time[i] + agents_.journey_time[i];
+                if (sim_time_ - arrived_at < min_rest_seconds) continue;
+            }
+            int64_t start = valid_nodes_[dist(respawn_rng_)];
+            int64_t end = valid_nodes_[dist(respawn_rng_)];
+            while (start == end && valid_nodes_.size() > 1)
+                end = valid_nodes_[dist(respawn_rng_)];
+
+            AgentType t = static_cast<AgentType>(type_dist(respawn_rng_));
+            agents_.origin[i] = start;
+            agents_.destination[i] = end;
+            agents_.type[i] = t;
+            agents_.state[i] = AgentState::Spawned;
+            agents_.position[i] = 0.0;
+            agents_.velocity[i] = 0.0;
+            agents_.current_edge_idx[i] = 0;
+            agents_.wait_time[i] = 0.0;
+            agents_.start_time[i] = sim_time_;
+            agents_.journey_time[i] = -1.0;
+            agents_.lane[i] = static_cast<int32_t>(
+                respawn_rng_() % std::max(1, get_num_lanes(start, end)));
+            agents_.path[i] = Pathfinder::compute_path(graph_, start, end);
+            if (agents_.path[i].size() < 2)
+                agents_.state[i] = AgentState::Arrived;
+            agents_.target_speed[i] =
+                get_default_idm_params(t, chaos_coefficient_).v0
+                * speed_factor_;
         }
     }
 
@@ -203,7 +244,9 @@ public:
 
         std::string json = "{\"tick\":";
         json += std::to_string(tick_count_);
-        json += ",\"agents\":[";
+        json += ",\"city\":\"";
+        json += city_name_;
+        json += "\",\"agents\":[";
 
         bool first = true;
         for (size_t i = 0; i < agents_.size(); ++i) {
@@ -296,6 +339,13 @@ public:
         return c;
     }
 
+    size_t completed_agents() const {
+        size_t c = 0;
+        for (auto s : agents_.state)
+            if (s == AgentState::Arrived) c++;
+        return c;
+    }
+
     static double compute_gini(const std::vector<double>& v) {
         if (v.size() <= 1) return 0.0;
         double sum = std::accumulate(v.begin(), v.end(), 0.0);
@@ -328,6 +378,7 @@ private:
     double chaos_coefficient_;
     double speed_factor_ = 1.0;
     double route_spread_ = 0.0;
+    std::string city_name_;
     std::vector<int64_t> valid_nodes_;
     Quadtree<double> qt_{0, 0, 1, 1};
 
@@ -350,6 +401,7 @@ private:
     double start_hour_ = 8.0;
     double sim_time_ = 0.0;
     std::mt19937 od_rng_{20240607};
+    std::mt19937 respawn_rng_{20240607};
     int64_t next_agent_id_ = 0;
 
     // Snapshots for thread-safe parallel reads
