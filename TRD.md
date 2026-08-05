@@ -151,3 +151,67 @@ phases is given per row.
 | TR-DASH-08 | **`VirtualCameraPanel.tsx`**: live annotated feed from virtual-camera service | PLANNED | FR-12 | Ph 15.4 |
 | TR-DASH-09 | **`ChatPanel.tsx`**: REST calls to `chat_service.py` | PLANNED | FR-13 | Ph 16.5 |
 | TR-DASH-10 | **`IncidentReportPanel.tsx`**: free-text box, active incidents list, effect on zone metrics | PLANNED | FR-14 | Ph 17.5 |
+
+---
+
+## 5. Interface Contracts
+
+### 5.1 Engine WebSocket protocol (port 9001)
+
+**Outbound state frame** (JSON, per tick — additive-only per NFR-5):
+
+```json
+{
+  "tick": 0,
+  "agents": [{ "id": 0, "lat": 0.0, "lon": 0.0, "heading": 0.0, "type": "car", "speed": 0.0 }],
+  "metrics": { "avg_speed": 0.0, "active_agents": 0, "completed_agents": 0, "avg_wait_time": 0.0, "gini_coefficient": 0.0 },
+  "zone_metrics": [{ "zone_id": 0, "wait_time": 0.0 }]
+}
+```
+
+Planned additive fields (Phases 12/17):
+- `"mode": "webster" | "fuzzy" | "rl"` and `"signals": [{ "id": 0, "phase": 0, "state": "green" }]`
+- `"incidents": [{ "edges": [0], "severity": 0.5, "remaining_s": 10.0 }]`
+
+**Inbound messages:**
+- `{"type":"bounds", min_lat, min_lon, max_lat, max_lon}` — viewport LOD culling (DONE)
+- `{"type":"policy_switch", "intersection_id": 0 | null, "policy": "webster|fuzzy|rl"}` (PLANNED, Ph 12.5)
+- `{"type":"incident", "edges": [0], "severity": 0.5, "duration_s": 10.0}` (PLANNED, Ph 17.3)
+
+### 5.2 `graph.json` (per [5])
+
+`nodes[{id, lat, lon, zone_id}]` + `edges[{u, v, length_m, lanes}]`, plus per-edge lane `confidence` where inferred. Consumed by `GraphLoader`.
+
+### 5.3 `od_matrix.json` (per [6])
+
+Origin–destination demand keyed by zone pair with hourly rates. `socrata` matrices carry `validation_safe: true`; `od_proxy.py` output carries `method: gravity-density-proxy`, `confidence: low`, `validation_safe: false` and MUST be refused by `validate.py` (TR-PIPE-06).
+
+### 5.4 ONNX policy interface (TR-ENG-12, TR-ML-07)
+
+- Input: batched observation tensor over all intersections (shape documented in `ml/env/README.md`).
+- Output: per-intersection action logits over `{EXTEND, SWITCH}`.
+- Consumed by `InferenceEngine.h` (C++/ONNX Runtime); no Python in the hot path (TR-5, NFR-4).
+
+### 5.5 Sidecar services (TR-6)
+
+| Service | Port | Protocol | Consumes | Produces |
+|---------|------|----------|----------|----------|
+| virtual-camera (`ml/cv/`) | 9003 | WS/HTTP | engine WS stream + `graph.json` | annotated PNG (base64) + detection count JSON @ ~1 Hz |
+| NLP chat (`ml/nlp/chat_service.py`) | 9004 (proposed default — not fixed by plan) | HTTP REST | engine WS stream (cached metrics) | `POST /chat`, `POST /incident` responses |
+
+---
+
+## 6. Non-Functional Technical Requirements
+
+| ID | Requirement | Target / Criteria | Plan / Evidence |
+|----|-------------|-------------------|-----------------|
+| NFR-1 | Long-run stability at scale | ≥ 20,000 agents, no crash over extended runs | `engine/tests/test_stress.cpp` (20k agents, 500 ticks) |
+| NFR-2 | Throughput | 60 fps at 20k agents on mid-range dev machine; `avg_tick_ms`/`p95_tick_ms` logged | Ph 3.7; `Simulation::avg_tick_ms()` |
+| NFR-3 | Spatial index | Quadtree ≥ 10× faster than naive O(N²) at 10k agents | `engine/bench/bench_quadtree.cpp` |
+| NFR-4 | Inference latency | p95 ≤ 8 ms per decision tick; never blocks the real-time loop | Ph 8.6; `bench_inference.cpp` |
+| NFR-5 | Protocol extensibility | New broadcast fields additive; existing dashboard consumers unaffected | `useWebSocket.ts` ignores unknown keys (verified) |
+| NFR-6 | Data-source compliance | All external sources ToS-compliant; no scripted Google Maps live-traffic scraping | Ph 14.2 module docstring; BR-6 |
+| NFR-7 | Validation accuracy preserved | MAPE ≤ 25% AND ≥ 75% corridors within 25%; GA/CV integrations must not regress it | `validate.py` checkpoint; `test_od_proxy.py` guard |
+| NFR-8 | Reproducibility | `make demo` from clean clone < 30 min; all deps pinned | Ph 11; `package-lock.json`, pinned `requirements.txt` |
+| NFR-9 | Test completeness | `make test` (GoogleTest + pytest + Vitest) green in < 3 min; CI gate on every push/PR | Ph 0, 11.7 |
+| NFR-10 | Config-driven cities | New city or per-city key = edit `pipeline/cities.yaml` only | Ph 1.8, 6.8; root `cities.yaml` is a pointer stub |
