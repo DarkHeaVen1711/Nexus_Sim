@@ -153,7 +153,7 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
 }
 
 int main(int argc, char** argv) {
-    std::string city = "chicago";
+    std::string city = "piedmont";
     size_t agent_count = 500;
     int duration_min = 5;
     std::string od_path;
@@ -192,84 +192,80 @@ int main(int argc, char** argv) {
     std::cout << "NexusSim Engine v3.0\n";
     std::signal(SIGINT, handle_signal);
     std::signal(SIGTERM, handle_signal);
-    std::string filepath = "data/" + city + "/graph.json";
-    std::ifstream test(filepath);
-    if (!test.good()) {
-        filepath = "../data/" + city + "/graph.json";
-    }
-
-    std::cout << "Loading graph for " << city << "...\n";
-    auto g = nexussim::load_from_json(filepath);
-
-    std::cout << "Nodes: " << g.node_count()
-              << " Edges: " << g.edge_count()
-              << " Lanes: " << g.total_lanes()
-              << " Zones: " << g.zone_count() << "\n";
-
-    nexussim::Simulation sim(g, chaos);
-    sim.set_chaos(chaos);
-    sim.set_speed_factor(speed_factor);
-    sim.set_route_spread(route_spread);
-
-    if (!od_path.empty()) {
-        sim.spawn_agents_from_od(od_path, demand_scale, start_hour);
-    } else {
-        std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
-        sim.spawn_agents(agent_count);
-    }
-
-    double dt = 0.1;
-    int ticks = static_cast<int>((duration_min * 60.0) / dt);
-    std::cout << "Running " << duration_min << "-min sim ("
-              << ticks << " ticks, dt=" << dt << "s)"
-              << (fast ? " [fast/headless]" : "") << "...\n";
 
     nexussim::network::WebSocketServer ws_server(9001);
     if (!no_ws) {
+        ws_server.set_message_handler([&ws_server](const std::string& payload) {
+            try {
+                auto j = nlohmann::json::parse(payload);
+                if (!j.contains("type")) return;
+                if (j["type"] == "city" && j.contains("city")) {
+                    std::lock_guard<std::mutex> lock(g_city_req.m);
+                    g_city_req.city = j["city"].get<std::string>();
+                    g_city_req.pending = true;
+                } else if (j["type"] == "get_city") {
+                    // A dashboard connected late and missed the startup
+                    // city_loaded broadcast; tell it which city we run (null
+                    // while the engine is idling and no sim is running).
+                    // broadcast_text is thread-safe (queues to the event loop).
+                    std::string c = current_city();
+                    std::string city_json =
+                        c.empty() ? "null" : "\"" + c + "\"";
+                    ws_server.broadcast_text(
+                        "{\"type\":\"city_loaded\",\"city\":" + city_json
+                        + "}");
+                }
+            } catch (const std::exception&) {
+                // Ignore malformed messages.
+            }
+        });
         ws_server.start();
         std::cout << "WebSocket Server starting on port 9001...\n";
     }
 
-    for (int i = 0; i < ticks; ++i) {
-        sim.tick(dt);
-        if (!no_ws)
-            sim.broadcast_state(&ws_server);
+    double dt = 0.1;
 
-        if (i % 500 == 0)
-            std::cout << "Tick " << i << "/" << ticks
-                      << " active=" << sim.active_agents() << "\n";
-
-        // Pace at ~60fps so dashboard can visualize in real-time
-        if (!fast) {
-#ifdef _WIN32
-            Sleep(16);
-#else
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-#endif
-        }
-    }
-
-    sim.log_journey_times(journey_csv);
-    std::cout << "Avg tick: " << sim.avg_tick_ms() << "ms"
-              << " p95: " << sim.p95_tick_ms() << "ms\n";
-    std::cout << "Saved " << journey_csv << "\n";
-
-    if (fast)
+    if (fast) {
+        run_city(city, static_cast<int>(agent_count), duration_min,
+                 chaos, speed_factor, route_spread, dt, fast, no_ws,
+                 journey_csv, no_ws ? nullptr : &ws_server);
         return 0;
-
-    // Simulation finished. Keep the process alive so the WebSocket server (and
-    // the dashboard connection) stays up. Exit with Ctrl+C.
-    std::cout << "Simulation complete. Keeping WebSocket server alive on port 9001...\n";
-    std::cout << "Press Ctrl+C to exit.\n";
-    while (!g_stop) {
-#ifdef _WIN32
-        Sleep(500);
-#else
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-#endif
     }
+
+    // Interactive mode: do NOT auto-start a simulation. The engine idles until
+    // the dashboard sends a city selection, then runs that city continuously
+    // (agents respawn so traffic stays live) until another city is picked.
+    std::string current_city;
+    for (;;) {
+        if (g_stop) break;
+
+        if (current_city.empty()) {
+            std::cout << "Engine ready. Select a city on the dashboard to start.\n";
+            while (!g_stop) {
+                std::string next = take_city_request();
+                if (!next.empty()) {
+                    current_city = next;
+                    break;
+                }
+#ifdef _WIN32
+                Sleep(200);
+#else
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+#endif
+            }
+            if (g_stop) break;
+        }
+
+        run_city(current_city, static_cast<int>(agent_count), duration_min,
+                 chaos, speed_factor, route_spread, dt, fast, no_ws,
+                 journey_csv, &ws_server);
+
+        // run_city returned: the engine is stopping or the dashboard requested
+        // a different city. Consume the request and continue with it.
+        std::string next = take_city_request();
+        current_city = next.empty() ? "" : next;
+    }
+
     std::cout << "Shutting down.\n";
     return 0;
 }
-
-
