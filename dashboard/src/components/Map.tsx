@@ -25,35 +25,78 @@ const GraphBoundsFitter: React.FC<{ graph: any }> = ({ graph }) => {
   return null;
 };
 
+// Collapse the whole road network into a single MultiLineString feature so
+// large cities (chicago has ~77k edges) stay renderable in the browser.
+const buildGraphFeature = (data: any): any => {
+  const nodeMap = new globalThis.Map();
+  data.nodes.forEach((n: any) => nodeMap.set(n.id, [n.lon, n.lat]));
+  const coords: number[][][] = [];
+  data.edges.forEach((e: any) => {
+    const start = nodeMap.get(e.u);
+    const end = nodeMap.get(e.v);
+    if (!start || !end) return;
+    coords.push([start, end]);
+  });
+  return {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        geometry: { type: 'MultiLineString', coordinates: coords },
+        properties: {},
+      },
+    ],
+  };
+};
+
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, sendMessage } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, sendMessage } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('efficiency');
 
+  // Follow the engine's authoritative city (announced when it starts/loads a
+  // city, or answered to the get_city probe on connect). When the engine is
+  // idling it reports null and the dashboard stays on the "select a city" view.
   useEffect(() => {
-    fetch('/graph.json')
-      .then(r => r.json())
-      .then(data => {
-        setRawGraph(data);
-        const nodeMap = new globalThis.Map();
-        data.nodes.forEach((n: any) => nodeMap.set(n.id, [n.lon, n.lat]));
+    if (!engineCity) return;
+    if (engineCity !== selectedCity) {
+      setSelectedCity(engineCity);
+    }
+  }, [engineCity, selectedCity]);
 
-        const features = data.edges.map((e: any) => {
-          const start = nodeMap.get(e.u);
-          const end = nodeMap.get(e.v);
-          if (!start || !end) return null;
-          return {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: [start, end] },
-            properties: { lanes: e.lanes, speed: e.speed_kph }
-          };
-        }).filter(Boolean);
-
-        setGraphData({ type: 'FeatureCollection', features });
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedCity) {
+      setGraphLoading(false);
+      setRawGraph(null);
+      setGraphData(null);
+      return () => { cancelled = true; };
+    }
+    setGraphLoading(true);
+    fetch(`/graphs/${selectedCity}/graph.json`)
+      .then(r => {
+        if (!r.ok) throw new Error(`Failed to load graph for ${selectedCity}`);
+        return r.json();
       })
-      .catch(err => console.error('Failed to load graph.json', err));
-  }, []);
+      .then(data => {
+        if (cancelled) return;
+        setRawGraph(data);
+        setGraphData(buildGraphFeature(data));
+      })
+      .catch(err => {
+        console.error('Failed to load graph', err);
+        if (cancelled) return;
+        setRawGraph(null);
+        setGraphData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setGraphLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedCity]);
 
   const getAgentColor = (type: number) => {
     switch (type) {
@@ -90,6 +133,12 @@ export const Map: React.FC = () => {
       {!isConnected && !isReconnecting && (
         <div style={{ position: 'absolute', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '6px' }}>
           Disconnected
+        </div>
+      )}
+
+      {selectedCity && graphLoading && (
+        <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: 'rgba(17, 24, 39, 0.9)', color: '#e5e7eb', padding: '8px 16px', borderRadius: '6px', border: '1px solid #374151' }}>
+          Loading {selectedCity} road network...
         </div>
       )}
 
