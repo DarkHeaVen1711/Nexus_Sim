@@ -47,9 +47,9 @@ goto parse_args
 echo Usage: run.bat [OPTIONS]
 echo.
 echo Options:
-echo   --city NAME        City to simulate (default: piedmont)
+echo   --city NAME        City to run (fast/headless mode only; default: piedmont)
 echo   --agents N         Number of agents (uniform mode, default: 500)
-echo   --duration N       Duration in minutes (default: 5)
+echo   --duration N       Duration in minutes (fast/headless mode only; default: 5)
 echo   --od PATH          OD demand matrix (real-traffic mode; e.g. data\chicago\od_matrix.json)
 echo   --demand-scale N   Scale factor for OD demand (auto if omitted)
 echo   --start-hour H     Simulation start hour 0-23 (OD mode, default: 8)
@@ -134,8 +134,10 @@ echo.
 if "%FAST%"=="1" (
     echo Mode: headless -- the engine exits when the simulation finishes.
 ) else (
-    echo NOTE: The engine stays alive after the simulation so the dashboard
-    echo stays connected. Press Ctrl+C to stop the engine.
+echo  NOTE: The engine idles until you pick a city on the dashboard. Selecting
+echo  a city starts that simulation (agents respawn so traffic stays live),
+echo  and you can switch cities anytime. --duration only applies in --fast mode.
+echo  Press Ctrl+C to stop the engine.
 )
 echo.
 
