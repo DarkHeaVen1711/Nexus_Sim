@@ -36,6 +36,7 @@ public:
 
     void set_speed_factor(double f) { speed_factor_ = f; }
     void set_route_spread(double s) { route_spread_ = s; }
+    void set_chaos(double c) { chaos_coefficient_ = c; }
 
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;

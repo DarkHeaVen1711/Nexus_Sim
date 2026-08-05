@@ -24,6 +24,7 @@ int main(int argc, char** argv) {
     std::string journey_csv = "journey_times.csv";
     double speed_factor = 1.0;
     double route_spread = 0.0;
+    double chaos = 0.1;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
@@ -43,6 +44,7 @@ int main(int argc, char** argv) {
         else if (arg == "--journey") journey_csv = next("--journey");
         else if (arg == "--speed-factor") speed_factor = std::atof(next("--speed-factor"));
         else if (arg == "--route-spread") route_spread = std::atof(next("--route-spread"));
+        else if (arg == "--chaos") chaos = std::atof(next("--chaos"));
         else if (arg == "--fast") fast = true;
         else if (arg == "--no-ws") no_ws = true;
     }
@@ -64,8 +66,8 @@ int main(int argc, char** argv) {
               << " Lanes: " << g.total_lanes()
               << " Zones: " << g.zone_count() << "\n";
 
-    double chaos = 0.1;
     nexussim::Simulation sim(g, chaos);
+    sim.set_chaos(chaos);
     sim.set_speed_factor(speed_factor);
     sim.set_route_spread(route_spread);
 
