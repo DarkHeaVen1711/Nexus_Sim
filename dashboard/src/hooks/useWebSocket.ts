@@ -9,6 +9,7 @@ export interface Agent {
   lon: number;
   heading: number;
   type: number;
+  speed: number;
 }
 
 interface UseWebSocketResult {
@@ -17,6 +18,7 @@ interface UseWebSocketResult {
   zoneMetrics: any[];
   isConnected: boolean;
   isReconnecting: boolean;
+  sendMessage: (data: string) => void;
 }
 
 const HEARTBEAT_INTERVAL_MS = 20000;
@@ -104,5 +106,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
     };
   }, [connect]);
 
-  return { agents, metrics, zoneMetrics, isConnected, isReconnecting };
+  const sendMessage = useCallback((data: string) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
+  }, []);
+
+  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, sendMessage };
 }

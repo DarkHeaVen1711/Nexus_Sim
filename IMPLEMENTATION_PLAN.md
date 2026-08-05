@@ -119,7 +119,7 @@ RULE 4  Commit message format
 | 4.5 | React: Mapbox GL (or Leaflet + WebGL) map base layer; centre on city coordinates from config | `feature/dashboard-map-base` | City coordinates from `cities.yaml` |
 | 4.6 | React: render agent markers from WebSocket stream; colour by agent type | `feature/dashboard-agent-markers` | Use WebGL layer for performance; not SVG per-marker |
 | 4.7 | React: reconnection logic; "Reconnecting…" overlay on WebSocket drop | `feature/dashboard-reconnect` | Exponential backoff; max 5 retries then "Connection lost" state |
-| 4.8 | End-to-end smoke test: pipeline → engine → dashboard; manual checklist in `docs/e2e\_checklist.md` | `feature/e2e-smoke-test` | Checklist committed; run before every phase-end |
+| 4.8 | End-to-end smoke test: pipeline → engine → dashboard; manual checklist in `docs/e2e\_checklist.md` | `feature/e2e-smoke-test` | **Done.** `docs/e2e_checklist.md` committed: covers preconditions, all three OD source branches, headless engine run, validation (incl. the proxy-refusal negative check), live dashboard, LOD culling, reconnection, and perf spot-checks |
 
 ---
 
@@ -153,9 +153,10 @@ RULE 4  Commit message format
 | 6.3 | Update agent spawner: read OD matrix; spawn agents by zone pair at correct hourly rate | `feature/od-demand-spawner` | Replace uniform random spawner; parameterised by time-of-day |
 | 6.4 | Calibrate IDM parameters per vehicle type against observed Chicago speeds from OSM speed tags | `data/idm-calibration-chicago` | Document chosen parameters in `data/chicago/calibration_notes.md` |
 | 6.5 | Write validation script: compare simulated vs. Uber Movement corridor journey times | `feature/validation-script` | Output `data/chicago/validation_report.json`; satisfies US-D05, US-E05 |
-| 6.6 | Run Paris OD pipeline: repeat steps 6.1–6.4 for Paris using OpenTraffic data | `data/od-matrix-paris` | Note data gaps; apply confidence-flagged fallbacks |
-| 6.7 | Run Ahmedabad OD pipeline: use Smart Cities Mission / AMC data where available; fallback to building-density proxy | `data/od-matrix-ahmedabad` | Expect higher uncertainty; document in calibration notes |
-| 6.8 | Update `cities.yaml` with OD data source per city; pipeline reads from config | `refactor/city-config-od-source` | Enables any future city to specify its own OD source |
+| 6.6 | Run Paris OD pipeline: repeat steps 6.1–6.4 for Paris using OpenTraffic data | `data/od-matrix-paris` | **Fallback taken.** OpenTraffic was decommissioned with no open successor, so no real feed exists. Paris now uses the density proxy (6.9); config wired, `chaos=0.1`. Remaining: run the Phase 1 OSM pipeline for Paris to produce `graph.json`, then `od_proxy.py --city paris` |
+| 6.7 | Run Ahmedabad OD pipeline: use Smart Cities Mission / AMC data where available; fallback to building-density proxy | `data/od-matrix-ahmedabad` | **Fallback taken.** Smart Cities Mission / AMC data is not exposed as a public API. Ahmedabad now uses the density proxy (6.9); config wired, `chaos=0.4`. Remaining: run the Phase 1 OSM pipeline for Ahmedabad, then `od_proxy.py --city ahmedabad` |
+| 6.8 | Update `cities.yaml` with OD data source per city; pipeline reads from config | `refactor/city-config-od-source` | **Done.** Root and `pipeline/` copies had silently diverged (root declared paris/ahmedabad, pipeline declared chicago/piedmont; only the pipeline copy is ever read, so paris/ahmedabad were unreachable). `pipeline/cities.yaml` is now the single source of truth for all 4 cities; the root file is a pointer stub. `download.py` now resolves the config relative to itself instead of the CWD |
+| 6.9 | Build the density-proxy OD generator that 6.6/6.7 fall back to | `data/od-density-proxy` | **Done.** `pipeline/src/od_proxy.py` — gravity model over per-zone road-node density, schema-1.0 compatible. Emits `confidence: low` / `validation_safe: false`; `validate.py` now refuses such matrices so a circular MAPE can't be reported. `INTRA_ZONE_FACTOR` calibrated against Chicago's measured matrix (11.1% intra-zone share); verified to generalize on Piedmont (11.9%). 19 tests in `pipeline/tests/test_od_proxy.py` |
 
 ---
 
@@ -249,6 +250,125 @@ RULE 4  Commit message format
 
 ---
 
+## Phase 12 — Signal Policy Abstraction
+
+**Duration:** 3–4 days
+**Goal:** `SignalController` (fixed Webster's-formula logic) becomes one interchangeable implementation of a `SignalPolicy` interface, so Webster's, a fuzzy controller, and the ONNX/RL policy from Phase 8 can all run in the same binary and be swapped live, per intersection, with no restart. This phase is a prerequisite for Phase 13 (fuzzy) and for making Phase 8's AI mode toggle-able rather than a separate build.
+**Checkpoint artifact:** Engine runs with `--signal-policy webster` (byte-identical behaviour to pre-refactor `main`), and a `"type":"policy_switch"` WebSocket message flips an intersection's active policy live, visible in the next broadcast frame.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 12.1 | Define `SignalPolicy` interface: `tick(dt)`, `is_green(edge_id)`, `current_phase_index()`, `policy_name()` | `refactor/signal-policy-interface` | Pure virtual base class; no behaviour change yet |
+| 12.2 | Extract existing `SignalController` logic into `WebsterPolicy : SignalPolicy`, byte-identical behaviour | `refactor/webster-policy-extract` | Existing `test_signal.cpp` must pass unmodified against the new class |
+| 12.3 | Update `Simulation::signals_` to `unordered_map<int64_t, unique_ptr<SignalPolicy>>`; `init_signals()` builds `WebsterPolicy` by default | `refactor/simulation-policy-map` | No behaviour change; confirms the interface is sufficient |
+| 12.4 | Add `mode`, per-intersection `signals[]` (phase index + state) to `broadcast_state()` JSON | `feature/broadcast-signal-state` | Additive; dashboard's `useWebSocket.ts` already ignores unknown keys |
+| 12.5 | Extend `WebSocketServer` message dispatch: `"type":"policy_switch"` sets the active policy for one intersection or network-wide | `feature/policy-switch-message` | `WebSocketServer` needs a callback/reference into `Simulation` — it currently has none |
+| 12.6 | Dashboard: `PolicyComparisonPanel.tsx` — dropdown per policy, sends `policy_switch`, shows before/after avg-wait/Gini | `feature/dashboard-policy-panel` | Mirrors existing `EquityOverlay.tsx` data-binding pattern |
+
+---
+
+## Phase 13 — Soft Computing: GA Calibration & Fuzzy Signal Controller
+
+**Duration:** 1.5 weeks
+**Goal:** Replace the manual, by-hand parameter search in `validate.py` with a genetic algorithm, and add a fuzzy-logic signal controller as a second non-learned strategy comparable against Webster's and the eventual RL policy.
+**Checkpoint artifact:** `ga_calibration_report.json` showing a convergence curve (best/mean fitness per generation) and a winning parameter set that beats the manually-tuned MAPE from Phase 6; fuzzy controller runs live via `--signal-policy fuzzy` and appears in the `PolicyComparisonPanel`.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 13.1 | Refactor `validate.py`'s parameter-sweep loop so `build_report()` is directly importable as a pure fitness function | `refactor/validate-fitness-fn` | No CLI behaviour change; unlocks reuse from the GA |
+| 13.2 | Implement `pipeline/src/optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation | `feature/ga-calibration-optimizer` | Population ~20, ~20–30 generations; bounds documented in module docstring |
+| 13.3 | Parallelise fitness evaluation via `multiprocessing.Pool` — each eval is one independent `--fast --no-ws` engine subprocess | `feature/ga-parallel-eval` | No engine changes needed; subprocess calls are already independent |
+| 13.4 | Write `data/<city>/ga_calibration_report.json`: best chromosome, per-generation best/mean fitness, final re-run `validation_report.json` | `feature/ga-report-output` | Feeds `CalibrationReportPanel.tsx` |
+| 13.5 | Implement `engine/src/agent/FuzzyPolicy.h`: Mamdani inference over queue length + wait time (triangular membership), rule base, centroid defuzzification → green-time extension | `feature/fuzzy-signal-policy` | Implements the `SignalPolicy` interface from Phase 12 |
+| 13.6 | Unit test `FuzzyPolicy`: membership function boundaries, rule firing, defuzzified output range | `feature/fuzzy-policy-tests` | GoogleTest; mirrors `test_signal.cpp` structure |
+| 13.7 | Dashboard: `CalibrationReportPanel.tsx` — GA convergence chart (Recharts, matches `MetricsPanel.tsx` conventions) | `feature/dashboard-calibration-panel` | Reads the static JSON report, no live WS data needed |
+| 13.8 | Ablation note: GA-tuned vs. manually-tuned MAPE, Webster vs. Fuzzy avg-wait/Gini | `docs/soft-computing-ablation` | Markdown table in `docs/results.md` |
+
+---
+
+## Phase 14 — Computer Vision: Real-World Congestion Classification
+
+**Duration:** 1 week
+**Goal:** Classify road-segment congestion from real color-coded traffic-tile imagery, as an independent real-world signal that feeds the GA fitness function and (later) RL reward shaping — kept entirely on the Python/pipeline side, never touching the C++ hot loop.
+**Checkpoint artifact:** `data/<city>/cv_congestion.json` with per-zone, per-hour congestion levels; a comparison table of classical-threshold vs. CNN classification accuracy against a small hand-labeled validation set.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 14.1 | Add `cv_bbox` per-city key to `cities.yaml` (lat/lon bounding box for tile capture) | `refactor/city-config-cv-bbox` | Follows the existing config-driven-per-city convention |
+| 14.2 | Write `pipeline/src/cv_congestion.py`: fetch traffic-flow tiles/vectors via **Mapbox Traffic Tiles** or **TomTom Traffic Flow API** (documented, ToS-compliant; note in the module docstring that Google's Static Maps API has no scriptable live-traffic layer) | `data/cv-tile-fetch` | Requires an API key; document how to set it via env var, never commit it |
+| 14.3 | Classical CV: HSV color-threshold bucketing of road-colored pixels within road-mask regions → congestion_level 0–3 | `feature/cv-classical-congestion` | No training data required; primary/production path |
+| 14.4 | CNN comparison: small custom CNN or fine-tuned ResNet-18 (4-class) on a hand-labeled sample of tile crops | `experiment/cv-cnn-congestion` | Explicit "classical vs. learned" comparison for the coursework deliverable |
+| 14.5 | Write `data/<city>/cv_congestion.json` (`{zone_id: {hour: {level, confidence, source}}}`) | `data/cv-congestion-export` | Consumed only by `optimize_calibration.py` and (later) `ml/env/reward.py` |
+| 14.6 | Wire `cv_congestion.json` into the GA as an additional fitness term (sim zone wait/speed vs. CV-observed level), blended with MAPE | `feature/ga-cv-fitness-term` | Extends Phase 13's optimizer; both terms weighted, weight documented |
+| 14.7 | Dashboard: `CongestionCVOverlay.tsx` — reuses the existing `EquityOverlay.tsx` zone-bubble pattern, colored by CV-observed congestion level | `feature/dashboard-cv-overlay` | Static per-hour data, not live-streamed |
+
+---
+
+## Phase 15 — Computer Vision: Synthetic Virtual Camera
+
+**Duration:** 1 week
+**Goal:** A live "virtual camera" demo feature: render a top-down view from the simulation's own agent stream and run real detection/counting on it — a genuine CV pipeline (not just re-displaying known agent positions), safe to build independently since it's read-only and outside the control path.
+**Checkpoint artifact:** Live annotated video panel in the dashboard showing bounding boxes and a running vehicle count that tracks the actual simulated traffic in view.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 15.1 | `ml/cv/virtual_camera.py`: WS client on the engine's existing agent stream; rasterize a top-down frame (roads from `graph.json`, agents as colored shapes by type) with Pillow/OpenCV | `feature/virtual-camera-render` | Reuses the existing `{"type":"bounds"}` outbound message as "another viewport client" |
+| 15.2 | OpenCV contour/blob detection + color-based segmentation on the rendered frame → bounding boxes + count | `feature/virtual-camera-detection` | Detecting on the rendered pixels, not reading known state directly — genuine CV work |
+| 15.3 | `ml/cv/virtual_camera_service.py`: small FastAPI/websockets server (new port 9003), streams annotated PNG (base64) + count JSON at ~1 Hz | `feature/virtual-camera-service` | Independent process; no engine or Simulation changes |
+| 15.4 | Dashboard: `VirtualCameraPanel.tsx` — displays the live annotated feed | `feature/dashboard-camera-panel` | Polls/subscribes to the service, not the engine directly |
+| 15.5 | Accuracy sanity check: detected count vs. ground-truth agent count in view, logged as a running error % | `experiment/camera-detection-accuracy` | Documents detection reliability for the coursework writeup |
+
+---
+
+## Phase 16 — NLP: Live Metrics Chat Interface
+
+**Duration:** 1 week
+**Goal:** A natural-language query interface over the dashboard's live metrics, answering questions like "which zone has the worst wait time right now" against actual current simulation state.
+**Checkpoint artifact:** Chat panel in the dashboard answers a fixed set of held-out test queries correctly, sourced from live engine state, not stale/mocked data.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 16.1 | `ml/nlp/chat_service.py`: FastAPI service that is itself a WS client of the engine, caching latest `metrics`/`zone_metrics`/`signals` | `feature/nlp-chat-service` | Keeps Python NLP deps out of the frontend bundle and out of the C++ hot path |
+| 16.2 | Rule-based intent classifier: regex over a fixed intent set (worst_zone, avg_speed, active_agents, gini_explain, compare_policy, incident_status) | `feature/nlp-intent-rules` | Reliable baseline; unit-tested independently of the LLM path |
+| 16.3 | Optional LLM tool-calling layer: same metric-lookup functions exposed as tools, falls back to rule-based when no API key configured | `feature/nlp-llm-toolcalling` | Gives a "classical NLP vs. LLM" comparison for the coursework; not a hard dependency for the core demo |
+| 16.4 | `POST /chat` endpoint; response includes which intent/tool fired, for transparency in the UI | `feature/nlp-chat-endpoint` | |
+| 16.5 | Dashboard: `ChatPanel.tsx` — calls `chat_service.py` directly over REST | `feature/dashboard-chat-panel` | |
+| 16.6 | Held-out query test set + accuracy report (rule-based vs. LLM path) | `experiment/nlp-intent-accuracy` | Documents intent accuracy for the coursework deliverable |
+
+---
+
+## Phase 17 — NLP: Incident Reports → Simulation Mutation
+
+**Duration:** 1 week
+**Goal:** Free-text incident reports ("accident on Michigan Ave, lane closure") parse into a structured spec and mutate the *running* simulation — the clearest cross-subsystem demo, since RL and the dashboard both react automatically.
+**Checkpoint artifact:** Submitting an incident report visibly changes agent routing/queueing on the map, appears in the dashboard's `incidents` list, and expires automatically after its stated duration.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 17.1 | `ml/nlp/incident_parser.py`: pure function `parse(text, graph) -> IncidentSpec`; street-name gazetteer built from `graph.json` edge names, fuzzy-matched via `rapidfuzz` | `feature/nlp-incident-parser` | Independently unit-testable; small fixed vocabulary for type/severity |
+| 17.2 | `chat_service.py` exposes `POST /incident`, forwards the parsed spec as `{"type":"incident", edges, severity, duration_s}` over WS to the engine | `feature/nlp-incident-endpoint` | Opens its own WS client connection to the engine, reusing the Phase 12 control-message pattern |
+| 17.3 | Engine: `WebSocketServer` dispatch gains an `"incident"` branch; `Simulation::apply_incident()` stores a temporary per-edge speed/capacity multiplier, expired after `duration_s` of `sim_time_` | `feature/engine-apply-incident` | Reuses Pathfinder's existing stochastic edge-cost mechanism — no new pathfinding logic |
+| 17.4 | Add `incidents[]` (active, with remaining duration) to `broadcast_state()` JSON | `feature/broadcast-incidents` | Extends Phase 12.4's schema addition |
+| 17.5 | Dashboard: `IncidentReportPanel.tsx` — free-text box, shows active incidents and their effect on nearby zone metrics | `feature/dashboard-incident-panel` | |
+| 17.6 | Unit tests: gazetteer resolution accuracy on ambiguous/misspelled street names; incident expiry correctness | `feature/nlp-incident-tests` | |
+
+---
+
+## Phase 18 — Cross-Subsystem Hardening & Integrated Demo
+
+**Duration:** 1 week
+**Goal:** All four subjects run together as one system from a clean clone; the demo shows every subsystem reacting to the others, not four isolated toggles.
+**Checkpoint artifact:** Single end-to-end run — GA-tuned parameters + CV congestion overlay + RL/Fuzzy/Webster toggle + live chat + incident report — recorded in one continuous screen capture.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 18.1 | Extend `make demo` to also launch `chat_service.py` and `virtual_camera_service.py`, run GA calibration on the pre-packaged mini-graph, load an RL checkpoint if present | `feature/make-demo-extended` | Falls back gracefully to Webster-only if no RL checkpoint is trained yet |
+| 18.2 | Comparison writeup: Webster vs. Fuzzy vs. RL (avg wait, Gini per city); CV classical-vs-CNN accuracy; GA convergence; NLP intent accuracy | `docs/four-subject-results` | `docs/results.md`; the single artifact tying all four subjects together |
+| 18.3 | End-to-end smoke checklist covering all four subsystems together, extending the existing `docs/e2e_checklist.md` from Phase 4.8 | `feature/e2e-checklist-v2` | Run before final submission |
+| 18.4 | Record and commit an integrated demo video showing cross-subsystem reactions (incident → RL response → metrics update) | `docs/demo-video-integrated` | Supersedes the single-subsystem demo video from Phase 11.8 |
+
+---
+
 ## Phase Summary
 
 | Phase | What gets built | Checkpoint artifact |
@@ -265,3 +385,10 @@ RULE 4  Commit message format
 | 9 | Multi-city training + validation | MARL vs. Webster table across 3 cities |
 | 10 | Policy toggles + dashboard polish | Full demo: toggle → metrics change → export PDF |
 | 11 | Hardening + docs + demo | `make demo` works from clean clone in < 30 min |
+| 12 | Signal policy abstraction (Webster/Fuzzy/RL hot-swap) | Live `policy_switch` message changes active controller, no restart |
+| 13 | Soft computing: GA calibration + fuzzy controller | GA convergence report; fuzzy controller live via `--signal-policy fuzzy` |
+| 14 | CV: real-world congestion classification | `cv_congestion.json`; classical-vs-CNN accuracy table |
+| 15 | CV: synthetic virtual camera | Live annotated detection/count panel in dashboard |
+| 16 | NLP: live metrics chat interface | Chat panel answers held-out queries from live state |
+| 17 | NLP: incident reports mutate the sim | Incident report visibly changes routing/queueing on the map |
+| 18 | Cross-subsystem hardening + integrated demo | One continuous recording showing all four subjects interacting |

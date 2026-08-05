@@ -17,6 +17,10 @@ set DEMAND_SCALE=
 set START_HOUR=8.0
 set SPEED_FACTOR=0.55
 set ROUTE_SPREAD=0.2
+set CHAOS=0.1
+set JOURNEY_PATH=
+set FAST=0
+set NO_WS=0
 
 :parse_args
 if "%~1"=="" goto build
@@ -28,6 +32,10 @@ if "%~1"=="--demand-scale" ( set DEMAND_SCALE=%~2 & shift & shift & goto parse_a
 if "%~1"=="--start-hour" ( set START_HOUR=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--speed-factor" ( set SPEED_FACTOR=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--route-spread" ( set ROUTE_SPREAD=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--chaos" ( set CHAOS=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--journey" ( set JOURNEY_PATH=%~2 & shift & shift & goto parse_args )
+if "%~1"=="--fast" ( set FAST=1 & shift & goto parse_args )
+if "%~1"=="--no-ws" ( set NO_WS=1 & shift & goto parse_args )
 if "%~1"=="--debug" ( set BUILD_TYPE=Debug & shift & goto parse_args )
 if "%~1"=="--dashboard-only" ( goto dashboard_only )
 if "%~1"=="--help" goto show_help
@@ -47,6 +55,10 @@ echo   --demand-scale N   Scale factor for OD demand (auto if omitted)
 echo   --start-hour H     Simulation start hour 0-23 (OD mode, default: 8)
 echo   --speed-factor N   Congestion factor on IDM desired speeds (default: 0.55)
 echo   --route-spread N   Stochastic route-choice spread 0-1 (default: 0.2)
+echo   --chaos N          Lane-discipline chaos coefficient 0-1 (default: 0.1)
+echo   --journey PATH     Where to write journey times CSV (default: journey_times.csv)
+echo   --fast             Headless mode: no pacing, exits when sim finishes
+echo   --no-ws            Disable WebSocket server (no dashboard)
 echo   --debug            Build in Debug mode
 echo   --dashboard-only   Start dashboard only (skip build/run)
 echo   --help, -h         Show this help message
@@ -55,6 +67,7 @@ echo Examples:
 echo   run.bat
 echo   run.bat --city chicago --agents 2000 --duration 10
 echo   run.bat --city chicago --od data\chicago\od_matrix.json --duration 60
+echo   run.bat --fast --no-ws --od data\chicago\od_matrix.json --duration 60 --journey data\chicago\journey_times.csv
 echo   run.bat --debug --agents 1000
 echo   run.bat --dashboard-only
 exit /b 0
@@ -118,8 +131,12 @@ echo.
 echo Dashboard: http://localhost:5173
 echo WebSocket: ws://localhost:9001
 echo.
-echo NOTE: The engine stays alive after the simulation so the dashboard
-echo stays connected. Press Ctrl+C to stop the engine.
+if "%FAST%"=="1" (
+    echo Mode: headless -- the engine exits when the simulation finishes.
+) else (
+    echo NOTE: The engine stays alive after the simulation so the dashboard
+    echo stays connected. Press Ctrl+C to stop the engine.
+)
 echo.
 
 set "ENGINE_ARGS=--city %CITY% --duration %DURATION%"
@@ -130,7 +147,13 @@ if "%OD_PATH%"=="" (
     if not "%DEMAND_SCALE%"=="" set "ENGINE_ARGS=!ENGINE_ARGS! --demand-scale %DEMAND_SCALE%"
     set "ENGINE_ARGS=!ENGINE_ARGS! --start-hour %START_HOUR% --speed-factor %SPEED_FACTOR% --route-spread %ROUTE_SPREAD%"
 )
+if not "%JOURNEY_PATH%"=="" set "ENGINE_ARGS=!ENGINE_ARGS! --journey %JOURNEY_PATH%"
+if not "%CHAOS%"=="" set "ENGINE_ARGS=!ENGINE_ARGS! --chaos %CHAOS%"
+if "%FAST%"=="1" set "ENGINE_ARGS=!ENGINE_ARGS! --fast"
+if "%NO_WS%"=="1" set "ENGINE_ARGS=!ENGINE_ARGS! --no-ws"
 
+echo Engine: engine\build\engine.exe %ENGINE_ARGS%
+echo.
 engine\build\engine.exe %ENGINE_ARGS%
 if errorlevel 1 (
     echo ERROR: Simulation failed!

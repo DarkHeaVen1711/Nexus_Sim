@@ -4,7 +4,12 @@ import osmnx as ox
 import argparse
 
 def download_city(city_id: str):
-    with open("cities.yaml", "r") as f:
+    # Resolve cities.yaml relative to this file, not the working directory, so
+    # the pipeline behaves identically however it is invoked. (A bare relative
+    # "cities.yaml" only resolved when the CWD happened to be pipeline/.)
+    here = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(here, "..", "cities.yaml")
+    with open(config_path, "r") as f:
         config = yaml.safe_load(f)
     
     if city_id not in config:

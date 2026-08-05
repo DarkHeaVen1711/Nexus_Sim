@@ -24,12 +24,14 @@ def _root():
 
 
 def _run_engine(city, od_path, journey_csv, duration_min, start_hour,
-                demand_scale, engine_bin, speed_factor, route_spread):
+                demand_scale, engine_bin, speed_factor, route_spread,
+                chaos):
     cmd = [
         engine_bin, "--city", city, "--od", od_path, "--duration",
         str(duration_min), "--start-hour", str(start_hour),
         "--demand-scale", str(demand_scale), "--speed-factor",
         str(speed_factor), "--route-spread", str(route_spread),
+        "--chaos", str(chaos),
         "--fast", "--no-ws", "--journey", journey_csv,
     ]
     print("Running:", " ".join(cmd))
@@ -60,7 +62,20 @@ def _read_journey_times(journey_csv):
 
 def _load_od_matrix(od_path):
     with open(od_path, "r") as f:
-        return json.load(f)
+        odm = json.load(f)
+    # A proxy matrix (od_proxy.py) derives its journey times from the same model
+    # that generates its demand, so validating against it would compare the
+    # simulation to its own assumptions and always "pass". Refuse it outright
+    # rather than emit a MAPE that looks meaningful but isn't.
+    if odm.get("validation_safe") is False:
+        raise SystemExit(
+            "%s is a %s OD matrix (confidence: %s).\n"
+            "Its journey times are modelled, not observed, so a validation "
+            "MAPE computed against it would be circular and meaningless.\n"
+            "Validation requires a city with a real OD feed (e.g. chicago)."
+            % (od_path, odm.get("method", "proxy"),
+               odm.get("confidence", "low")))
+    return odm
 
 
 def _observed_tt(od_matrix, origin, dest, hour):
@@ -81,7 +96,7 @@ def _mean(xs):
 
 
 def build_report(city, od_path, journey_csv, duration_min, start_hour,
-                 demand_scale, speed_factor, route_spread, sim_hour,
+                 demand_scale, speed_factor, route_spread, chaos, sim_hour,
                  out_path):
     sim = _read_journey_times(journey_csv)
     odm = _load_od_matrix(od_path)
@@ -137,6 +152,7 @@ def build_report(city, od_path, journey_csv, duration_min, start_hour,
             "demand_scale": demand_scale,
             "speed_factor": speed_factor,
             "route_spread": route_spread,
+            "chaos": chaos,
         },
         "summary": {
             "corridor_count": len(corridors),
@@ -173,8 +189,22 @@ def main():
     parser.add_argument("--route-spread", type=float, default=0.2,
                         help="stochastic route-choice spread (0 = all agents "
                              "take the shortest path)")
+    parser.add_argument("--chaos", type=float, default=None,
+                        help="lane-discipline chaos coefficient; falls back to "
+                             "cities.yaml value if omitted")
     parser.add_argument("--engine", default=None)
     args = parser.parse_args()
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(here, "..", "cities.yaml")
+    with open(config_path, "r") as f:
+        import yaml
+        config = yaml.safe_load(f)
+    if args.city not in config:
+        raise ValueError("City %s not found in cities.yaml" % args.city)
+    if args.chaos is None:
+        args.chaos = float(config[args.city].get("chaos", 0.1))
+        print("Using chaos=%.1f from cities.yaml" % args.chaos)
 
     data_dir = os.path.join(_root(), "data", args.city)
     od_path = os.path.join(data_dir, "od_matrix.json")
@@ -202,11 +232,11 @@ def main():
 
     _run_engine(args.city, od_path, journey_csv, args.duration,
                 args.start_hour, args.demand_scale, engine_bin,
-                args.speed_factor, args.route_spread)
+                args.speed_factor, args.route_spread, args.chaos)
     report = build_report(args.city, od_path, journey_csv, args.duration,
                           args.start_hour, args.demand_scale,
-                          args.speed_factor, args.route_spread, sim_hour,
-                          out_path)
+                          args.speed_factor, args.route_spread, args.chaos,
+                          sim_hour, out_path)
 
     s = report["summary"]
     print("\n=== Validation summary (%s) ===" % args.city)

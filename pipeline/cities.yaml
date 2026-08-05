@@ -1,5 +1,6 @@
 chicago:
   query: "Chicago, Illinois, USA"
+  chaos: 0.1
   od_source:
     type: socrata
     dataset: m6dm-c72p
@@ -18,8 +19,31 @@ chicago:
       Uber/Lyft Transportation Network Provider trips published by the City of
       Chicago open-data portal (2018-2022). Same underlying rideshare data that
       Uber Movement was built on. Uber Movement itself was decommissioned in 2023.
+paris:
+  query: "Paris, France"
+  chaos: 0.1
+  od_source:
+    type: density-proxy
+    note: >-
+      No real OD feed available. OpenTraffic (named in Phase 6.6) was
+      decommissioned and has no open successor for Paris. Falls back to the
+      gravity-model building-density proxy (pipeline/src/od_proxy.py) per the
+      confidence-flagged fallback principle. Modelled, not measured: usable for
+      running the simulation, NOT for computing a validation MAPE.
+ahmedabad:
+  query: "Ahmedabad, Gujarat, India"
+  chaos: 0.4
+  od_source:
+    type: density-proxy
+    note: >-
+      No real OD feed available. Smart Cities Mission / AMC data is not exposed
+      as a public API, so Phase 6.7's documented fallback applies: the
+      gravity-model building-density proxy (pipeline/src/od_proxy.py). Higher
+      uncertainty than Chicago; see data/ahmedabad/calibration_notes.md.
+      Modelled, not measured: NOT valid input for validate.py.
 piedmont:
   query: "Piedmont, California, USA"
+  chaos: 0.1
   od_source:
     type: uniform
     note: "Fallback: no real OD data; engine uses uniform random spawning."
