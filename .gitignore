@@ -27,6 +27,10 @@ pipeline/cache/
 journey_times.csv
 engine/journey_times.csv
 
+# ML training artifacts
+ml/mlruns/
+ml/checkpoints/
+
 # IDE / OS
 .vscode/settings.json
 .DS_Store
