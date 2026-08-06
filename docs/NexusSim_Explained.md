@@ -411,8 +411,8 @@ Two categories of new components, matching TR-6:
 
 ## 10. Implementation Timeline **[NEW]**
 
-Derived from `IMPLEMENTATION_PLAN.md` (root and `docs/` copy — identical content, verified with
-`diff`). Phases 0–11 are the existing, already-built plan; Phases 12–18 are the four-subject
+Derived from `IMPLEMENTATION_PLAN.md` (now the sole copy, at `docs/IMPLEMENTATION_PLAN.md`).
+Phases 0–11 are the existing, already-built plan; Phases 12–18 are the four-subject
 extension added in this planning cycle. Durations are the plan's own estimates; "Depends on"
 reflects the plan's stated task ordering (e.g. Phase 13's fuzzy controller requires the Phase 12
 `SignalPolicy` interface to exist first).
@@ -474,11 +474,12 @@ This revision was produced without a binary file upload in this conversation. Th
 assumptions were made, and the listed information would let a future revision remove them:
 
 1. **[ASSUMPTION]** "The attached PDF" refers to `docs/NexusSim_Explained.pdf`, generated
-   earlier in this same project thread via a `reportlab` script. If a different, externally
+   earlier in this same project thread via a `reportlab` script (superseded by
+   `docs/NexusSim_Explained_Engineered_v2.pdf`). If a different, externally
    authored PDF was intended (e.g. one the user has outside this repo), please share it — this
    revision cannot account for content it has never seen.
-2. **[ASSUMPTION]** "The attached implementation plan" refers to `IMPLEMENTATION_PLAN.md` (root)
-   / `docs/IMPLEMENTATION_PLAN.md` (identical copies, confirmed via `diff` this session). If a
+2. **[ASSUMPTION]** "The attached implementation plan" refers to `docs/IMPLEMENTATION_PLAN.md`
+   (the single repository copy after the docs consolidation). If a
    separate implementation-plan document exists elsewhere, its phases/durations may differ from
    what's reflected in §10.
 3. **[ASSUMPTION]** NFR-2 and NFR-3's performance numbers (60 fps at 20k agents, ≥10× quadtree

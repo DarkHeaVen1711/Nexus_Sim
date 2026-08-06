@@ -1,6 +1,12 @@
 # NexusSim Documentation
 
-- [Implementation Plan](../IMPLEMENTATION_PLAN.md)
-- [Tech Stack](../TECH_STACK.md)
-- [PRD](../PRD.md)
-- [User Stories](../USER_STORIES.md)
+- [Overview / Architecture (NexusSim Explained)](NexusSim_Explained.md)
+- [PRD](PRD.md)
+- [TRD](TRD.md)
+- [Implementation Plan](IMPLEMENTATION_PLAN.md)
+- [Tech Stack](TECH_STACK.md)
+- [User Stories](USER_STORIES.md)
+- [E2E Checklist](e2e_checklist.md)
+- [Graph Schema](graph_schema.md)
+- [OD Matrix Schema](od_matrix_schema.md)
+- [NexusSim Explained (PDF)](NexusSim_Explained_Engineered_v2.pdf)

@@ -158,6 +158,8 @@ NexusSim/
 │   ├── src/
 │   └── package.json
 ├── data/             # City graph data (graph.json per city)
+├── docs/             # Documentation (PRD, TRD, implementation plan, tech stack)
 ├── run.bat           # Windows one-click build & run
+├── Makefile          # Unix build/run/test helpers
 └── .github/workflows/ci.yml
 ```
