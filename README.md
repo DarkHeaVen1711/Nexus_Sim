@@ -11,6 +11,7 @@ It is designed to answer macro- and micro-level routing questions: how long does
 - **Quadtree spatial index** — reduces proximity/collision queries from O(N²) to O(N log N), keeping 10k+ agent simulations interactive.
 - **Parallel simulation ticks** — agent updates run across all hardware threads.
 - **Signalized intersections** with **Webster's formula** fixed-cycle timing (green/yellow/red phase machine).
+- **MARL signal control** — a Phase 7 training environment (`ml/`) where per-intersection MAPPO policies learn to beat the Webster baseline on a toy grid, using pressure + equity rewards, MLflow tracking, and checkpoint save/resume (exported to the engine via ONNX in Phase 8).
 - **Multi-city support** — fully config-driven via `pipeline/cities.yaml` (Chicago, Piedmont, Paris, Ahmedabad; adding a city requires config only).
 - **Real OD demand** — Chicago rideshare trip data (City of Chicago open portal) drives hourly time-of-day demand; a gravity-model density proxy and uniform fallback cover cities without a public OD feed.
 - **Ground-truth validation** — headless engine runs are compared against observed travel times per corridor, with a MAPE checkpoint report (`data/<city>/validation_report.json`).
@@ -43,11 +44,13 @@ It is designed to answer macro- and micro-level routing questions: how long does
 | **Data Pipeline** | `pipeline/` | Python/osmnx scripts that download OSM road networks, clean and simplify them, infer lane counts, tag analysis zones, build OD demand matrices, and export `data/<city>/graph.json`. |
 | **Simulation Engine** | `engine/` | C++17 simulator: IDM car-following, A\* pathfinding, quadtree spatial index, signal controllers, parallel ticks, and a uWebSockets server that streams agent state to the dashboard. |
 | **Dashboard** | `dashboard/` | React + TypeScript + Leaflet frontend that renders the live simulation over an OpenStreetMap base layer, with a metrics panel and efficiency/equity views. |
-| **ML Pipeline** | `ml/` | Reserved for the planned MARL signal-control work (Phases 7–18 in the implementation plan). Currently empty — not yet implemented. |
+| **ML Pipeline** | `ml/` | Phase 7 MARL training environment: a Gym-compatible `NexusSimEnv` over an offline Python micro-simulator, a MAPPO trainer (PPO + GAE, reward scaling, batching, checkpoint save/resume), MLflow logging, and a toy 4-intersection training graph. Trained policies are exported to ONNX for the engine in Phase 8. |
 | **Data** | `data/` | Per-city graph and OD files. Raw `.graphml` intermediates are gitignored; small deliverables (e.g. `graph.json`, `od_matrix.json`, validation reports) are committed. |
 | **Docs** | `docs/` | PRD, TRD, tech stack, user stories, implementation plan, and schema references. |
 
-The three active subsystems communicate over well-defined interfaces: the pipeline produces `graph.json` (+ optional `od_matrix.json`), the engine loads those files and streams JSON state frames over WebSocket (port `9001`), and the dashboard consumes the stream and serves the UI (port `5173`).
+The three runtime subsystems communicate over well-defined interfaces: the pipeline produces `graph.json` (+ optional `od_matrix.json`), the engine loads those files and streams JSON state frames over WebSocket (port `9001`), and the dashboard consumes the stream and serves the UI (port `5173`).
+
+The ML subsystem (`ml/`) is **offline** — it reads the same `graph.json` to train signal-control policies against a Python micro-simulator (`ml/env/`). It is not on the live path; in Phase 8 the trained policy is exported to `policy.onnx` and injected into the engine's signal controllers.
 
 ```
 ┌─────────────┐  graph.json/   ┌──────────────┐  WebSocket   ┌─────────────┐
@@ -55,6 +58,12 @@ The three active subsystems communicate over well-defined interfaces: the pipeli
 │  Python/    │ ─────────────► │  simulation  │ ───────────► │  React +    │
 │  osmnx      │                │  loop        │              │  Leaflet    │
 └─────────────┘                └──────────────┘              └─────────────┘
+       │  graph.json (read only)      ▲  policy.onnx (Phase 8)
+       ▼                              │
+┌──────────────────┐                  │
+│  ML (Phase 7)    │ ─────────────────┘
+│  Gym env + MAPPO │  offline training on Python micro-sim
+└──────────────────┘
 ```
 
 ## Technologies and Dependencies
@@ -92,6 +101,17 @@ The three active subsystems communicate over well-defined interfaces: the pipeli
 | Vite | ^8.1.1 | Dev server / bundler (Vite 8 requires Node >= 20.19) |
 | TypeScript | ~6.0.2 | Typed JS |
 | oxlint | ^1.71.0 | Linting |
+
+### ML training (`ml/`)
+
+| Dependency | Version | Purpose |
+|-----------|---------|---------|
+| Python | 3.11+ | Implementation language |
+| numpy | 1.26.4 | Observation vector construction |
+| torch | 2.4.1 | MAPPO policy/value networks, PPO + GAE |
+| gymnasium | 1.0.0 | `NexusSimEnv` (reset/step/observation_space/action_space) |
+| mlflow | 2.16.2 | Run tracking: episode reward, pressure, equity, Gini |
+| pytest | >= 7.0 | Test runner (`ml/tests`, 48 tests) |
 
 ### Tooling
 
@@ -264,6 +284,22 @@ make clean       # Remove build artifacts
 4. Toggle **Efficiency** (live agent markers) vs **Equity** (per-zone wait-time heat overlay) in the top-left control.
 5. The metrics panel shows average speed, active/completed agents, average wait time, Gini coefficient, and the top congested zones.
 
+### Training the MARL signal-control policy
+
+Phase 7 ships an offline MAPPO trainer that learns to control the intersections of a toy grid (`ml/env/toy_graph.py`) and beat the Webster fixed-cycle baseline:
+
+```bash
+cd ml
+pip install -r requirements.txt
+python -m train.train --city toy --episodes 500 --baseline-episodes 5
+```
+
+- **Reward** = `alpha * pressure_i + beta * equity_global` (see `ml/env/reward.py`); defaults `alpha=1.0`, `beta=1.0`. Negative — lower is better.
+- **Tracking**: MLflow logs episode reward, pressure, equity, and Gini per episode (stored under `ml/mlruns/`, gitignored); `--experiment` selects the run group.
+- **Checkpoints**: saved to `ml/checkpoints/<city>/<episode>.pt` every `--checkpoint-interval` episodes; resume with `--resume <path>.pt`.
+- **Validated defaults**: `--lr 5e-4 --gamma 0.95 --entropy-coef 0.003 --episodes-per-update 4`, with rewards auto-scaled from the baseline run.
+- **Result on the toy demand**: the trained policy reaches ≈ −7,300 reward within 500 episodes vs the ≈ −11,270 Webster baseline (≈ 35% better), satisfying the Phase 7.8 convergence checkpoint.
+
 ### Generating new city data
 
 The pipeline extracts, cleans, and enriches road networks from OpenStreetMap:
@@ -373,7 +409,13 @@ NexusSim/
 │   │   ├── hooks/              # useWebSocket (auto-reconnect, heartbeat)
 │   │   └── constants.ts        # City list, Gini thresholds
 │   └── package.json
-├── ml/                         # [Planned] MARL signal control (Phases 7-18) — empty
+├── ml/                         # Phase 7 MARL training environment
+│   ├── env/                    # Gym env, micro-sim, observation, reward, toy graph
+│   ├── models/                 # MAPPO policy/value networks
+│   ├── train/                  # PPO update, rollout collection, trainer CLI
+│   ├── tests/                  # pytest suites (48 tests)
+│   ├── mlruns/  checkpoints/   # gitignored MLflow tracking + model checkpoints
+│   └── requirements.txt
 ├── data/                       # City data
 │   ├── piedmont/               # graph.json (committed)
 │   ├── chicago/                # graph, od_matrix.json, validation_report.json
@@ -416,6 +458,16 @@ python -m pytest tests/ -v
 ```
 
 Suites cover pipeline module presence, city config, OD matrix geometry/point-in-zone logic, and the density-proxy generator.
+
+### ML (pytest)
+
+```bash
+cd ml
+pip install -r requirements.txt
+python -m pytest tests/ -v
+```
+
+Suites cover the observation space, reward terms, env interface, toy graph, and PPO/GAE updates (48 tests).
 
 ### Dashboard
 
