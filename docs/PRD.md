@@ -2,7 +2,7 @@
 
 **Version:** 2.0  
 **Status:** Active  
-**Owner:** Vyom  
+**Owner:** Vyom & Vatsal
 **Last Updated:** August 2026
 
 > **Revision notice.** v2.0 supersedes v1.0 (July 2026). It incorporates the scope
