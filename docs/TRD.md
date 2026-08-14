@@ -2,7 +2,7 @@
 
 **Version:** 1.0  
 **Status:** Active  
-**Owner:** Vyom  
+**Owner:** Vyom & Vatsal<br>
 **Last Updated:** August 2026
 
 > **Source of truth.** This TRD is written against the latest documentation and
