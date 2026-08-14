@@ -73,7 +73,8 @@ NexusSim is a three-subsystem project. Each subsystem has a hard interface bound
 |-----------|-----------|-----|
 | Language | Python 3.11 | PyTorch ecosystem; training only, not deployed |
 | RL framework | PyTorch + custom Gym env | Full control over reward function; no black-box abstraction |
-| Algorithm | MAPPO (Multi-Agent PPO) | Stable, well-cited in traffic-signal MARL literature; handles decentralised agents |
+| Algorithm | MAPPO (Multi-Agent PPO) core + 11-algorithm RL inventory (Phases 19–24) | MAPPO is stable, well-cited in traffic-signal MARL literature, and handles decentralised agents; the inventory adds breadth across tabular value, deep value, policy-gradient, actor-critic, and continuous families |
+| Showcase RL algorithms | stable-baselines3 + gymnasium | SAC/TD3/DDPG on a standard continuous env (Pendulum-v1) for breadth; keeps the signal-control stack hand-rolled and directly comparable |
 | Policy network | 3-layer MLP per agent | Lightweight enough for batched ONNX inference within 8 ms |
 | Baseline comparison | Webster's fixed-cycle method | Classic, well-understood baseline; clear benchmark to beat |
 | Export | `torch.onnx.export` | Standard PyTorch → ONNX path; consumed by C++ runtime |

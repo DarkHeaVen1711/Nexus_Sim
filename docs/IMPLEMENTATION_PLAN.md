@@ -369,6 +369,98 @@ RULE 4  Commit message format
 
 ---
 
+## Phase 19 — Shared RL Algorithm Framework
+
+**Duration:** 3–4 days
+**Goal:** A common harness so all 12 RL algorithms (MAPPO + 11 new) train, evaluate, and log through the same interface — the mechanism that makes the inventory tractable while keeping depth "medium" (BR-2).
+**Checkpoint artifact:** `python ml/train/benchmark.py --algos ppo,dqn,ql --city toy` prints a comparison table and logs an MLflow run.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 19.1 | Define `BaseTrainer` interface + common CLI (`--city`, `--episodes`, `--seed`, `--log-interval`, `--checkpoint-interval`) | `refactor/algo-base-trainer` | Mirrors `train.py` conventions; every new algorithm implements this |
+| 19.2 | Add `ml/algo/configs.yaml`: hyperparameter defaults per algorithm | `feature/algo-configs` | One source of truth; MLflow logs resolved config |
+| 19.3 | Wrap multi-agent `NexusSimEnv` as a single-agent Gym env (`ml/env/single_agent.py`) | `feature/single-agent-wrapper` | Lets DQN/PPO/A2C/Q-Learning train on the same signal task |
+| 19.4 | Write `ml/eval/report.py`: N episodes per algorithm vs. Webster fixed-cycle baseline → `ml/results/<algo>/eval_report.json` | `feature/algo-eval-report` | Reuses `evaluate_fixed_baseline` from `rollout.py`; targets from PRD §7 |
+| 19.5 | Write `ml/train/benchmark.py`: run any registered algorithm set, emit comparison table | `feature/algo-benchmark` | The single entry point an evaluator runs |
+
+---
+
+## Phase 20 — Value-Based RL: Q-Learning, SARSA, DQN, DDQN, Dueling DQN
+
+**Duration:** 1 week
+**Goal:** Five value-based algorithms trained on the signal-control task; establishes the discrete-state discretizer and the deep value-learning stack.
+**Checkpoint artifact:** 5 algorithms trained on the toy 4-intersection graph, each with an eval report vs. Webster.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 20.1 | Q-Learning: state discretizer (queue buckets/phase), Q-table, ε-greedy | `feature/qlearning-signal-control` | numpy only |
+| 20.2 | SARSA: on-policy update, same discretizer | `feature/sarsa-signal-control` | Fork of 20.1 |
+| 20.3 | DQN: replay buffer, target network, ε anneal | `feature/dqn-signal-control` | Shares the single-agent wrapper; ONNX-safe at inference (argmax) |
+| 20.4 | DDQN: double-estimator target | `feature/ddqn-signal-control` | Delta on 20.3 |
+| 20.5 | Dueling DQN: value/advantage head | `feature/dueling-dqn-signal-control` | Delta on 20.3 |
+| 20.6 | Unit tests: discretizer, replay buffer, target update, toy convergence | `feature/value-based-tests` | pytest |
+
+---
+
+## Phase 21 — Policy-Based RL: REINFORCE, A2C, Single-Agent PPO
+
+**Duration:** 4–5 days
+**Goal:** Three policy-gradient/actor-critic algorithms complete the signal-control set; single-agent PPO becomes the second fully integrated (ONNX) algorithm.
+**Checkpoint artifact:** 3 algorithms trained; comparison table extended to 8 signal-control algorithms (incl. MAPPO).
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 21.1 | REINFORCE with baseline | `feature/reinforce-signal-control` | Policy network reused from `mappo_net.py` |
+| 21.2 | A2C: n-step advantage actor-critic | `feature/a2c-signal-control` | Reuses `compute_gae` from `ppo.py` |
+| 21.3 | PPO single-agent loop | `feature/ppo-single-agent` | Reuses `ppo_update` unchanged; new collection loop |
+
+---
+
+## Phase 22 — Continuous Showcase: SAC, TD3, DDPG (Stable-Baselines3)
+
+**Duration:** 1–2 days
+**Goal:** Breadth for the coursework deliverable — three modern continuous-control algorithms on a standard Gym env via Stable-Baselines3, fully independent of the signal-control stack.
+**Checkpoint artifact:** SAC/TD3/DDPG each learn on `Pendulum-v1`; return curves logged to MLflow.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 22.1 | Add `stable-baselines3` + `gymnasium` to `ml/requirements.txt` | `feature/sb3-deps` | New dependency; otherwise the stack is unchanged |
+| 22.2 | SB3 SAC on Pendulum | `feature/sb3-sac-showcase` | |
+| 22.3 | SB3 TD3 on Pendulum | `feature/sb3-td3-showcase` | |
+| 22.4 | SB3 DDPG on Pendulum | `feature/sb3-ddpg-showcase` | |
+| 22.5 | Mini eval report per algorithm (return vs. random baseline) | `experiment/sb3-showcase-report` | Breadth only — no C++ path |
+
+---
+
+## Phase 23 — C++ Deployment of Headline RL Algorithms (MAPPO, PPO, DQN)
+
+**Duration:** 1 week
+**Goal:** Three ONNX-deployable algorithms run inside the C++ engine via the Phase 8 `InferenceEngine` and the Phase 12 `SignalPolicy` abstraction.
+**Checkpoint artifact:** `--signal-policy rl --algo dqn` runs in the engine; p95 inference ≤ 8 ms (NFR-4); dashboard `PolicyComparisonPanel` shows MAPPO/PPO/DQN vs. Webster/Fuzzy.
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 23.1 | Generalize `export_onnx.py`: export PPO policy and DQN Q-network → `policy.onnx` | `feature/onnx-export-ppo-dqn` | Validate parity vs. PyTorch on 10 inputs (Ph 8.1 rule) |
+| 23.2 | `InferenceEngine` dispatch on `--algo`; DQN inference = argmax over Q outputs | `feature/cpp-inference-algo-dispatch` | Reuses the Phase 8 ring buffer; off the hot path |
+| 23.3 | `SignalPolicy` gains an `RLPolicy` implementation keyed by algorithm | `feature/rl-policy-integration` | Slots into the Phase 12 interface |
+| 23.4 | Extend `bench_inference.cpp` to all three models | `feature/inference-benchmark-multi` | Satisfies US-E04 |
+
+---
+
+## Phase 24 — RL Results, Ablation & Documentation
+
+**Duration:** 2 days
+**Goal:** The 12-algorithm inventory is documented, compared, and traceable end-to-end.
+**Checkpoint artifact:** `docs/results.md` 12-algorithm table; all RL docs updated (plan, TRD, PRD, user stories, explained).
+
+| # | Task | Branch | Notes |
+|---|------|--------|-------|
+| 24.1 | `docs/results.md`: 12-algorithm table (family, type, env, avg-wait/Gini vs. Webster where applicable) | `docs/rl-algo-results` | Single artifact for the interviewer |
+| 24.2 | Ablation: value vs. policy, on-policy vs. off-policy, tabular vs. neural on the same signal task | `docs/rl-ablation` | Extends the Phase 11.6 ablation section |
+| 24.3 | Update `IMPLEMENTATION_PLAN.md`, `TRD.md`, `PRD.md`, `USER_STORIES.md`, `NexusSim_Explained.md` (§5) | `docs/rl-12-algorithms` | TECH_STACK unchanged except one SB3 row (Ph 22.1) |
+
+---
+
 ## Phase Summary
 
 | Phase | What gets built | Checkpoint artifact |
@@ -392,3 +484,9 @@ RULE 4  Commit message format
 | 16 | NLP: live metrics chat interface | Chat panel answers held-out queries from live state |
 | 17 | NLP: incident reports mutate the sim | Incident report visibly changes routing/queueing on the map |
 | 18 | Cross-subsystem hardening + integrated demo | One continuous recording showing all four subjects interacting |
+| 19 | Shared RL framework (12-algorithm harness) | `benchmark.py` prints comparison table + MLflow |
+| 20 | Value-based RL: QL, SARSA, DQN, DDQN, Dueling | 5 algorithms trained with eval reports vs. Webster |
+| 21 | Policy-based RL: REINFORCE, A2C, PPO | 8 signal-control algorithms in the comparison table |
+| 22 | Continuous showcase: SAC, TD3, DDPG | 3 SB3 runs on Pendulum, return curves logged |
+| 23 | C++ deployment of MAPPO/PPO/DQN | AI mode runs all three; p95 ≤ 8 ms |
+| 24 | RL results, ablation & docs | 12-algorithm table in `docs/results.md`; docs updated |

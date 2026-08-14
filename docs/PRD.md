@@ -42,6 +42,7 @@ NexusSim solves both problems: it gives planners a high-fidelity, real-city sand
 | G10 | Answer natural-language queries about live simulation state | 16 |
 | G11 | Accept free-text incident reports that mutate the running simulation | 17 |
 | G12 | Prove all four subjects interoperate in one continuous demo | 18 |
+| G13 | Ship a documented inventory of 12 RL algorithms with a shared training/eval harness and per-algorithm comparison vs. the fixed-cycle baseline | 19–24 |
 
 ---
 
@@ -88,13 +89,17 @@ Reviews code architecture, model design decisions, and validation methodology ac
 - OD demand matrix per city: real measured feed (Socrata) or density-proxy fallback with `validation_safe: false`
 - Outputs a single `graph.json` + `od_matrix.json` consumed by the C++ engine
 
-### F3 — MARL Training Environment (Python / PyTorch) (Phase 7)
+### F3 — MARL Training Environment (Python / PyTorch) (Phases 7, 19–24)
 - Gym-compatible environment wrapping the simulation state
 - Decentralized agents: one per signalised intersection (BR-5)
 - Pressure-based local reward + equity-weighted global reward
 - MAPPO (Multi-Agent Proximal Policy Optimization) trainer
 - MLflow logging of reward, pressure term, equity term, Gini per checkpoint
 - Exports trained policy to ONNX
+- A shared RL algorithm framework (Phase 19) that trains and evaluates 11 additional algorithms through one interface (`BaseTrainer`, `ml/algo/configs.yaml`, `benchmark.py`)
+- An RL algorithm inventory of **12 total** (MAPPO + 11 new): tabular value (Q-Learning, SARSA), deep value (DQN, DDQN, Dueling DQN), policy-gradient (REINFORCE), actor-critic (A2C), single-agent PPO, and continuous control (SAC, TD3, DDPG via Stable-Baselines3)
+- Nine signal-control algorithms each produce an eval report vs. the Webster baseline (Phases 20–21)
+- MAPPO, PPO, and DQN deploy to the C++ engine via ONNX (Phase 23); SAC/TD3/DDPG train on `Pendulum-v1` as a breadth showcase (Phase 22)
 
 ### F4 — ONNX Inference in C++ (Phase 8)
 - Loads ONNX policy graph via ONNX Runtime C++ API
@@ -188,6 +193,7 @@ Reviews code architecture, model design decisions, and validation methodology ac
 | NLP chat | Correct answers on a held-out query test set (rule-based and LLM paths) |
 | NLP incidents | Submitted incident visibly changes routing/queueing; expires after stated duration |
 | Integration | One continuous recording showing incident → RL reaction → metrics update with all four subjects live |
+| RL algorithm breadth | 12 algorithms implemented (MAPPO + 11); 9 signal-control algorithms each beat Webster in avg wait or Gini on the toy graph; MAPPO/PPO/DQN run live in the engine via ONNX |
 
 ---
 

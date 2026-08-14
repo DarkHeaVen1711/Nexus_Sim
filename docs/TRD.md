@@ -136,6 +136,15 @@ phases is given per row.
 | TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | PLANNED | FR-12 | Ph 15 |
 | TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | PLANNED | FR-13 | Ph 16 |
 | TR-ML-10 | **NLP incidents** `nlp/incident_parser.py`: `parse(text, graph) -> IncidentSpec` via street-name gazetteer + `rapidfuzz` fuzzy match; `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to engine | PLANNED | FR-14 | Ph 17.1–17.2 |
+| TR-ML-11 | **Shared RL framework** `BaseTrainer` interface + common CLI; `ml/algo/configs.yaml` per-algorithm hyperparameters; `benchmark.py` comparison table | PLANNED | FR-16 | Ph 19 |
+| TR-ML-12 | **Single-agent wrapper** `ml/env/single_agent.py` wrapping multi-agent `NexusSimEnv` as a Gym env so DQN/PPO/A2C/Q-Learning train on the same signal task | PLANNED | FR-16 | Ph 19.3 |
+| TR-ML-13 | **Eval harness** `ml/eval/report.py`: per-algorithm report vs. Webster baseline (reward, pressure, equity, Gini, avg wait, % change) → `ml/results/<algo>/eval_report.json` | PLANNED | FR-16 | Ph 19.4 |
+| TR-ML-14 | **Tabular value-based RL** Q-Learning + SARSA on a shared state discretizer (queue buckets/phase), ε-greedy | PLANNED | FR-16 | Ph 20.1–20.2 |
+| TR-ML-15 | **Deep value-based RL** DQN, DDQN, Dueling DQN (replay buffer, target network, double estimator, dueling head) | PLANNED | FR-16 | Ph 20.3–20.5 |
+| TR-ML-16 | **Policy-based RL** REINFORCE with baseline, A2C, single-agent PPO (reuses `ppo_update`/`compute_gae`) | PLANNED | FR-16 | Ph 21 |
+| TR-ML-17 | **Continuous showcase** SAC, TD3, DDPG via Stable-Baselines3 on `Pendulum-v1`, returns logged to MLflow | PLANNED | FR-16 | Ph 22 |
+| TR-ML-18 | **Multi-algorithm ONNX deployment** `export_onnx.py` generalized to PPO/DQN; `InferenceEngine` `--algo` dispatch; `SignalPolicy::RLPolicy` keyed by algorithm; DQN inference = argmax over Q outputs | PLANNED | FR-16, FR-8, NFR-4 | Ph 23 |
+| TR-ML-19 | **RL inventory + ablation docs** 12-algorithm table and ablation (value vs. policy, on/off-policy, tabular vs. neural) in `docs/results.md` | PLANNED | FR-16 | Ph 24 |
 
 ### 4.4 Dashboard (React + TypeScript) — `dashboard/`
 
@@ -261,6 +270,12 @@ Each requirement above is accepted via its plan-phase checkpoint artifact
 | 16 | Held-out query accuracy (rule-based vs LLM) | FR-13, TR-ML-09 |
 | 17 | Incident visibly mutates routing, expires correctly | FR-14, TR-ENG-13, TR-ML-10 |
 | 18 | One continuous integrated demo (incident → RL → metrics, all four subjects live) | BR-1–BR-3, TR-DASH-05…10 |
+| 19 | `benchmark.py` comparison table + MLflow (12-algorithm harness) | FR-16, TR-ML-11/12/13 |
+| 20 | 5 value-based algorithms trained with eval reports vs. Webster | FR-16, TR-ML-14/15 |
+| 21 | 3 policy-based algorithms trained; 8 signal-control algorithms in comparison | FR-16, TR-ML-16 |
+| 22 | SAC/TD3/DDPG return curves on Pendulum-v1 | FR-16, TR-ML-17 |
+| 23 | `--signal-policy rl --algo dqn` runs; p95 ≤ 8 ms | FR-16, FR-8, NFR-4, TR-ML-18 |
+| 24 | 12-algorithm table + ablation in `docs/results.md` | FR-16, TR-ML-19 |
 
 ---
 
@@ -279,6 +294,7 @@ Each requirement above is accepted via its plan-phase checkpoint artifact
 | G10 (NLP chat) | TR-ML-09, TR-DASH-09 | 16 |
 | G11 (incidents) | TR-ENG-13, TR-ML-10, TR-DASH-10 | 17 |
 | G12 (integration) | all TR, e2e checklist v2 | 18 |
+| G13 (12 RL algorithms) | TR-ML-11…19 | 19–24 |
 | BR-1…BR-6 | TR-ML-01…10, TR-PIPE-07/08, TR-ENG-09/11/13, TR-DASH-05…10 | 12–18 |
 
 Full FR/NFR/TR/BR definitions with acceptance criteria: `docs/NexusSim_Explained.md §3`.
