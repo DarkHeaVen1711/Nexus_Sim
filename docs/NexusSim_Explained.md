@@ -197,6 +197,7 @@ scope decisions, and the verified code behavior in §2. Each requirement has an 
 | FR-13 | An NLP interface SHALL answer natural-language queries about live simulation state (e.g. "which zone has the worst wait time right now") | **[PLANNED]** | Phase 16; success = correct answers on a held-out query set |
 | FR-14 | An NLP interface SHALL parse free-text incident reports into a structured spec and apply a temporary effect to the live simulation's road network | **[PLANNED]** | Phase 17; success = submitted incident visibly changes routing/queueing and expires after its stated duration |
 | FR-15 | The four subsystems SHALL be demonstrably interoperating (e.g. an NLP incident affects RL agent behavior and dashboard state within the same run), not four isolated demos | **[PLANNED]** | Phase 18; confirmed scope decision — user requested "one cohesive system" |
+| FR-16 | The system SHALL implement a documented inventory of 12 RL algorithms total (MAPPO + 11 new) spanning tabular value (Q-Learning, SARSA), deep value (DQN, DDQN, Dueling DQN), policy-gradient (REINFORCE), actor-critic (A2C), PPO-family (single-agent PPO, MAPPO), and continuous-control (SAC, TD3, DDPG) families | **[PLANNED]** | Phases 19–24; acceptance = 9 signal-control algorithms each report an eval vs. Webster baseline; MAPPO/PPO/DQN deploy to the engine via ONNX (Phase 23); SAC/TD3/DDPG train on a standard continuous env (Phase 22) |
 
 ### 3.2 Non-Functional Requirements (NFR)
 
@@ -293,6 +294,35 @@ on the job.
 **Baseline comparison:** because Webster's and the RL policy both implement the FR-7 pluggable
 interface, the dashboard can switch an intersection — or the whole city — between them live and
 show the wait-time/equity delta immediately (`IMPLEMENTATION_PLAN.md` Phase 12.6).
+
+### 5.1 From one algorithm to a 12-algorithm inventory **[PLANNED — FR-16]**
+
+The original scope above specified exactly one RL algorithm — MAPPO. The confirmed scope now
+extends this to a documented inventory of **12 RL algorithms total** (MAPPO plus 11 new),
+spanning the major algorithm families so breadth and depth can both be demonstrated (BR-2,
+FR-16). All nine signal-control algorithms train against the existing Gym-style environment
+(`ml/env/`) and are compared against the Webster fixed-cycle baseline through one shared harness
+(`IMPLEMENTATION_PLAN.md` Phases 19–21, 24).
+
+| # | Algorithm | Family | Deployment |
+|---|-----------|--------|------------|
+| 1 | MAPPO (existing) | Multi-agent on-policy | Full path: Python → ONNX → C++ engine |
+| 2 | PPO (single-agent) | On-policy actor-critic | Full path: Python → ONNX → C++ engine |
+| 3 | Q-Learning | Tabular value | Python + eval report |
+| 4 | SARSA | Tabular value | Python + eval report |
+| 5 | DQN | Deep value | Full path: Python → ONNX → C++ engine |
+| 6 | DDQN | Deep value | Python + eval report |
+| 7 | Dueling DQN | Deep value | Python + eval report |
+| 8 | REINFORCE | Policy gradient | Python + eval report |
+| 9 | A2C | Actor-critic | Python + eval report |
+| 10 | SAC | Continuous off-policy | Showcase (Pendulum-v1, Stable-Baselines3) |
+| 11 | TD3 | Continuous off-policy | Showcase (Pendulum-v1, Stable-Baselines3) |
+| 12 | DDPG | Continuous off-policy | Showcase (Pendulum-v1, Stable-Baselines3) |
+
+Three of them — MAPPO, PPO, DQN — get the full C++ ONNX deployment path (Phase 23) and appear
+in the dashboard `PolicyComparisonPanel` alongside Webster's and the fuzzy controller. The three
+continuous algorithms (10–12) are a breadth showcase via Stable-Baselines3 on a standard
+continuous env (Phase 22), deliberately independent of the signal-control stack.
 
 ---
 
@@ -451,7 +481,22 @@ reflects the plan's stated task ordering (e.g. Phase 13's fuzzy controller requi
 | **17 — NLP: Incident Reports** | Free text mutates the live simulation | `incident_parser.py`; `apply_incident()` in engine; `incidents[]` in broadcast; `IncidentReportPanel.tsx` | Phase 12 (control-message pattern), Phase 16 (shares the NLP service) | 1 week | Submitted incident visibly changes routing; expires after stated duration |
 | **18 — Cross-Subsystem Integration** | Prove all four subjects interoperate in one run | Extended `make demo`; combined results writeup; integrated demo recording | Phases 12–17 (all subsystems working individually) | 1 week | One continuous recording showing incident → RL reaction → metrics update, plus CV/GA/chat all live together |
 
-### 10.4 Phase-dependency diagram
+### 10.4 RL algorithm breadth extension (Phases 19–24) — full detail
+
+The 12-algorithm RL inventory (FR-16) is built as Phases 19–24 on top of the existing RL track.
+Phases 19–22 are Python-only and unblocked once Phase 7's environment exists (it does). Phase 23
+requires Phase 8 (`InferenceEngine`) and Phase 12 (`SignalPolicy`), which are PLANNED.
+
+| Phase | Objective | Key deliverables | Depends on | Duration | Success criteria |
+|---|---|---|---|---|---|
+| **19 — Shared RL framework** | One harness trains/evaluates every algorithm | `BaseTrainer` interface; `ml/algo/configs.yaml`; single-agent env wrapper; `ml/eval/report.py`; `benchmark.py` | Phase 7 (env exists) | 3–4 days | `benchmark.py --algos ppo,dqn,ql` prints a comparison table + MLflow |
+| **20 — Value-based RL** | Tabular + deep value algorithms on signal control | Q-Learning, SARSA, DQN, DDQN, Dueling DQN + unit tests | Phase 19 | 1 week | 5 algorithms trained on toy graph, eval reports vs. Webster |
+| **21 — Policy-based RL** | Policy-gradient + actor-critic algorithms | REINFORCE, A2C, single-agent PPO | Phase 19 | 4–5 days | 8 signal-control algorithms in the comparison table |
+| **22 — Continuous showcase** | Breadth via Stable-Baselines3 on a standard env | SAC, TD3, DDPG on Pendulum-v1 + return curves | none | 1–2 days | All three learn; returns logged to MLflow |
+| **23 — C++ deployment** | Headline algorithms run in the engine | Generalized `export_onnx.py`; `InferenceEngine` `--algo` dispatch; `RLPolicy` | Phase 8, Phase 12 | 1 week | `--signal-policy rl --algo dqn` runs; p95 ≤ 8 ms (NFR-4) |
+| **24 — Results & docs** | 12-algorithm inventory documented and compared | `docs/results.md` table; ablation write-up; docs updated | Phases 19–23 | 2 days | 12-algo table + ablation; TRD/PRD/US/explained consistent |
+
+### 10.5 Phase-dependency diagram
 
 ```
 Phase 5 (signal baseline) ──┬──► Phase 12 (SignalPolicy abstraction) ──┬──► Phase 13 (GA + Fuzzy)

@@ -112,6 +112,20 @@ As a developer, I want `make test` to run all unit tests across C++, Python pipe
 
 ---
 
+### US-D09 · Run the multi-algorithm RL comparison benchmark
+**Priority:** P2
+
+As a developer, I want to run all RL algorithms through one benchmark command and see a comparison table against the Webster baseline, so I can identify which algorithm family performs best on the signal-control task and report the full inventory in my write-up.
+
+**Acceptance Criteria:**
+- `python ml/train/benchmark.py --algos all --city toy` trains/evaluates every registered algorithm
+- Comparison table shows per algorithm: family, avg wait, Gini, pressure, equity, % change vs. Webster
+- Each run logs full hyperparameters and metrics to MLflow
+- The 9 signal-control algorithms each produce `ml/results/<algo>/eval_report.json`
+- SAC/TD3/DDPG showcase runs on `Pendulum-v1` and are reported separately from the signal-control results
+
+---
+
 ## Actor 2 — Civil Administrator / Policy Audience
 
 These stories define what a non-technical user must be able to do on the dashboard.
@@ -253,3 +267,16 @@ As an evaluator, I want to clone the repo, follow the README setup steps, and ha
 - README has a "Quick Start" section: install deps → run pipeline → build engine → start dashboard
 - All dependencies are pinned (CMake version, Python packages in `requirements.txt`, npm packages in `package.json`)
 - `make demo` runs a pre-packaged Chicago demo with a small pre-processed graph.json included in the repo
+
+---
+
+### US-E07 · Evaluate the 12-algorithm RL inventory
+**Priority:** P2
+
+As an evaluator, I want to see the full RL algorithm inventory compared and ablated in one place, so I can assess breadth (how many algorithm families are covered) and depth (whether they actually work on the task).
+
+**Acceptance Criteria:**
+- `docs/results.md` has a 12-algorithm table: family, on/off-policy, value/policy, env, result vs. Webster where applicable
+- Ablation section compares value vs. policy, on-policy vs. off-policy, tabular vs. neural on the same signal-control task
+- MAPPO, PPO, and DQN each run live in the engine via ONNX, with p95 inference ≤ 8 ms logged (NFR-4)
+- SAC/TD3/DDPG each show a learning curve on `Pendulum-v1` (Phase 22)
