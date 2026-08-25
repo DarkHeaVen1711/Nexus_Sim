@@ -231,7 +231,7 @@ endif()
 if(ENABLE_TESTING)
   enable_testing()
   target_compile_definitions(engine_lib PUBLIC TESTS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
-  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_od_spawner.cpp tests/test_stress.cpp tests/test_inference.cpp)
+  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_od_spawner.cpp tests/test_stress.cpp tests/test_inference.cpp tests/test_ring_buffer.cpp)
   target_link_libraries(engine_test gtest_main engine_lib)
 
   include(GoogleTest)
