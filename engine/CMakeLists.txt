@@ -202,6 +202,7 @@ add_custom_target(generate_fbs DEPENDS ${SCHEMA_OUT_DIR}/agent_delta_generated.h
 
 add_library(engine_lib
     src/graph/GraphLoader.cpp
+    src/ai/InferenceEngine.cpp
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers uSockets_lib)
