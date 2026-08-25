@@ -24,6 +24,8 @@ pipeline/cache/
 
 # Generated files
 *.onnx
+# ...except the tiny committed test fixture for the engine's InferenceEngine
+!engine/tests/fixtures/*.onnx
 journey_times.csv
 engine/journey_times.csv
 

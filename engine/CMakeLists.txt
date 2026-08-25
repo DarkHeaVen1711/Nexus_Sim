@@ -202,6 +202,7 @@ add_custom_target(generate_fbs DEPENDS ${SCHEMA_OUT_DIR}/agent_delta_generated.h
 
 add_library(engine_lib
     src/graph/GraphLoader.cpp
+    src/ai/InferenceEngine.cpp
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers uSockets_lib)
@@ -229,7 +230,8 @@ endif()
 # Testing
 if(ENABLE_TESTING)
   enable_testing()
-  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_od_spawner.cpp tests/test_stress.cpp)
+  target_compile_definitions(engine_lib PUBLIC TESTS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
+  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_od_spawner.cpp tests/test_stress.cpp tests/test_inference.cpp)
   target_link_libraries(engine_test gtest_main engine_lib)
 
   include(GoogleTest)
