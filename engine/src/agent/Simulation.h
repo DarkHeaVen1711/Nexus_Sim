@@ -14,6 +14,7 @@
 #include "IDM.h"
 #include "Pathfinder.h"
 #include "SignalController.h"
+#include "../ai/InferenceEngine.h"
 #include "../graph/Graph.h"
 #include "../spatial/Quadtree.h"
 #include "../network/WebSocketServer.h"
@@ -38,6 +39,11 @@ public:
     void set_route_spread(double s) { route_spread_ = s; }
     void set_chaos(double c) { chaos_coefficient_ = c; }
     void set_city_name(const std::string& n) { city_name_ = n; }
+
+    // Phase 8.5: attach a trained ONNX policy. When set and loaded, signal
+    // phases are re-decided every kPolicyInterval seconds via one batched
+    // inference call; otherwise Webster's fixed timings remain in effect.
+    void set_policy(ai::InferenceEngine* policy) { policy_ = policy; }
 
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
@@ -422,6 +428,14 @@ private:
     // Signal controllers (one per signalized intersection)
     std::unordered_map<int64_t, std::unique_ptr<SignalController>> signals_;
 
+    // Phase 8.5: learned signal control. Queued agents are counted per
+    // (incoming edge, signal node) pair once per decision, then assembled
+    // into the fixed 11-dim training observation for every controller.
+    ai::InferenceEngine* policy_ = nullptr;
+    double last_policy_tick_ = 0.0;
+    static constexpr double kPolicyInterval = 5.0; // seconds between decisions
+    std::unordered_map<std::pair<int64_t,int64_t>,int,PairHash> wait_counts_;
+
     // Metrics
     double avg_wait_time_ = 0.0;
     double gini_coefficient_ = 0.0;
@@ -750,6 +764,50 @@ private:
         int64_t node_id = (ei < p.size()) ? p[ei] : p.back();
         const Node* n = graph_.get_node(node_id);
         return n ? n->zone_id : 0;
+    }
+
+    // Counts agents currently queued (near-zero velocity) per incoming edge
+    // of every signalized node so observations avoid per-signal agent scans.
+    void collect_wait_counts() {
+        wait_counts_.clear();
+        for (size_t i = 0; i < agents_.size(); ++i) {
+            if (agents_.state[i] != AgentState::Navigating
+                && agents_.state[i] != AgentState::Spawned)
+                continue;
+            if (agents_.velocity[i] > 0.5) continue;
+            size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
+            const auto& p = agents_.path[i];
+            if (ei + 1 >= p.size()) continue;
+            wait_counts_[{p[ei], p[ei + 1]}]++;
+        }
+    }
+
+    // Appends the fixed 11-dim training observation for one controller:
+    // [queue x4 approaches, phase idx, time in phase, time of day,
+    //  pressure x4 approaches]. Approaches beyond four are ignored and
+    // missing ones contribute zero; pressure is queue surplus vs the mean.
+    void append_observation(const SignalController& sc,
+                            std::vector<float>& out) const {
+        float q[4] = {0, 0, 0, 0};
+        size_t slot = 0;
+        for (const auto& ph : sc.phases) {
+            for (int64_t u : ph.allowed_edges) {
+                if (slot >= 4) break;
+                auto it = wait_counts_.find({u, sc.node_id});
+                q[slot++] = it != wait_counts_.end()
+                                ? static_cast<float>(it->second)
+                                : 0.0f;
+            }
+            if (slot >= 4) break;
+        }
+        float mean = (q[0] + q[1] + q[2] + q[3]) * 0.25f;
+        for (int k = 0; k < 4; ++k) out.push_back(q[k]);
+        out.push_back(static_cast<float>(sc.current_phase_idx));
+        out.push_back(static_cast<float>(
+            std::min(sc.current_timer, 120.0)));
+        out.push_back(static_cast<float>(std::fmod(
+            start_hour_ + sim_time_ / 3600.0, 24.0)));
+        for (int k = 0; k < 4; ++k) out.push_back(q[k] - mean);
     }
 
     void compute_zone_metrics() {
