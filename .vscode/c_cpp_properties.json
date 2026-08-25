@@ -2,20 +2,24 @@
     "configurations": [
         {
             "name": "Win32",
+            "compileCommands": "${workspaceFolder}/engine/build/compile_commands.json",
             "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/engine/src"
+                "${workspaceFolder}/engine/src",
+                "${workspaceFolder}/engine/src/**",
+                "${workspaceFolder}/engine/build/generated",
+                "${workspaceFolder}/engine/build/_deps/onnxruntime-src/include",
+                "${workspaceFolder}/engine/build/_deps/json-src/include",
+                "${workspaceFolder}/engine/build/_deps/uwebsockets-src/src",
+                "${workspaceFolder}/engine/build/_deps/usockets-src/src",
+                "${workspaceFolder}/engine/build/_deps/flatbuffers-src/include"
             ],
             "defines": [
-                "_DEBUG",
-                "UNICODE",
-                "_UNICODE"
+                "NEXUS_HAS_ONNX=1"
             ],
-            "windowsSdkVersion": "10.0.19041.0",
-            "compilerPath": "",
+            "compilerPath": "C:/msys64/mingw64/bin/g++.exe",
             "cStandard": "c17",
-            "cppStandard": "c++20",
-            "intelliSenseMode": "windows-msvc-x64"
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "windows-gcc-x64"
         }
     ],
     "version": 4

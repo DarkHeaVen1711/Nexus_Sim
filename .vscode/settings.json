@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "E:/Coding/Nexus_Sim/engine"
+    "cmake.sourceDirectory": "E:/Project/NexusSim/Nexus_Sim/engine",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/engine/build/compile_commands.json"
 }
