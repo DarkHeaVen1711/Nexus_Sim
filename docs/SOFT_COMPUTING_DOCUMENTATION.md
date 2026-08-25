@@ -6,7 +6,7 @@
 
 The Soft Computing subsystem provides two gradient-free optimization techniques for NexusSim: a genetic algorithm (GA) that replaces manual parameter calibration with an automated evolutionary search, and a fuzzy-logic signal controller that provides a third non-learned signal strategy alongside Webster's formula and RL. Together, these demonstrate optimization without gradients (GA) and approximate reasoning under uncertainty (fuzzy logic)—the two core pillars of soft computing—integrated with the simulation engine through the same pluggable signal-policy interface and calibration pipeline.
 
-**Key references:** `docs/IMPLEMENTATION_PLAN.md` (Phase 13), `docs/NexusSim_Explained.md` §8, `docs/PRD.md` G7, `docs/TRD.md` §4.1 (TR-ENG-09/11), §4.2 (TR-PIPE-07).
+**Key references:** `docs/TEAM_IMPLEMENTATION_PLAN.md` (Phases 13, 28–30), `docs/PRD.md` G7, `docs/TRD.md` §4.1 (TR-ENG-09/11), §4.2 (TR-PIPE-07).
 
 ---
 
@@ -242,9 +242,9 @@ Wait time:
 
 | Document | Section | Content |
 |----------|---------|---------|
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 13 | Full phase: GA calibration (13.1–13.4), fuzzy controller (13.5–13.6), dashboard (13.7), ablation (13.8) |
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 14.6 | CV congestion wired into GA as additional fitness term |
-| `docs/NexusSim_Explained.md` | §8 | Soft computing design: GA calibration (§8.1), fuzzy controller (§8.2) |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 13 | Full phase: GA calibration (13.1–13.4), fuzzy controller (13.5–13.6), dashboard (13.7), ablation (13.8) |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 14.6 | CV congestion wired into GA as additional fitness term |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 28–30 | Expanded SC: PSO, SA, ES, ACS, ABC, ANFIS, Type-2, GP, Rough Sets, NSGA-II |
 | `docs/PRD.md` | G7, G6, F7 | Soft computing goals, pluggable signal policies |
 | `docs/TRD.md` | §4.2 (TR-PIPE-07) | GA calibration technical requirement |
 | `docs/TRD.md` | §4.1 (TR-ENG-09, TR-ENG-11) | SignalPolicy interface, FuzzyPolicy technical requirements |

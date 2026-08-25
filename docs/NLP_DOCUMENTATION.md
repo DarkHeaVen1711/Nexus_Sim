@@ -6,7 +6,7 @@
 
 The NLP subsystem provides two complementary natural-language interfaces for NexusSim: a live metrics chat that answers questions about current simulation state, and an incident report parser that converts free-text incident descriptions into structured simulation mutations. Together, these demonstrate classical NLP techniques (rule-based intent classification, gazetteer lookup, fuzzy string matching) alongside an optional modern LLM tool-calling layer, all integrated with the live C++ simulation engine through WebSocket and REST APIs.
 
-**Key references:** `docs/IMPLEMENTATION_PLAN.md` (Phases 16–17), `docs/NexusSim_Explained.md` §7, `docs/PRD.md` G10/G11, `docs/TRD.md` §4.3 (TR-ML-09, TR-ML-10).
+**Key references:** `docs/TEAM_IMPLEMENTATION_PLAN.md` (Phases 16–17, 31–33), `docs/PRD.md` G10/G11, `docs/TRD.md` §4.3 (TR-ML-09, TR-ML-10).
 
 ---
 
@@ -175,10 +175,10 @@ void apply_incident(
 
 | Document | Section | Content |
 |----------|---------|---------|
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 16 | NLP live metrics chat: service, intents, LLM layer, endpoint, panel, accuracy |
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 17 | NLP incident reports: parser, endpoint, engine apply, broadcast, panel, tests |
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 18.1–18.4 | Cross-subsystem integration: `make demo` launches chat service |
-| `docs/NexusSim_Explained.md` | §7 | NLP design: chat (§7.1), incidents (§7.2), cross-subsystem demo |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 16 | NLP live metrics chat: service, intents, LLM layer, endpoint, panel, accuracy |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 17 | NLP incident reports: parser, endpoint, engine apply, broadcast, panel, tests |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 18.1–18.4 | Cross-subsystem integration: `make demo` launches chat service |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 31–33 | Expanded NLP: sentiment, NER, events, coref, summarization, QA, KG |
 | `docs/PRD.md` | G10, G11, F11, F12 | NLP goals, features, success metrics |
 | `docs/TRD.md` | §4.3 (TR-ML-09, TR-ML-10) | NLP chat and incident parser technical requirements |
 | `docs/TRD.md` | §4.1 (TR-ENG-13) | Engine `apply_incident()` technical requirement |

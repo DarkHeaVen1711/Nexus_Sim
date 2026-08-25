@@ -6,7 +6,7 @@
 
 The Computer Vision subsystem provides two complementary CV pipelines for NexusSim: a real-world road congestion classifier that processes traffic-tile imagery from ToS-compliant map APIs, and a synthetic virtual camera that renders and analyzes a live top-down view of the simulation itself. Together, these demonstrate classical computer vision techniques (HSV thresholding, contour/blob detection, color segmentation) alongside learned methods (CNN classification), all integrated with the simulation engine through independent sidecar processes.
 
-**Key references:** `docs/IMPLEMENTATION_PLAN.md` (Phases 14–15), `docs/NexusSim_Explained.md` §6, `docs/PRD.md` G8/G9, `docs/TRD.md` §4.3 (TR-ML-08, TR-PIPE-08).
+**Key references:** `docs/TEAM_IMPLEMENTATION_PLAN.md` (Phases 14–15, 25–27), `docs/PRD.md` G8/G9, `docs/TRD.md` §4.3 (TR-ML-08, TR-PIPE-08).
 
 ---
 
@@ -185,16 +185,16 @@ Engine WS stream ──→ virtual_camera.py ──→ virtual_camera_service.py
 
 | Document | Section | Content |
 |----------|---------|---------|
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 14 | Real-world congestion classification: bbox config, tile fetch, classical CV, CNN, export, GA integration, dashboard overlay |
-| `docs/IMPLEMENTATION_PLAN.md` | Phase 15 | Synthetic virtual camera: render, detection, service, panel, accuracy |
-| `docs/NexusSim_Explained.md` | §6 | CV design: two complementary pipelines (§6.1, §6.2) |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 14 | Real-world congestion classification: bbox config, tile fetch, classical CV, CNN, export, GA integration, dashboard overlay |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 15 | Synthetic virtual camera: render, detection, service, panel, accuracy |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 25–27 | Expanded CV: YOLO, DeepSORT, U-Net, Mask R-CNN, optical flow, anomaly, lane detection, crowd density |
 | `docs/PRD.md` | G8, G9, F8, F9 | CV goals, features, success metrics |
 | `docs/TRD.md` | §4.3 (TR-ML-08) | Virtual camera technical requirement |
 | `docs/TRD.md` | §4.2 (TR-PIPE-08) | CV congestion classification technical requirement |
 | `docs/TRD.md` | §4.4 (TR-DASH-07, TR-DASH-08) | Dashboard CV panel requirements |
 | `docs/TRD.md` | §5.5 | Sidecar service table: virtual camera on port 9003 |
 | `docs/TECH_STACK.md` | §Subsystem 2 | Python sidecar pattern; OpenCV mentioned as pipeline tool |
-| `docs/NexusSim_Explained.md` | §4 | BR-6 compliance: Mapbox/TomTom substitution for Google Maps |
+| `docs/PRD.md` | §3 (BR-6) | BR-6 compliance: Mapbox/TomTom substitution for Google Maps |
 
 ---
 

@@ -6,7 +6,7 @@
 
 Reinforcement Learning is the core adaptive intelligence of NexusSim, providing learned signal-control policies that replace the fixed-cycle Webster's formula baseline. The RL subsystem trains decentralized multi-agent proximal policy optimization (MAPPO) agents—one per signalized intersection—that observe local traffic conditions and decide moment-to-moment whether to extend or switch signal phases. The system is expanded to a 12-algorithm inventory spanning tabular value, deep value, policy-gradient, actor-critic, and continuous-control families, all sharing a common training and evaluation harness.
 
-**Key references:** `docs/IMPLEMENTATION_PLAN.md` (Phases 7–9, 19–24), `docs/NexusSim_Explained.md` §5, `docs/PRD.md` G2/G13, `docs/TRD.md` §4.3 (TR-ML-01 through TR-ML-19).
+**Key references:** `docs/TEAM_IMPLEMENTATION_PLAN.md` (Phases 7–9, 19–24), `docs/PRD.md` G2/G13, `docs/TRD.md` §4.3 (TR-ML-01 through TR-ML-19).
 
 ---
 
@@ -195,9 +195,8 @@ pytest>=7.0
 
 | Document | Section | Content |
 |----------|---------|---------|
-| `docs/IMPLEMENTATION_PLAN.md` | Phases 7–9 | MARL environment, ONNX export, multi-city training |
-| `docs/IMPLEMENTATION_PLAN.md` | Phases 19–24 | Shared RL framework, 12 algorithms, C++ deployment, results |
-| `docs/NexusSim_Explained.md` | §5 | RL design, 12-algorithm inventory, ONNX deployment |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 7–9 | MARL environment, ONNX export, multi-city training |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 19–24 | Shared RL framework, 12 algorithms, C++ deployment, results |
 | `docs/PRD.md` | G2, G13, §7 | MARL goals, success metrics |
 | `docs/TRD.md` | §4.3 | TR-ML-01 through TR-ML-19, full requirement traceability |
 | `docs/TECH_STACK.md` | §Subsystem 3 | PyTorch, Gymnasium, MAPPO, ONNX Runtime, MLflow |

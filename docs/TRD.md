@@ -6,13 +6,12 @@
 **Last Updated:** August 2026
 
 > **Source of truth.** This TRD is written against the latest documentation and
-> verified codebase state: `docs/NexusSim_Explained.md` (verified, code-cited),
-> `PRD.md` v2.0, `TECH_STACK.md`, `IMPLEMENTATION_PLAN.md` (Phases 0–18),
-> `docs/graph_schema.md`, `docs/od_matrix_schema.md`, `docs/e2e_checklist.md`, and
-> the working tree of the `engine/`, `pipeline/`, `ml/`, and `dashboard/`
-> directories. Functional/business requirement IDs (FR, NFR, BR) are shared with
-> `docs/NexusSim_Explained.md §3`; `TR-*` in this document extends that set with
-> module-level technical requirements and is traceable to implementation-plan tasks.
+> verified codebase state: `PRD.md` v2.0, `TECH_STACK.md`,
+> `docs/TEAM_IMPLEMENTATION_PLAN.md`, `docs/graph_schema.md`, `docs/od_matrix_schema.md`,
+> `docs/e2e_checklist.md`, and the working tree of the `engine/`, `pipeline/`, `ml/`,
+> and `dashboard/` directories. Functional/business requirement IDs (FR, NFR, BR) are
+> defined in this document; `TR-*` extends that set with module-level technical
+> requirements and is traceable to implementation-plan tasks.
 
 ---
 
@@ -26,7 +25,7 @@ Computing (BR-1, BR-3).
 This document specifies the **technical** requirements: the system's architecture,
 module-by-module requirements, interface contracts, data schemas, non-functional
 targets, and the verification each requirement maps to. It is the contract between
-the product intent (`PRD.md`) and the implementation plan (`IMPLEMENTATION_PLAN.md`).
+the product intent (`PRD.md`) and the implementation plan (`TEAM_IMPLEMENTATION_PLAN.md`).
 
 **Scope:** engine, pipeline, ML, dashboard, and the four-subject extensions
 (Phases 12–18). **Out of scope:** real signal hardware control, live city monitoring,
@@ -39,8 +38,8 @@ end-user navigation.
 | Ref | Document | Purpose |
 |-----|----------|---------|
 | [1] | `PRD.md` (v2.0) | Product goals, features, success metrics |
-| [2] | `docs/NexusSim_Explained.md` | Code-verified architecture + FR/NFR/TR/BR requirements |
-| [3] | `IMPLEMENTATION_PLAN.md` | Phase-gated build plan (tasks, branches, checkpoints) |
+| [2] | `docs/TRD.md` | FR/NFR/TR/BR requirements (this document) |
+| [3] | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase-gated team build plan (tasks, branches, checkpoints) |
 | [4] | `TECH_STACK.md` | Technology decisions and rationale |
 | [5] | `docs/graph_schema.md` | `graph.json` schema |
 | [6] | `docs/od_matrix_schema.md` | `od_matrix.json` schema |
@@ -255,7 +254,7 @@ Origin–destination demand keyed by zone pair with hourly rates. `socrata` matr
 ## 9. Verification and Acceptance Mapping
 
 Each requirement above is accepted via its plan-phase checkpoint artifact
-(`IMPLEMENTATION_PLAN.md` Phase Summary) and the phase-gated `docs/e2e_checklist.md`:
+(`TEAM_IMPLEMENTATION_PLAN.md` Phase Summary) and the phase-gated `docs/e2e_checklist.md`:
 
 | Phase | Checkpoint artifact | Verifies |
 |-------|---------------------|----------|
@@ -297,4 +296,4 @@ Each requirement above is accepted via its plan-phase checkpoint artifact
 | G13 (12 RL algorithms) | TR-ML-11…19 | 19–24 |
 | BR-1…BR-6 | TR-ML-01…10, TR-PIPE-07/08, TR-ENG-09/11/13, TR-DASH-05…10 | 12–18 |
 
-Full FR/NFR/TR/BR definitions with acceptance criteria: `docs/NexusSim_Explained.md §3`.
+Full FR/NFR/TR/BR definitions with acceptance criteria: `docs/TRD.md §4`.

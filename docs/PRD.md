@@ -6,13 +6,12 @@
 **Last Updated:** August 2026
 
 > **Revision notice.** v2.0 supersedes v1.0 (July 2026). It incorporates the scope
-> confirmed in the latest documentation — `docs/NexusSim_Explained.md`, `docs/PRD.md`,
-> `IMPLEMENTATION_PLAN.md` (Phases 12–18) and `TECH_STACK.md` — which extends the
-> product from "engine + pipeline + dashboard" into **one integrated system covering
-> four academic subjects: Reinforcement Learning, Computer Vision, NLP, and Soft
-> Computing** (BR-1–BR-6). Requirement IDs (FR / NFR / TR / BR) are shared with
-> `docs/NexusSim_Explained.md §3` and are traced to implementation phases in
-> `IMPLEMENTATION_PLAN.md`.
+> confirmed in the latest documentation — `docs/PRD.md`, `docs/TEAM_IMPLEMENTATION_PLAN.md`
+> and `TECH_STACK.md` — which extends the product from "engine + pipeline + dashboard"
+> into **one integrated system covering four academic subjects: Reinforcement Learning,
+> Computer Vision, NLP, and Soft Computing** (BR-1–BR-6). Requirement IDs (FR / NFR / TR / BR)
+> are shared with `docs/TRD.md` and are traced to implementation phases in
+> `docs/TEAM_IMPLEMENTATION_PLAN.md`.
 
 ---
 
@@ -227,4 +226,4 @@ Reviews code architecture, model design decisions, and validation methodology ac
 
 ## 10. Requirement Traceability
 
-Full requirement-level traceability (FR-1…FR-15, NFR-1…NFR-7, TR-1…TR-7, BR-1…BR-6) with status and acceptance criteria lives in `docs/NexusSim_Explained.md §3`. Mapping to implementation phases is in `IMPLEMENTATION_PLAN.md`. Mapping to technical detail and interfaces is in `TRD.md`.
+Full requirement-level traceability (FR-1…FR-15, NFR-1…NFR-7, TR-1…TR-7, BR-1…BR-6) with status and acceptance criteria lives in `docs/TRD.md`. Mapping to implementation phases is in `docs/TEAM_IMPLEMENTATION_PLAN.md`.
