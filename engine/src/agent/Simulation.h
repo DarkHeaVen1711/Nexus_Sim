@@ -45,6 +45,10 @@ public:
     // inference call; otherwise Webster's fixed timings remain in effect.
     void set_policy(ai::InferenceEngine* policy) { policy_ = policy; }
 
+    // Phase 8.7: control-mode label broadcast with every state frame so the
+    // dashboard can badge the run as AI or baseline (Webster).
+    void set_signal_mode(const std::string& m) { signal_mode_ = m; }
+
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
         std::mt19937 rng(42);
@@ -299,7 +303,9 @@ public:
         json += std::to_string(arrived);
         json += ",\"avg_wait_time\":";
         json += std::to_string(avg_wait_time_);
-        json += ",\"gini_coefficient\":";
+        json += ",\"signal_mode\":\"";
+        json += signal_mode_;
+        json += "\",\"gini_coefficient\":";
         json += std::to_string(gini_coefficient_);
         json += "},\"zone_metrics\":[";
         for (size_t z = 0; z < zone_wait_times_.size(); ++z) {
@@ -436,6 +442,7 @@ private:
     double last_policy_tick_ = 0.0;
     static constexpr double kPolicyInterval = 5.0; // seconds between decisions
     std::unordered_map<std::pair<int64_t,int64_t>,int,PairHash> wait_counts_;
+    std::string signal_mode_ = "webster";
 
     // Metrics
     double avg_wait_time_ = 0.0;
