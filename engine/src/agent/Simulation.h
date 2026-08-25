@@ -178,6 +178,7 @@ public:
 
         // Tick signal controllers
         for (auto& [id, sc] : signals_) sc->tick(dt);
+        maybe_apply_policy();
 
         // Snapshot phase (sequential) — safe reads for parallel updates
         snap_x_.resize(N);
@@ -764,6 +765,30 @@ private:
         int64_t node_id = (ei < p.size()) ? p[ei] : p.back();
         const Node* n = graph_.get_node(node_id);
         return n ? n->zone_id : 0;
+    }
+
+    // Runs the policy every kPolicyInterval seconds. All intersections share
+    // one batched inference call; SWITCH cuts the current green short while
+    // EXTEND leaves Webster timing in effect for that controller.
+    void maybe_apply_policy() {
+        if (!policy_ || !policy_->is_loaded()) return;
+        if (sim_time_ - last_policy_tick_ < kPolicyInterval) return;
+        last_policy_tick_ = sim_time_;
+        collect_wait_counts();
+
+        std::vector<float> obs;
+        obs.reserve(signals_.size() * policy_->obs_dim());
+        for (const auto& [id, sc] : signals_)
+            append_observation(*sc, obs);
+
+        auto actions = policy_->batch_infer(obs, signals_.size());
+        if (actions.size() != signals_.size()) return;
+
+        size_t k = 0;
+        for (const auto& [id, sc] : signals_) {
+            if (actions[k] == 1) sc->end_green(); // SWITCH
+            ++k;
+        }
     }
 
     // Counts agents currently queued (near-zero velocity) per incoming edge

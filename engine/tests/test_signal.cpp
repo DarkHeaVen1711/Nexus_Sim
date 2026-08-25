@@ -80,6 +80,26 @@ TEST_F(SignalControllerTest, EmptyPhasesNoCrash) {
     EXPECT_FALSE(empty_sc.is_green(1));
 }
 
+TEST_F(SignalControllerTest, EndGreenSwitchesToYellow) {
+    ASSERT_TRUE(sc->end_green());
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::YELLOW);
+}
+
+TEST_F(SignalControllerTest, EndGreenOnlyWorksDuringGreen) {
+    sc->tick(sc->phases[0].green_time + 0.1); // now YELLOW
+    EXPECT_FALSE(sc->end_green());
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::YELLOW);
+}
+
+TEST_F(SignalControllerTest, EndGreenFollowsNormalSequence) {
+    ASSERT_TRUE(sc->end_green());
+    sc->tick(sc->phases[0].yellow_time + 0.1);
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::RED);
+    sc->tick(sc->phases[0].red_clearance + 0.1);
+    EXPECT_EQ(sc->current_state, SignalController::PhaseState::GREEN);
+    EXPECT_EQ(sc->current_phase_idx, 1);
+}
+
 TEST(GiniTest, UniformDistribution) {
     std::vector<double> v = {5.0, 5.0, 5.0, 5.0};
     EXPECT_NEAR(Simulation::compute_gini(v), 0.0, 1e-10);
