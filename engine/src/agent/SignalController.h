@@ -72,6 +72,16 @@ public:
         current_state = PhaseState::GREEN;
     }
 
+    // AI control hook (Phase 8.5): terminate the current green immediately,
+    // entering the standard yellow -> red -> next phase sequence. Returns
+    // false when the controller is not in GREEN (nothing to cut short).
+    bool end_green() {
+        if (phases.empty() || current_state != PhaseState::GREEN) return false;
+        current_state = PhaseState::YELLOW;
+        current_timer = phases[current_phase_idx].yellow_time;
+        return true;
+    }
+
     void tick(double dt) {
         if (phases.empty()) return;
 
