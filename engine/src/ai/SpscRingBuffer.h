@@ -22,11 +22,18 @@ namespace ai {
 template <typename T, std::size_t Capacity>
 class SpscRingBuffer {
     static_assert(Capacity > 0, "capacity must be positive");
-    static_assert(std::is_move_constructible_v<T> ||
-                  std::is_copy_constructible_v<T>,
-                  "T must be copy or move constructible");
+    // Slots are pre-constructed and recycled via move assignment, so T must
+    // be default constructible and move assignable (copyability optional).
+    static_assert(std::is_default_constructible_v<T>,
+                  "T must be default constructible");
+    static_assert(std::is_move_assignable_v<T>,
+                  "T must be move assignable");
 
 public:
+    SpscRingBuffer() = default;
+    SpscRingBuffer(const SpscRingBuffer&) = delete;
+    SpscRingBuffer& operator=(const SpscRingBuffer&) = delete;
+
     // Returns false when the buffer is full (the producer then decides
     // whether to drop the frame — stale observations are expendable).
     bool push(const T& value) {
@@ -38,12 +45,22 @@ public:
         return true;
     }
 
+    // Moving overload for hand-built payloads (e.g. observation vectors).
+    bool push(T&& value) {
+        const size_t tail = tail_.load(std::memory_order_relaxed);
+        if (tail - head_.load(std::memory_order_acquire) == Capacity)
+            return false;
+        slots_[tail % Capacity] = std::move(value);
+        tail_.store(tail + 1, std::memory_order_release);
+        return true;
+    }
+
     // Returns false when the buffer is empty.
     bool pop(T& out) {
         const size_t head = head_.load(std::memory_order_relaxed);
         if (head == tail_.load(std::memory_order_acquire))
             return false;
-        out = slots_[head % Capacity];
+        out = std::move(slots_[head % Capacity]);
         head_.store(head + 1, std::memory_order_release);
         return true;
     }
