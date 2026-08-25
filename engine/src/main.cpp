@@ -7,6 +7,7 @@
 #include <mutex>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
+#include "ai/InferenceEngine.h"
 #include "network/WebSocketServer.h"
 #include <nlohmann/json.hpp>
 
@@ -57,13 +58,32 @@ static std::string graph_path_for(const std::string& city) {
     return filepath;
 }
 
+// Loads the ONNX traffic-signal policy when requested. A missing or invalid
+// model is a warning, not an error: the engine falls back to Webster timing.
+static std::unique_ptr<nexussim::ai::InferenceEngine> load_policy_or_warn(
+    const std::string& policy_path) {
+    if (policy_path.empty()) return nullptr;
+    auto policy = std::make_unique<nexussim::ai::InferenceEngine>();
+    if (policy->load(policy_path)) {
+        std::cout << "AI policy loaded: " << policy_path << " (obs_dim="
+                  << policy->obs_dim() << ", actions="
+                  << policy->num_actions() << ")\n";
+    } else {
+        std::cerr << "WARNING: failed to load policy '" << policy_path
+                  << "'; falling back to Webster signal timing\n";
+        return nullptr;
+    }
+    return policy;
+}
+
 // Runs the simulation for one city until the dashboard asks for a different
 // city (interactive mode) or the configured duration elapses (headless mode).
 static void run_city(const std::string& city, int agent_count, int duration_min,
                      double chaos, double speed_factor, double route_spread,
                      double dt, bool fast, bool no_ws,
                      const std::string& journey_csv,
-                     nexussim::network::WebSocketServer* ws_server) {
+                     nexussim::network::WebSocketServer* ws_server,
+                     nexussim::ai::InferenceEngine* policy) {
     std::string filepath = graph_path_for(city);
     std::ifstream test(filepath);
     if (!test.good()) {
@@ -95,6 +115,7 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     sim.set_speed_factor(speed_factor);
     sim.set_route_spread(route_spread);
     sim.set_city_name(city);
+    sim.set_policy(policy);
 
     std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
     sim.spawn_agents(agent_count);
@@ -165,6 +186,7 @@ int main(int argc, char** argv) {
     double speed_factor = 1.0;
     double route_spread = 0.0;
     double chaos = 0.1;
+    std::string policy_path;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg(argv[i]);
@@ -185,6 +207,7 @@ int main(int argc, char** argv) {
         else if (arg == "--speed-factor") speed_factor = std::atof(next("--speed-factor"));
         else if (arg == "--route-spread") route_spread = std::atof(next("--route-spread"));
         else if (arg == "--chaos") chaos = std::atof(next("--chaos"));
+        else if (arg == "--policy") policy_path = next("--policy");
         else if (arg == "--fast") fast = true;
         else if (arg == "--no-ws") no_ws = true;
     }
@@ -224,11 +247,12 @@ int main(int argc, char** argv) {
     }
 
     double dt = 0.1;
+    auto policy = load_policy_or_warn(policy_path);
 
     if (fast) {
         run_city(city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, no_ws ? nullptr : &ws_server);
+                 journey_csv, no_ws ? nullptr : &ws_server, policy.get());
         return 0;
     }
 
@@ -258,7 +282,7 @@ int main(int argc, char** argv) {
 
         run_city(current_city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, &ws_server);
+                 journey_csv, &ws_server, policy.get());
 
         // run_city returned: the engine is stopping or the dashboard requested
         // a different city. Consume the request and continue with it.
