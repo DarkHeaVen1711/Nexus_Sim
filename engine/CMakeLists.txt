@@ -66,6 +66,45 @@ FetchContent_Declare(
 set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(flatbuffers)
 
+# ONNX Runtime — pinned v1.24.1 (Phase 8.2). Prebuilt release binaries; this
+# is the first stable line whose public headers are MinGW-compatible
+# (__stdcall instead of the MSVC-only _stdcall alias).
+option(ENABLE_ONNX "Enable ONNX Runtime inference support (AI signal mode)" ON)
+if(ENABLE_ONNX)
+  if(WIN32)
+    FetchContent_Declare(
+      onnxruntime
+      URL https://github.com/microsoft/onnxruntime/releases/download/v1.24.1/onnxruntime-win-x64-1.24.1.zip
+      URL_HASH SHA256=c72736c16442cad417ee4f45e3e2fbd10778e70a0fc1cb0e86f028d766e525af
+    )
+  else()
+    FetchContent_Declare(
+      onnxruntime
+      URL https://github.com/microsoft/onnxruntime/releases/download/v1.24.1/onnxruntime-linux-x64-1.24.1.tgz
+      URL_HASH SHA256=9142552248b735920f9390027e4512a2cacf8946a1ffcbe9071a5c210531026f
+    )
+  endif()
+  FetchContent_MakeAvailable(onnxruntime)
+
+  if(WIN32)
+    set(ORT_IMPORT_LIB "${onnxruntime_SOURCE_DIR}/lib/onnxruntime.lib")
+    set(ORT_RUNTIME_DLL "${onnxruntime_SOURCE_DIR}/lib/onnxruntime.dll")
+  else()
+    set(ORT_IMPORT_LIB "${onnxruntime_SOURCE_DIR}/lib/libonnxruntime.so")
+  endif()
+
+  add_library(onnxruntime_api SHARED IMPORTED GLOBAL)
+  target_include_directories(onnxruntime_api INTERFACE "${onnxruntime_SOURCE_DIR}/include")
+  if(WIN32)
+    set_target_properties(onnxruntime_api PROPERTIES
+      IMPORTED_LOCATION "${ORT_RUNTIME_DLL}"
+      IMPORTED_IMPLIB "${ORT_IMPORT_LIB}")
+  else()
+    set_target_properties(onnxruntime_api PROPERTIES
+      IMPORTED_LOCATION "${ORT_IMPORT_LIB}")
+  endif()
+endif()
+
 # uSockets (no CMakeLists — must be built manually from source)
 FetchContent_Declare(
   uSockets
@@ -161,15 +200,31 @@ add_custom_command(
 )
 add_custom_target(generate_fbs DEPENDS ${SCHEMA_OUT_DIR}/agent_delta_generated.h)
 
-add_library(engine_lib 
+add_library(engine_lib
     src/graph/GraphLoader.cpp
 )
 add_dependencies(engine_lib generate_fbs)
 target_link_libraries(engine_lib PUBLIC nlohmann_json::nlohmann_json flatbuffers uSockets_lib)
 target_include_directories(engine_lib PUBLIC src ${SCHEMA_OUT_DIR} ${uwebsockets_SOURCE_DIR}/src ${ZLIB_INCLUDE_DIRS})
 
+if(ENABLE_ONNX)
+  target_link_libraries(engine_lib PUBLIC onnxruntime_api)
+  target_compile_definitions(engine_lib PUBLIC NEXUS_HAS_ONNX=1)
+  # App-local onnxruntime.dll so Windows never resolves the stale system copy.
+  if(WIN32)
+    macro(copy_ort_dll target)
+      add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ORT_RUNTIME_DLL}"
+                $<TARGET_FILE_DIR:${target}>)
+    endmacro()
+  endif()
+endif()
+
 add_executable(engine src/main.cpp)
 target_link_libraries(engine PRIVATE engine_lib ${ZLIB_LIBRARIES})
+if(WIN32 AND ENABLE_ONNX)
+  copy_ort_dll(engine)
+endif()
 
 # Testing
 if(ENABLE_TESTING)
@@ -183,4 +238,8 @@ if(ENABLE_TESTING)
   # Benchmark
   add_executable(bench_quadtree bench/bench_quadtree.cpp)
   target_link_libraries(bench_quadtree PRIVATE engine_lib)
+  if(WIN32 AND ENABLE_ONNX)
+    copy_ort_dll(bench_quadtree)
+    copy_ort_dll(engine_test)
+  endif()
 endif()
