@@ -86,9 +86,52 @@ bool InferenceEngine::load(const std::string& model_path) {
     }
 }
 
-std::vector<int> InferenceEngine::batch_infer(const std::vector<float>&,
-                                              size_t) {
-    return {}; // wired in the next commit
+std::vector<int> InferenceEngine::batch_infer(
+    const std::vector<float>& observations, size_t batch_size) {
+    if (!loaded_ || !impl_ || !impl_->session) return {};
+    if (observations.size() != batch_size * obs_dim_) {
+        std::cerr << "[InferenceEngine] input size "
+                  << observations.size() << " != batch " << batch_size
+                  << " x obs_dim " << obs_dim_ << "\n";
+        return {};
+    }
+
+    try {
+        Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(
+            OrtArenaAllocator, OrtMemTypeDefault);
+        int64_t dims[2] = {static_cast<int64_t>(batch_size),
+                           static_cast<int64_t>(obs_dim_)};
+        Ort::Value tensor = Ort::Value::CreateTensor<float>(
+            mem, const_cast<float*>(observations.data()),
+            observations.size(), dims, 2);
+
+        Ort::AllocatorWithDefaultOptions alloc;
+        Ort::AllocatedStringPtr input_name =
+            impl_->session->GetInputNameAllocated(0, alloc);
+        Ort::AllocatedStringPtr output_name =
+            impl_->session->GetOutputNameAllocated(0, alloc);
+        const char* input_names[] = {input_name.get()};
+        const char* output_names[] = {output_name.get()};
+
+        auto outputs = impl_->session->Run(Ort::RunOptions{nullptr},
+                                           input_names, &tensor, 1,
+                                           output_names, 1);
+        float* logits = outputs[0].GetTensorMutableData<float>();
+
+        std::vector<int> actions(batch_size);
+        const int64_t n_actions = static_cast<int64_t>(num_actions_);
+        for (size_t b = 0; b < batch_size; ++b) {
+            const float* row = logits + b * n_actions;
+            int best = 0;
+            for (int64_t a = 1; a < n_actions; ++a)
+                if (row[a] > row[best]) best = static_cast<int>(a);
+            actions[b] = best;
+        }
+        return actions;
+    } catch (const Ort::Exception& e) {
+        std::cerr << "[InferenceEngine] inference failed: " << e.what() << "\n";
+        return {};
+    }
 }
 
 } // namespace ai
