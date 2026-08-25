@@ -79,6 +79,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hidden", type=int, default=64,
                         help="hidden layer width used at training time")
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--skip-validation", action="store_true",
+                        help="skip the 10-input ONNX/PyTorch parity check")
     return parser.parse_args()
 
 
@@ -88,6 +90,14 @@ def main() -> None:
                              args.obs_dim, args.hidden, args.device)
     size_kb = os.path.getsize(path) / 1024.0
     print("Exported %s (%.1f KB)" % (path, size_kb))
+
+    ok = True
+    if not args.skip_validation:
+        from export.validate_onnx import validate_export
+        ok = validate_export(path, args.obs_dim, args.hidden, args.checkpoint)
+    if not ok:
+        print("ERROR: exported model failed validation; refusing to ship it")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
