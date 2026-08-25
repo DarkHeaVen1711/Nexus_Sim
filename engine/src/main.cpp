@@ -116,6 +116,7 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     sim.set_route_spread(route_spread);
     sim.set_city_name(city);
     sim.set_policy(policy);
+    sim.set_signal_mode(policy ? "ai" : "webster");
 
     std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
     sim.spawn_agents(agent_count);
@@ -248,6 +249,8 @@ int main(int argc, char** argv) {
 
     double dt = 0.1;
     auto policy = load_policy_or_warn(policy_path);
+    std::cout << "Signal mode: "
+              << (policy ? "ai" : "webster") << "\n";
 
     if (fast) {
         run_city(city, static_cast<int>(agent_count), duration_min,
