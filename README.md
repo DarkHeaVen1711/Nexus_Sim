@@ -300,6 +300,31 @@ python -m train.train --city toy --episodes 500 --baseline-episodes 5
 - **Validated defaults**: `--lr 5e-4 --gamma 0.95 --entropy-coef 0.003 --episodes-per-update 4`, with rewards auto-scaled from the baseline run.
 - **Result on the toy demand**: the trained policy reaches ≈ −7,300 reward within 500 episodes vs the ≈ −11,270 Webster baseline (≈ 35% better), satisfying the Phase 7.8 convergence checkpoint.
 
+### ONNX export and engine inference
+
+The trained checkpoint can be exported to ONNX and consumed directly by the C++ engine (Phase 8):
+
+```bash
+cd ml
+python -m export.export_onnx --checkpoint checkpoints/toy/500.pt --output policy.onnx
+
+# Engine side: AI signal control with graceful fallback to Webster timing
+engine --city piedmont --agents 500 --policy policy.onnx
+```
+
+If `--policy` is omitted, or the model fails to load, a warning is printed and Webster fixed-cycle timing remains in effect.
+
+Inference latency is micro-benchmarked against the US-E04 budget (p95 ≤ 8 ms per batched decision across all intersections):
+
+```text
+$ bench_inference --model tests/fixtures/policy_toy.onnx            # batch=64
+Latency (ms): min=0.0098 avg=0.0119 p95=0.0179 max=0.0454   PASS
+$ bench_inference --model tests/fixtures/policy_toy.onnx --batch 256
+Latency (ms): min=0.0164 avg=0.0179 p95=0.0265 max=0.0775   PASS
+```
+
+(Measured on Windows x64 / MinGW-w64 GCC 16 / onnxruntime 1.24.1 CPU; exit code 2 when the budget is exceeded.)
+
 ### Generating new city data
 
 The pipeline extracts, cleans, and enriches road networks from OpenStreetMap:
