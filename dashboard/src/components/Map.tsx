@@ -51,7 +51,7 @@ const buildGraphFeature = (data: any): any => {
 };
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, sendMessage, resetState } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, sendMessage, resetState } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [graphLoading, setGraphLoading] = useState(false);
@@ -197,7 +197,7 @@ export const Map: React.FC = () => {
         </button>
       </div>
 
-      <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} />
+      <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} signalMode={engineMode} />
 
       <MapContainer
         center={CITY_CENTER}

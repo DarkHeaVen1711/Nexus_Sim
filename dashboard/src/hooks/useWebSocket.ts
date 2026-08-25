@@ -20,6 +20,7 @@ interface UseWebSocketResult {
   isReconnecting: boolean;
   engineCity: string | null;
   engineError: string | null;
+  engineMode: 'ai' | 'webster' | null;
   sendMessage: (data: string) => void;
   resetState: () => void;
 }
@@ -35,6 +36,9 @@ export function useWebSocket(url: string): UseWebSocketResult {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [engineCity, setEngineCity] = useState<string | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
+  // Phase 8.7: signal control mode reported by the engine ("ai" when a
+  // policy is loaded, "webster" for the fixed-time baseline).
+  const [engineMode, setEngineMode] = useState<'ai' | 'webster' | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -78,6 +82,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
             setMetrics(data.metrics);
             setZoneMetrics(data.zone_metrics || []);
             if (data.city) setEngineCity(data.city);
+            if (data.metrics.signal_mode === 'ai'
+                || data.metrics.signal_mode === 'webster') {
+              setEngineMode(data.metrics.signal_mode);
+            }
           }
         } catch (e) {
           console.error("Failed to parse websocket message", e);
@@ -136,5 +144,5 @@ export function useWebSocket(url: string): UseWebSocketResult {
     setEngineError(null);
   }, []);
 
-  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, sendMessage, resetState };
+  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, sendMessage, resetState };
 }

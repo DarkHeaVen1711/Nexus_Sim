@@ -16,6 +16,7 @@ interface MetricsPanelProps {
     gini_coefficient?: number;
   } | null;
   zoneMetrics?: ZoneMetric[];
+  signalMode?: 'ai' | 'webster' | null;
 }
 
 function barColor(wt: number, maxWt: number): string {
@@ -26,7 +27,7 @@ function barColor(wt: number, maxWt: number): string {
   return '#ef4444';
 }
 
-export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics }) => {
+export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics, signalMode }) => {
   if (!metrics) return null;
 
   const gini = metrics.gini_coefficient ?? 0;
@@ -68,6 +69,22 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics
       <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 20px 0', display: 'flex', alignItems: 'center' }}>
         <span style={{ backgroundColor: '#3b82f6', width: '8px', height: '24px', borderRadius: '4px', marginRight: '12px' }}></span>
         Simulation Metrics
+        {signalMode && (
+          <span style={{
+            marginLeft: 'auto',
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '1px',
+            textTransform: 'uppercase' as const,
+            padding: '3px 8px',
+            borderRadius: '9999px',
+            color: signalMode === 'ai' ? '#c4b5fd' : '#9ca3af',
+            backgroundColor: signalMode === 'ai' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+            border: `1px solid ${signalMode === 'ai' ? '#8b5cf6' : '#4b5563'}`,
+          }}>
+            {signalMode === 'ai' ? 'AI Mode' : 'Baseline'}
+          </span>
+        )}
       </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
