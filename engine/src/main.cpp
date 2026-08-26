@@ -275,9 +275,9 @@ int main(int argc, char** argv) {
                     break;
                 }
 #ifdef _WIN32
-                Sleep(200);
+                Sleep(50);
 #else
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
 #endif
             }
             if (g_stop) break;
