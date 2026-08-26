@@ -26,6 +26,7 @@ if ML_DIR not in sys.path:
     sys.path.insert(0, ML_DIR)
 
 from env import NexusSimEnv, build_toy_graph
+from env.graph_loader import load_graph_json
 from models import PolicyNetwork, ValueNetwork
 from train.ppo import compute_gae, ppo_update
 from train.rollout import collect_episode, evaluate_fixed_baseline
@@ -101,6 +102,15 @@ def main() -> None:
     device = torch.device(args.device)
 
     graph = build_toy_graph()
+    if args.city != "toy":
+        data_dir = os.path.join(ML_DIR, "..", "data", args.city)
+        graph_path = os.path.join(data_dir, "graph.json")
+        if not os.path.isfile(graph_path):
+            print("WARNING: %s not found; falling back to toy graph" % graph_path)
+        else:
+            graph = load_graph_json(graph_path)
+            print("Loaded %s: %d intersections, %d zones" %
+                  (args.city, graph["num_intersections"], len(graph["zones"])))
     env = NexusSimEnv(
         graph=graph,
         seed=args.seed,
