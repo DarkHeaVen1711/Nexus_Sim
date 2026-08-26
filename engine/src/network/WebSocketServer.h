@@ -6,6 +6,8 @@
 #include <memory>
 #include <atomic>
 #include <mutex>
+#include <thread>
+#include <chrono>
 #include "../mingw_thread_compat.h"
 #include "App.h"
 #include <nlohmann/json.hpp>
@@ -31,7 +33,10 @@ public:
         // dashboard payload is small text JSON, so compression buys nothing.
         behavior.compression = uWS::DISABLED;
         behavior.maxPayloadLength = 16 * 1024 * 1024;
-        behavior.idleTimeout = 120;
+        // 5-minute idle timeout: long enough to survive graph loads and city
+        // switches; the server also sends protocol pings every 30 s to keep
+        // the connection alive even when no simulation data is flowing.
+        behavior.idleTimeout = 300;
         // The server streams continuously; reset the idle timer on every send so
         // passive (never-sending) dashboard clients are not dropped by the timeout.
         behavior.resetIdleTimeoutOnSend = true;
@@ -41,6 +46,13 @@ public:
             std::cout << "Client connected\n";
         };
         behavior.message = [this](uWS::WebSocket<false, true, int> *ws, std::string_view message, uWS::OpCode opCode) {
+            // Respond to client keepalive pings with pong. The pong send
+            // resets the idle-timeout timer so the client stays connected
+            // even when the engine is not broadcasting (e.g. city switch).
+            if (message == "ping") {
+                ws->send("pong", uWS::OpCode::TEXT);
+                return;
+            }
             // LOD culling: the dashboard sends its current viewport bounds and
             // the engine only includes agents inside them in the next broadcast.
             try {
@@ -91,6 +103,12 @@ public:
             }).run();
             app_.reset();
         });
+
+        // Start the keepalive ping timer. Sends a WebSocket protocol-level ping
+        // to every connected client every 30 s. The browser automatically replies
+        // with pong, and the send() call resets the idle-timeout timer, so the
+        // connection stays alive even when the engine is between cities.
+        start_ping_timer();
     }
 
     void broadcast(const uint8_t* data, size_t size) {
@@ -123,6 +141,8 @@ public:
     }
 
     ~WebSocketServer() {
+        ping_stop_.store(true);
+        if (ping_thread_.joinable()) ping_thread_.join();
         // Gracefully stop the uWS loop so no queued callbacks outlive this object.
         // close() must run on the event-loop thread; deferring it is thread-safe.
         uWS::Loop *loop = loop_.load();
@@ -150,6 +170,27 @@ private:
         });
     }
 
+    // Periodic WebSocket protocol-level ping to all connected clients.
+    // The browser automatically replies with pong; the send() resets the
+    // idle-timeout timer so the connection stays alive.
+    void start_ping_timer() {
+        ping_stop_.store(false);
+        ping_thread_ = std::thread([this]() {
+            while (!ping_stop_.load()) {
+                std::this_thread::sleep_for(std::chrono::seconds(30));
+                if (ping_stop_.load()) break;
+                uWS::Loop *loop = loop_.load();
+                if (!loop) continue;
+                loop->defer([this]() {
+                    std::lock_guard<std::mutex> lock(clients_mutex_);
+                    for (auto *ws : clients_) {
+                        ws->send(nullptr, uWS::OpCode::PING);
+                    }
+                });
+            }
+        });
+    }
+
     int port_;
     std::thread thread_;
     std::atomic<uWS::Loop*> loop_{nullptr};
@@ -157,6 +198,10 @@ private:
     std::vector<uWS::WebSocket<false, true, int>*> clients_;
     std::mutex clients_mutex_;
     std::function<void(const std::string&)> message_handler_;
+
+    // Keepalive ping timer
+    std::thread ping_thread_;
+    std::atomic<bool> ping_stop_{false};
 
     struct Bounds {
         bool set = false;

@@ -55,10 +55,14 @@ export function useWebSocket(url: string): UseWebSocketResult {
         setIsConnected(true);
         setIsReconnecting(false);
         reconnectAttempts.current = 0;
+        // Clear stale data from a previous connection so the dashboard doesn't
+        // flash old agents/metrics briefly after a reconnect.
+        resetState();
         // Ask which city the engine is simulating in case we connected after
         // its startup announcement (or the engine was started with --city).
         ws.send(JSON.stringify({ type: 'get_city' }));
         // Heartbeat so the server sees client activity and keeps the socket alive.
+        // The server replies with "pong", which also resets its idle-timeout.
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send('ping');
@@ -119,7 +123,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
     } catch (e) {
       console.error('Failed to create WebSocket:', e);
     }
-  }, [url]);
+  }, [url, resetState]);
 
   useEffect(() => {
     stoppedRef.current = false;
