@@ -14,9 +14,7 @@ import argparse
 import json
 import os
 import sys
-from pathlib import Path
 
-import numpy as np
 import torch
 
 ML_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -26,7 +24,7 @@ if ML_DIR not in sys.path:
 from env import NexusSimEnv, build_toy_graph
 from env.graph_loader import load_graph_json
 from models import PolicyNetwork, ValueNetwork
-from train.rollout import FixedCycleBaseline, evaluate_fixed_baseline
+from train.rollout import evaluate_fixed_baseline
 
 
 def _load_env(city: str, episode_steps: int = 100) -> NexusSimEnv:
@@ -43,9 +41,11 @@ def _load_env(city: str, episode_steps: int = 100) -> NexusSimEnv:
 def _eval_marl(env: NexusSimEnv, checkpoint_path: str, n_episodes: int = 20,
                device: str = "cpu") -> dict:
     obs_dim = env.observation_space.shape[0]
-    policy = PolicyNetwork(obs_dim).to(device)
-    value_net = ValueNetwork(obs_dim).to(device)
     ckpt = torch.load(checkpoint_path, map_location=device)
+    # Infer hidden size from checkpoint to support non-default architectures.
+    hidden_size = ckpt["policy_state"]["fc1.weight"].shape[0]
+    policy = PolicyNetwork(obs_dim, hidden=hidden_size).to(device)
+    value_net = ValueNetwork(obs_dim, hidden=hidden_size).to(device)
     policy.load_state_dict(ckpt["policy_state"])
     value_net.load_state_dict(ckpt["value_state"])
     policy.eval()
@@ -93,11 +93,13 @@ def main() -> None:
             marl = _eval_marl(env, args.checkpoint, args.episodes, args.device)
             print(f"  MARL:    reward={marl['episode_reward']:.1f}  "
                   f"pressure={marl['mean_pressure']:.3f}  gini={marl['gini']:.3f}")
-            improvement = ((marl["episode_reward"] - baseline["episode_reward"])
-                           / abs(baseline["episode_reward"]) * 100)
-            print(f"  Improvement: {improvement:+.1f}%")
+            denom = abs(baseline["episode_reward"])
             row["marl"] = marl
-            row["improvement_pct"] = improvement
+            if denom > 0:
+                improvement = ((marl["episode_reward"] - baseline["episode_reward"])
+                               / denom * 100)
+                print(f"  Improvement: {improvement:+.1f}%")
+                row["improvement_pct"] = improvement
         rows.append(row)
 
     out_path = os.path.join(ML_DIR, "results", "comparison.json")
