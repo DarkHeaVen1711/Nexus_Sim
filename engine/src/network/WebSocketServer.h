@@ -6,6 +6,7 @@
 #include <memory>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 #include <thread>
 #include <chrono>
 #include "../mingw_thread_compat.h"
@@ -49,7 +50,7 @@ public:
             // Respond to client keepalive pings with pong. The pong send
             // resets the idle-timeout timer so the client stays connected
             // even when the engine is not broadcasting (e.g. city switch).
-            if (message == "ping") {
+            if (opCode == uWS::OpCode::TEXT && message == "ping") {
                 ws->send("pong", uWS::OpCode::TEXT);
                 return;
             }
@@ -142,6 +143,7 @@ public:
 
     ~WebSocketServer() {
         ping_stop_.store(true);
+        ping_cv_.notify_one();
         if (ping_thread_.joinable()) ping_thread_.join();
         // Gracefully stop the uWS loop so no queued callbacks outlive this object.
         // close() must run on the event-loop thread; deferring it is thread-safe.
@@ -177,14 +179,18 @@ private:
         ping_stop_.store(false);
         ping_thread_ = std::thread([this]() {
             while (!ping_stop_.load()) {
-                std::this_thread::sleep_for(std::chrono::seconds(30));
+                {
+                    std::unique_lock<std::mutex> lock(ping_cv_mutex_);
+                    ping_cv_.wait_for(lock, std::chrono::seconds(30),
+                                      [this]() { return ping_stop_.load(); });
+                }
                 if (ping_stop_.load()) break;
                 uWS::Loop *loop = loop_.load();
                 if (!loop) continue;
                 loop->defer([this]() {
                     std::lock_guard<std::mutex> lock(clients_mutex_);
                     for (auto *ws : clients_) {
-                        ws->send(nullptr, uWS::OpCode::PING);
+                        ws->send(std::string_view(), uWS::OpCode::PING);
                     }
                 });
             }
@@ -202,6 +208,8 @@ private:
     // Keepalive ping timer
     std::thread ping_thread_;
     std::atomic<bool> ping_stop_{false};
+    std::condition_variable ping_cv_;
+    std::mutex ping_cv_mutex_;
 
     struct Bounds {
         bool set = false;

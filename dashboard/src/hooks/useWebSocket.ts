@@ -57,7 +57,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
         reconnectAttempts.current = 0;
         // Clear stale data from a previous connection so the dashboard doesn't
         // flash old agents/metrics briefly after a reconnect.
-        resetState();
+        setAgents([]);
+        setMetrics(null);
+        setZoneMetrics([]);
+        setEngineError(null);
         // Ask which city the engine is simulating in case we connected after
         // its startup announcement (or the engine was started with --city).
         ws.send(JSON.stringify({ type: 'get_city' }));
@@ -123,7 +126,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
     } catch (e) {
       console.error('Failed to create WebSocket:', e);
     }
-  }, [url, resetState]);
+  }, [url]);
 
   useEffect(() => {
     stoppedRef.current = false;
