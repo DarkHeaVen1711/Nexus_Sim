@@ -177,7 +177,8 @@ def load_graph_json(path: str | Any, default_base_rate: float = _DEFAULT_BASE_RA
                     break
             approach_info[d] = (downstream, travel_m)
 
-        # Skip signals with fewer than 2 real approaches (dead-end)
+        # Skip dead-end signals: no reachable downstream signal and fewer than
+        # 2 connected nodes (isolated or single-link intersections).
         if sum(1 for d, (ds, _) in approach_info.items() if ds is not None) < 1 and len(connected) < 2:
             continue
 
