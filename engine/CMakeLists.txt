@@ -3,6 +3,7 @@ project(NexusSim CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+cmake_policy(SET CMP0169 OLD)
 
 option(ENABLE_TESTING "Build tests and benchmarks" ON)
 
@@ -84,7 +85,10 @@ if(ENABLE_ONNX)
       URL_HASH SHA256=9142552248b735920f9390027e4512a2cacf8946a1ffcbe9071a5c210531026f
     )
   endif()
-  FetchContent_MakeAvailable(onnxruntime)
+  FetchContent_GetProperties(onnxruntime)
+  if(NOT onnxruntime_POPULATED)
+    FetchContent_Populate(onnxruntime)
+  endif()
 
   if(WIN32)
     set(ORT_IMPORT_LIB "${onnxruntime_SOURCE_DIR}/lib/onnxruntime.lib")

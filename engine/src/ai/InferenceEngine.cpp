@@ -140,6 +140,9 @@ std::vector<int> InferenceEngine::batch_infer(
 #else
 // !NEXUS_HAS_ONNX: stub so the engine builds without ONNX support. The
 // empty Impl keeps the PIMPL member well-formed.
+namespace nexussim {
+namespace ai {
+
 struct InferenceEngine::Impl {};
 
 InferenceEngine::InferenceEngine() = default;
