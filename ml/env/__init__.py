@@ -12,6 +12,7 @@ from .reward import (
     gini_coefficient,
 )
 from .toy_graph import build_toy_graph
+from .graph_loader import load_graph_json
 
 __all__ = [
     "NexusSimEnv",
@@ -22,4 +23,5 @@ __all__ = [
     "local_pressure",
     "gini_coefficient",
     "build_toy_graph",
+    "load_graph_json",
 ]
