@@ -16,6 +16,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
+from .graph_loader import load_graph_json
 from .observation import OBSERVATION_DIM, build_observation
 from .reward import baseline_zone_weights, combined_reward
 from .toy_graph import build_toy_graph
@@ -55,8 +56,10 @@ class NexusSimEnv(gym.Env):
         )
         self.action_space = spaces.Discrete(2)
 
-        zone_weights = baseline_zone_weights(self.graph["baseline_zone_wait"])
-        self.zone_weights = {z: w for z, w in zip(self.graph["zones"], zone_weights)}
+        zone_weights_list = baseline_zone_weights(self.graph["baseline_zone_wait"])
+        zone_weights_by_zone = {z: w for z, w in zip(self.graph["zones"], zone_weights_list)}
+        zone_map = self.graph.get("zone_map", {i: i for i in self.graph["intersections"]})
+        self.zone_weights = {i: zone_weights_by_zone[zone_map[i]] for i in self.graph["intersections"]}
         self.seed = seed
 
         self.sim = None
