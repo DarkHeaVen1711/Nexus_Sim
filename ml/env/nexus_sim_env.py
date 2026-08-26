@@ -16,7 +16,6 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 
-from .graph_loader import load_graph_json
 from .observation import OBSERVATION_DIM, build_observation
 from .reward import baseline_zone_weights, combined_reward
 from .toy_graph import build_toy_graph
