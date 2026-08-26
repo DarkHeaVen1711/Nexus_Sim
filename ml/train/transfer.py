@@ -29,10 +29,9 @@ if ML_DIR not in sys.path:
 
 from env import NexusSimEnv, build_toy_graph
 from env.graph_loader import load_graph_json
-from models import PolicyNetwork, ValueNetwork
 from train.ppo import compute_gae, ppo_update
 from train.rollout import collect_episode, evaluate_fixed_baseline
-from train.train import build_models, latest_checkpoint, load_checkpoint
+from train.train import build_models, latest_checkpoint
 
 _CPU = os.environ.get("NEXUS_TORCH_THREADS", "1")
 torch.set_num_threads(int(_CPU))
@@ -51,8 +50,10 @@ def _load_env(city: str, episode_steps: int = 100, seed: int = 0) -> NexusSimEnv
 
 def _resolve_source(args_source: str) -> str:
     """Return a checkpoint path. Accepts a city name or a direct .pt path."""
-    if args_source.endswith(".pt") and os.path.isfile(args_source):
-        return args_source
+    if args_source.endswith(".pt"):
+        if os.path.isfile(args_source):
+            return args_source
+        raise FileNotFoundError(f"Checkpoint path not found: {args_source}")
     ckpt_dir = os.path.join(ML_DIR, "checkpoints", args_source)
     path = latest_checkpoint(ckpt_dir)
     if path:
@@ -91,23 +92,27 @@ def main() -> None:
     print(f"Source checkpoint: {src_path}")
 
     env = _load_env(args.target, args.episode_steps, args.seed)
+    env.decision_interval = args.decision_interval
     obs_dim = env.observation_space.shape[0]
     print(f"Target: {args.target}  intersections={env.num_agents}  obs_dim={obs_dim}")
 
-    policy, value_net = build_models(obs_dim, args.hidden, device)
+    ckpt = torch.load(src_path, map_location=device)
+    src_obs_dim = ckpt["policy_state"]["fc1.weight"].shape[1]
+    src_hidden = ckpt["policy_state"]["fc1.weight"].shape[0]
+    if src_obs_dim == obs_dim:
+        policy, value_net = build_models(obs_dim, src_hidden, device)
+        policy.load_state_dict(ckpt["policy_state"])
+        value_net.load_state_dict(ckpt["value_state"])
+        print(f"Transferred weights (obs_dim={src_obs_dim}, hidden={src_hidden} match)")
+    else:
+        policy, value_net = build_models(obs_dim, args.hidden, device)
+        print(f"obs_dim mismatch ({src_obs_dim} -> {obs_dim}); training from scratch")
     policy_opt = optim.Adam(policy.parameters(), lr=args.lr)
     value_opt = optim.Adam(value_net.parameters(), lr=args.lr)
 
-    ckpt = torch.load(src_path, map_location=device)
-    src_obs_dim = ckpt["policy_state"]["fc1.weight"].shape[1]
-    if src_obs_dim == obs_dim:
-        policy.load_state_dict(ckpt["policy_state"])
-        value_net.load_state_dict(ckpt["value_state"])
-        print(f"Transferred weights (obs_dim={src_obs_dim} matches)")
-    else:
-        print(f"obs_dim mismatch ({src_obs_dim} -> {obs_dim}); training from scratch")
-
-    checkpoint_dir = os.path.join(ML_DIR, "checkpoints", f"{args.source}_to_{args.target}")
+    # Sanitize source tag: use basename without extension for directory name.
+    src_tag = os.path.splitext(os.path.basename(args.source))[0]
+    checkpoint_dir = os.path.join(ML_DIR, "checkpoints", f"{src_tag}_to_{args.target}")
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     baseline = evaluate_fixed_baseline(env, n_episodes=5)
