@@ -18,7 +18,7 @@ class FixedCycleBaseline:
 
     def __init__(self, env, switch_every: int = 4):
         self.switch_every = switch_every
-        self.extends = {i: 0 for i in range(env.num_agents)}
+        self.extends = {i: 0 for i in env.graph["intersections"]}
 
     def reset(self) -> None:
         for key in self.extends:
