@@ -6,8 +6,10 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
+import pytest
 import torch
+
+ort = pytest.importorskip("onnxruntime")
 
 ML_DIR = Path(__file__).resolve().parents[1]
 if str(ML_DIR) not in sys.path:

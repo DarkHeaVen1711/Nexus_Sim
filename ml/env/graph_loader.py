@@ -89,10 +89,17 @@ def _bfs_next_signal(
     adj: dict[int, list[tuple[int, float]]],
     signal_set: set[int],
     max_hops: int = _MAX_BFS_HOPS,
+    blocked: set[int] | None = None,
 ) -> tuple[int | None, float]:
     """BFS from *start*; return ``(next_signal_id, total_length_m)`` or
-    ``(None, 0)`` if none is reachable within *max_hops*."""
-    visited: set[int] = {start}
+    ``(None, 0)`` if none is reachable within *max_hops*.
+
+    ``blocked`` nodes can never be *traversed* (they are seeded in
+    ``visited``). For approach resolution the origin signal is blocked so a
+    dead-end leg cannot loop back through its own intersection to resolve a
+    downstream signal behind it as a phantom.
+    """
+    visited: set[int] = {start} | (blocked or set())
     queue: deque[tuple[int, float, int]] = deque([(start, 0.0, 0)])
     while queue:
         node, dist, hops = queue.popleft()
@@ -170,7 +177,8 @@ def load_graph_json(path: str | Any, default_base_rate: float = _DEFAULT_BASE_RA
                     travel_m = _haversine_m(s_node["lat"], s_node["lon"],
                                             nodes[nid]["lat"], nodes[nid]["lon"])
                     break
-                nxt, dist = _bfs_next_signal(nid, adj, signal_ids - {sid})
+                nxt, dist = _bfs_next_signal(nid, adj, signal_ids - {sid},
+                                             blocked={sid})
                 if nxt is not None:
                     downstream = nxt
                     travel_m = dist
