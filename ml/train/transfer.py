@@ -22,6 +22,7 @@ import mlflow
 import numpy as np
 import torch
 import torch.optim as optim
+from tqdm import tqdm
 
 ML_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ML_DIR not in sys.path:
@@ -124,6 +125,9 @@ def main() -> None:
     print(f"Reward scale: {reward_scale:.1f}")
 
     experiment = args.experiment or f"transfer-{args.source}-to-{args.target}"
+    # Keep using the repo's file-based tracking store (mlruns/) instead of the
+    # database backend MLflow now requires by default.
+    os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
     mlflow_uri = "file:///" + os.path.join(ML_DIR, "mlruns").replace("\\", "/")
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment)
@@ -136,62 +140,65 @@ def main() -> None:
         mlflow.log_metrics({("baseline_" + k): v for k, v in baseline.items()})
 
         agents = sorted(env.graph["intersections"])
-        for episode in range(args.episodes):
-            batch = {
-                i: {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
-                for i in agents
-            }
-            rollout = collect_episode(env, policy, value_net, device)
-            summary = rollout["summary"]
-            for i in agents:
-                tensors = rollout["tensors"][i]
-                scaled_rewards = tensors["rew"] / reward_scale
-                advantages, returns = compute_gae(
-                    scaled_rewards, tensors["val"], tensors["done"],
-                    args.gamma, args.lam,
-                )
-                batch[i]["obs"].append(tensors["obs"])
-                batch[i]["act"].append(tensors["act"])
-                batch[i]["logp"].append(tensors["logp"])
-                batch[i]["adv"].append(advantages)
-                batch[i]["ret"].append(returns)
+        with tqdm(total=args.episodes, desc=f"transfer {args.source} -> {args.target}",
+                  unit="ep", dynamic_ncols=True, mininterval=1.0) as pbar:
+            for episode in range(args.episodes):
+                batch = {
+                    i: {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
+                    for i in agents
+                }
+                rollout = collect_episode(env, policy, value_net, device)
+                summary = rollout["summary"]
+                for i in agents:
+                    tensors = rollout["tensors"][i]
+                    scaled_rewards = tensors["rew"] / reward_scale
+                    advantages, returns = compute_gae(
+                        scaled_rewards, tensors["val"], tensors["done"],
+                        args.gamma, args.lam,
+                    )
+                    batch[i]["obs"].append(tensors["obs"])
+                    batch[i]["act"].append(tensors["act"])
+                    batch[i]["logp"].append(tensors["logp"])
+                    batch[i]["adv"].append(advantages)
+                    batch[i]["ret"].append(returns)
 
-            for i in agents:
-                ppo_update(
-                    policy, value_net, policy_opt, value_opt,
-                    torch.cat(batch[i]["obs"]),
-                    torch.cat(batch[i]["act"]),
-                    torch.cat(batch[i]["logp"]),
-                    torch.cat(batch[i]["adv"]),
-                    torch.cat(batch[i]["ret"]),
-                    clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
-                    n_epochs=4, batch_size=256,
-                )
+                for i in agents:
+                    ppo_update(
+                        policy, value_net, policy_opt, value_opt,
+                        torch.cat(batch[i]["obs"]),
+                        torch.cat(batch[i]["act"]),
+                        torch.cat(batch[i]["logp"]),
+                        torch.cat(batch[i]["adv"]),
+                        torch.cat(batch[i]["ret"]),
+                        clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
+                        n_epochs=4, batch_size=256,
+                    )
 
-            mlflow.log_metrics({
-                "episode_reward": summary["episode_reward"],
-                "pressure": summary["mean_pressure"],
-                "equity": summary["equity"],
-                "gini": summary["gini"],
-            }, step=episode)
+                mlflow.log_metrics({
+                    "episode_reward": summary["episode_reward"],
+                    "pressure": summary["mean_pressure"],
+                    "equity": summary["equity"],
+                    "gini": summary["gini"],
+                }, step=episode)
 
-            if episode % args.log_interval == 0 or episode == args.episodes - 1:
-                print("episode %d reward=%.1f pressure=%.3f gini=%.3f" %
-                      (episode, summary["episode_reward"],
-                       summary["mean_pressure"], summary["gini"]))
+                if episode % args.log_interval == 0 or episode == args.episodes - 1:
+                    pbar.set_postfix(reward=f"{summary['episode_reward']:.1f}",
+                                     pressure=f"{summary['mean_pressure']:.3f}",
+                                     gini=f"{summary['gini']:.3f}")
 
-            if episode % args.checkpoint_interval == 0 or episode == args.episodes - 1:
-                path = os.path.join(checkpoint_dir, "%d.pt" % episode)
-                torch.save({
-                    "episode": episode,
-                    "policy_state": policy.state_dict(),
-                    "value_state": value_net.state_dict(),
-                    "policy_opt_state": policy_opt.state_dict(),
-                    "value_opt_state": value_opt.state_dict(),
-                }, path)
-                print(f"  checkpoint: {path}")
+                if episode % args.checkpoint_interval == 0 or episode == args.episodes - 1:
+                    path = os.path.join(checkpoint_dir, "%d.pt" % episode)
+                    torch.save({
+                        "episode": episode,
+                        "policy_state": policy.state_dict(),
+                        "value_state": value_net.state_dict(),
+                        "policy_opt_state": policy_opt.state_dict(),
+                        "value_opt_state": value_opt.state_dict(),
+                    }, path)
+                    pbar.write(f"checkpoint: {path}")
 
-    print(f"\nTransfer complete: {args.source} -> {args.target}")
+                pbar.update(1)
+        print(f"Transfer complete: {args.source} -> {args.target}")
 
 
 if __name__ == "__main__":

@@ -152,14 +152,22 @@ def neighbor_pressures(graph: dict, queues: dict) -> dict:
             if downstream is None:
                 pressures.append(0.0)
             else:
-                incoming = graph["approach_names"].index(
-                    next(
+                incoming = next(
+                    (
                         nm
                         for nm in graph["approach_names"]
                         if graph["neighbors"][downstream][nm] == i
-                    )
+                    ),
+                    None,
                 )
-                pressures.append(float(queues[downstream][incoming]))
+                if incoming is not None:
+                    pressures.append(float(queues[downstream][graph["approach_names"].index(incoming)]))
+                else:
+                    # No approach at the downstream intersection points back at
+                    # ``i`` (common on real, asymmetric city graphs). Fall back
+                    # to the downstream intersection's mean queue so the
+                    # observation still reflects downstream congestion.
+                    pressures.append(float(np.mean(queues[downstream])))
         result[i] = pressures
     return result
 
