@@ -5,6 +5,7 @@
 #include <csignal>
 #include <fstream>
 #include <mutex>
+#include <vector>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
 #include "ai/InferenceEngine.h"
@@ -51,11 +52,46 @@ static std::string take_city_request() {
     return g_city_req.city;
 }
 
-static std::string graph_path_for(const std::string& city) {
-    std::string filepath = "data/" + city + "/graph.json";
+// Resolves data/<city>/<file>, preferring a path that exists (running from the
+// repo root or from engine/). Used for the graph and the per-city OD matrix.
+static std::string city_data_path(const std::string& city,
+                                  const std::string& file) {
+    std::string filepath = "data/" + city + "/" + file;
     std::ifstream test(filepath);
-    if (!test.good()) filepath = "../data/" + city + "/graph.json";
+    if (!test.good()) filepath = "../data/" + city + "/" + file;
     return filepath;
+}
+
+static std::string graph_path_for(const std::string& city) {
+    return city_data_path(city, "graph.json");
+}
+
+// Target citywide peak vehicles/hour used to auto-derive demand_scale when the
+// caller did not provide one. Keeps OD-driven runs live but tractable on the
+// dashboard regardless of how small (or large) a city's OD matrix is.
+constexpr double kAutoPeakVehiclesPerHour = 600.0;
+
+// Reads an OD matrix and returns the peak citywide hourly demand (sum across
+// all OD pairs for the busiest hour). Returns 0 on any error / empty matrix.
+static double peak_hourly_demand(const std::string& od_path) {
+    std::ifstream f(od_path);
+    if (!f.good()) return 0.0;
+    nlohmann::json j;
+    try {
+        f >> j;
+    } catch (const std::exception&) {
+        return 0.0;
+    }
+    double peak = 0.0;
+    std::vector<double> hourly_sum(24, 0.0);
+    for (const auto& e : j["od"]) {
+        const auto& hourly = e["hourly"];
+        for (size_t h = 0; h < hourly.size() && h < 24; ++h)
+            hourly_sum[h] += hourly[h].get<double>();
+    }
+    for (double s : hourly_sum)
+        if (s > peak) peak = s;
+    return peak;
 }
 
 // Loads the ONNX traffic-signal policy when requested. A missing or invalid
@@ -83,7 +119,9 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
                      double dt, bool fast, bool no_ws,
                      const std::string& journey_csv,
                      nexussim::network::WebSocketServer* ws_server,
-                     nexussim::ai::InferenceEngine* policy) {
+                     nexussim::ai::InferenceEngine* policy,
+                     const std::string& od_path, double demand_scale,
+                     double start_hour, bool auto_scale) {
     std::string filepath = graph_path_for(city);
     std::ifstream test(filepath);
     if (!test.good()) {
@@ -118,8 +156,34 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     sim.set_policy(policy);
     sim.set_signal_mode(policy ? "ai" : "webster");
 
-    std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
-    sim.spawn_agents(agent_count);
+    // OD-driven demand: an explicit --od path wins, otherwise the city's own
+    // od_matrix.json is used when present. Cities without an OD matrix fall
+    // back to uniform random spawning.
+    std::string od = od_path.empty()
+                         ? city_data_path(city, "od_matrix.json")
+                         : od_path;
+    std::ifstream od_test(od);
+    if (od_test.good()) {
+        if (auto_scale) {
+            double peak = peak_hourly_demand(od);
+            if (peak > 0.0) {
+                double scale = kAutoPeakVehiclesPerHour / peak;
+                std::cout << "Auto demand_scale = " << scale
+                          << " (peak " << peak
+                          << " veh/hr -> target ~"
+                          << kAutoPeakVehiclesPerHour << " veh/hr)\n";
+                demand_scale = scale;
+            }
+        }
+        std::cout << "Spawning from OD demand...\n";
+        sim.spawn_agents_from_od(od, demand_scale, start_hour);
+    } else {
+        if (!od_path.empty())
+            std::cerr << "OD file not found: " << od_path
+                      << "; falling back to uniform spawning\n";
+        std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
+        sim.spawn_agents(agent_count);
+    }
 
     if (ws_server) {
         ws_server->broadcast_text(
@@ -180,6 +244,7 @@ int main(int argc, char** argv) {
     int duration_min = 5;
     std::string od_path;
     double demand_scale = 1.0;
+    bool auto_scale = true;
     double start_hour = 8.0;
     bool fast = false;
     bool no_ws = false;
@@ -202,7 +267,7 @@ int main(int argc, char** argv) {
         else if (arg == "--agents") agent_count = std::stoul(next("--agents"));
         else if (arg == "--duration") duration_min = std::atoi(next("--duration"));
         else if (arg == "--od") od_path = next("--od");
-        else if (arg == "--demand-scale") demand_scale = std::atof(next("--demand-scale"));
+        else if (arg == "--demand-scale") { demand_scale = std::atof(next("--demand-scale")); auto_scale = false; }
         else if (arg == "--start-hour") start_hour = std::atof(next("--start-hour"));
         else if (arg == "--journey") journey_csv = next("--journey");
         else if (arg == "--speed-factor") speed_factor = std::atof(next("--speed-factor"));
@@ -255,7 +320,8 @@ int main(int argc, char** argv) {
     if (fast) {
         run_city(city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, no_ws ? nullptr : &ws_server, policy.get());
+                 journey_csv, no_ws ? nullptr : &ws_server, policy.get(),
+                 od_path, demand_scale, start_hour, auto_scale);
         return 0;
     }
 
@@ -285,7 +351,8 @@ int main(int argc, char** argv) {
 
         run_city(current_city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, &ws_server, policy.get());
+                 journey_csv, &ws_server, policy.get(),
+                 od_path, demand_scale, start_hour, auto_scale);
 
         // run_city returned: the engine is stopping or the dashboard requested
         // a different city. Consume the request and continue with it.

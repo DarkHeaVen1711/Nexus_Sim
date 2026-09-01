@@ -5,6 +5,8 @@ export interface CityOption {
 
 export const CITIES: CityOption[] = [
   { id: 'chicago', label: 'Chicago' },
+  { id: 'paris', label: 'Paris' },
+  { id: 'ahmedabad', label: 'Ahmedabad' },
   { id: 'piedmont', label: 'Piedmont' },
 ];
 

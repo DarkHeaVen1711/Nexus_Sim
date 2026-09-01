@@ -6,6 +6,7 @@ import { MetricsPanel } from './MetricsPanel';
 import { EquityOverlay } from './EquityOverlay';
 import { ViewportBoundsSender } from './ViewportBoundsSender';
 import { CitySelector } from './CitySelector';
+import { ComparisonPanel } from './ComparisonPanel';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
@@ -198,6 +199,8 @@ export const Map: React.FC = () => {
       </div>
 
       <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} signalMode={engineMode} />
+
+      <ComparisonPanel />
 
       <MapContainer
         center={CITY_CENTER}

@@ -134,6 +134,22 @@ confirming that refusal is itself a check.
 
 ---
 
+## 5a. Multi-city + MARL comparison (Phase 9)
+
+- [ ] `ml/tests` pass (from repo root: `.venv\Scripts\python.exe -m pytest ml\tests`)
+- [ ] Engine trains a city: `.venv\Scripts\python.exe -m train.train --city chicago
+      --episodes N --checkpoint-interval N` logs "Loaded chicago: 3709 intersections,
+      77 zones" and writes `ml/checkpoints/chicago/<ep>.pt`
+- [ ] Transfer: `.venv\Scripts\python.exe -m train.transfer` fine-tunes the source
+      checkpoint to Paris and Ahmedabad (`ml/checkpoints/*_to_paris/`, `*_to_ahmedabad/`)
+- [ ] Evaluate: `.venv\Scripts\python.exe -m train.evaluate --cities <cities>
+      --checkpoint <ckpt>` writes `ml/results/comparison.json` with a
+      Webster + MARL row per city
+- [ ] Dashboard dev server serves `/comparison.json` (vite dev proxy); the
+      ComparisonPanel renders the MARL-vs-Webster table bottom-right
+
+---
+
 ## 6. Repo hygiene
 
 - [ ] No stray generated files staged (`journey_times.csv`, `build/`, `*.graphml`)

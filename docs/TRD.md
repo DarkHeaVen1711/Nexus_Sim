@@ -131,6 +131,7 @@ phases is given per row.
 | TR-ML-04 | Reward = `α × pressure_i + β × equity_global`; equity term reuses engine Gini/zone wait metrics; α/β tunable, tradeoff curve a deliverable | PLANNED | FR-8, G3 | Ph 7.2 |
 | TR-ML-05 | MAPPO trainer: 3-layer MLP policy + value network, shared initial weights, one independent agent per intersection | PLANNED | FR-8, BR-5 | Ph 7.5 |
 | TR-ML-06 | MLflow logging (episode reward, pressure, equity, Gini); checkpoint save/resume every 500 episodes | PLANNED | US-D03 | Ph 7.6–7.7 |
+| TR-ML-06b | **Multi-city MARL** `env/graph_loader.py` parses real `data/<city>/graph.json` (29,733-node Chicago → 3,709 signal intersections, 77 zones); `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` writes multi-city MARL-vs-Webster table to `ml/results/comparison.json`; CI runs `ml/tests` | DONE (train/eval infra); full Chicago run pending | G4, FR-8 | Ph 9 |
 | TR-ML-07 | ONNX export (`export_onnx.py`) validated to match PyTorch outputs on 10 test inputs | PLANNED | FR-8, TR-5 | Ph 8.1 |
 | TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | PLANNED | FR-12 | Ph 15 |
 | TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | PLANNED | FR-13 | Ph 16 |
@@ -261,6 +262,7 @@ Each requirement above is accepted via its plan-phase checkpoint artifact
 | 3 | Quadtree benchmark table | NFR-3, TR-ENG-05 |
 | 6 | Chicago `validation_report.json` with `passes_checkpoint` | FR-4, NFR-7, TR-PIPE-06 |
 | 8 | `bench_inference.cpp` p95 ≤ 8 ms | NFR-4, TR-ENG-12, TR-ML-07 |
+| 9 | MARL-vs-Webster table across 3 cities in `ml/results/comparison.json` rendered by dashboard `ComparisonPanel`; `ml/tests` green in CI | G4, FR-8, TR-ML-06b |
 | 11 | `make demo` clean-clone < 30 min | NFR-8 |
 | 12 | `policy_switch` visible in next frame, byte-identical Webster extraction | FR-7, TR-ENG-09/10 |
 | 13 | `ga_calibration_report.json`; fuzzy live via `--signal-policy fuzzy` | FR-9/10, TR-PIPE-07, TR-ENG-11 |
