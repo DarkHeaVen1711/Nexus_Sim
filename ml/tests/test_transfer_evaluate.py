@@ -14,8 +14,10 @@ if ML_DIR not in sys.path:
 
 from train.evaluate import _load_env as eval_load_env
 from train.rollout import evaluate_fixed_baseline
+from train.train import build_models, latest_checkpoint
 from train.transfer import _load_env as transfer_load_env
 from train.transfer import _resolve_source
+from train.transfer import _resolve_resume, load_checkpoint
 
 
 def test_transfer_unknown_city_raises():
@@ -65,3 +67,55 @@ def test_baseline_runs_short_episode():
     }
     assert result["episode_reward"] < 0.0
     assert "gini" in result
+
+
+def test_resolve_resume_none():
+    assert _resolve_resume(None, "irrelevant") is None
+
+
+def test_resolve_resume_latest(tmp_path):
+    # Numerically highest episode wins even if lexically last is different.
+    torch.save({"episode": 20}, tmp_path / "20.pt")
+    torch.save({"episode": 5}, tmp_path / "5.pt")
+    assert _resolve_resume("latest", str(tmp_path)) == str(tmp_path / "20.pt")
+
+
+def test_resolve_resume_no_checkpoints_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        _resolve_resume("latest", str(tmp_path))
+
+
+def test_resolve_resume_direct_path(tmp_path):
+    p = tmp_path / "ckpt.pt"
+    torch.save({"episode": 7}, p)
+    assert _resolve_resume(str(p), "irrelevant") == str(p)
+
+
+def test_resolve_resume_missing_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        _resolve_resume(str(tmp_path / "missing.pt"), "irrelevant")
+
+
+def test_resume_checkpoint_roundtrip(tmp_path):
+    """A saved transfer checkpoint can reload policy/value/opt states + episode."""
+    import torch.optim as optim
+
+    policy, value_net = build_models(11, 32, torch.device("cpu"))
+    policy_opt = optim.Adam(policy.parameters(), lr=1e-4)
+    value_opt = optim.Adam(value_net.parameters(), lr=1e-4)
+    path = tmp_path / "199.pt"
+    torch.save({
+        "episode": 199,
+        "policy_state": policy.state_dict(),
+        "value_state": value_net.state_dict(),
+        "policy_opt_state": policy_opt.state_dict(),
+        "value_opt_state": value_opt.state_dict(),
+        "reward_scale": 123.0,
+    }, path)
+
+    pol2, val2 = build_models(11, 32, torch.device("cpu"))
+    pol2_opt = optim.Adam(pol2.parameters(), lr=1e-4)
+    val2_opt = optim.Adam(val2.parameters(), lr=1e-4)
+    ckpt = load_checkpoint(path, pol2, val2, pol2_opt, val2_opt, torch.device("cpu"))
+    assert ckpt["episode"] == 199
+    assert ckpt["reward_scale"] == 123.0

@@ -155,15 +155,21 @@ def main() -> None:
             path = args.resume if args.resume != "latest" else latest_checkpoint(checkpoint_dir)
             if path and os.path.isfile(path):
                 start_ep = load_checkpoint(path, policy, value_net, policy_opt, value_opt, device)
-                print("Resumed from %s (episode %d)" % (path, start_ep))
+                pct = 100.0 * start_ep / args.episodes
+                print("Resumed from %s (episode %d of %d — %.1f%% complete)"
+                      % (path, start_ep, args.episodes, pct))
             else:
                 print("No checkpoint found to resume from; training from scratch")
+
+        if start_ep >= args.episodes:
+            print("Training already complete at %d episodes; nothing to do." % args.episodes)
+            return
 
         agents = sorted(env.graph["intersections"])
         episode = start_ep
         next_log = start_ep
         next_ckpt = start_ep
-        pbar = tqdm(total=args.episodes - start_ep, desc=f"mappo {args.city}",
+        pbar = tqdm(total=args.episodes, initial=start_ep, desc=f"mappo {args.city}",
                     unit="ep", dynamic_ncols=True, mininterval=1.0)
         while episode < args.episodes:
             batch = {
@@ -221,7 +227,8 @@ def main() -> None:
                 pbar.set_postfix(reward=f"{summary['episode_reward']:.1f}",
                                  pressure=f"{summary['mean_pressure']:.3f}",
                                  equity=f"{summary['equity']:.1f}",
-                                 gini=f"{summary['gini']:.3f}")
+                                 gini=f"{summary['gini']:.3f}",
+                                 complete=f"{100.0 * (step + 1) / args.episodes:.1f}%")
                 next_log = max(next_log + args.log_interval, step + 1)
 
             if step >= next_ckpt or step == args.episodes - 1:
@@ -239,6 +246,8 @@ def main() -> None:
                 pbar.write("checkpoint saved: %s" % path)
                 next_ckpt = max(next_ckpt + args.checkpoint_interval, step + 1)
         pbar.close()
+        print(f"Training complete: mappo {args.city} "
+              f"({args.episodes} episodes, reward={summary['episode_reward']:.1f})")
 
 
 if __name__ == "__main__":
