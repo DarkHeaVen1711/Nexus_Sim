@@ -63,7 +63,7 @@ Implementation finished; the **acceptance checkpoint is failing**:
 ### Phase 7 — MARL Training Environment + MAPPO
 - O-RL-1 env wrapper: docs still "IN PROGRESS".
 - **O-RL-5 PENDING**: toy reward curve must rise above the Webster baseline by
-  500 episodes. `ml/results/comparison.json` currently shows toy MARL below
+  500 episodes. Earlier `ml/results/comparison.json` showed toy MARL below
   Webster (`improvement_pct ≈ −12.5%`). Needs a long toy run + eval.
 
 ### Phase 8 — ONNX Export & C++ Inference
@@ -81,8 +81,9 @@ Summary of what remains:
 - 9.5 Re-seed Paris/Ahmedabad transfers from the final Chicago checkpoint
   (current runs used `toy/249.pt`, both at `*-to-*/499.pt`).
 - 9.6 Transfer sensitivity sweep (`--chaos`/`--demand-scale`) + doc.
-- 9.7 Regenerate `ml/results/comparison.json` with chicago/paris/ahmedabad rows
-  (currently stale: toy + piedmont only).
+- 9.7 Add the **Chicago** row to `ml/results/comparison.json` (Paris + Ahmedabad
+  rows were generated 2026-09-02 from their `499.pt` checkpoints; Chicago needs
+  a trained model).
 
 ### Phase 10 — Policy Toggles & Dashboard Polish (PARTIAL)
 Done so far:
@@ -124,12 +125,12 @@ Subject docs already contain target architecture: `CV_DOCUMENTATION.md`
 
 ## Cross-cutting housekeeping
 
-- **TRD statuses stale** — `docs/TRD.md` still shows TR-ML-01…06 as PLANNED
-  even though `ml/env` + `train/ppo.py` + MLflow checkpointing exist
-  (RL_DOCUMENTATION marks O-RL-2…4 DONE). TR-ML-07 (ONNX export) also has code.
-  Recommend a docs pass to align TRD with reality.
-- **`ml/results/comparison.json` stale** — holds toy + piedmont rows; regenerate
-  in 9.7. It is a tracked deliverable (not gitignored).
+- **TRD statuses aligned** — `docs/TRD.md` TR-ML-01…07 and TR-ENG-12 updated to
+  DONE / "DONE (infra)" (2026-09-02); remove this bullet on the next docs pass
+  once confirmed stable.
+- **`ml/results/comparison.json` partial** — holds Paris + Ahmedabad rows
+  (2026-09-02, from their `499.pt` checkpoints); Chicago row pending in 9.7.
+  Gitignored for now; un-ignore once the 3-city table is final.
 - **`docs/TRD.md` TR-ML-06b / `O-RL-7`** — correctly reflect "DONE (infra);
   full Chicago run pending".
 - **Interrupted runs** — an MLflow run stuck at `status=1 RUNNING` with no live

@@ -103,7 +103,7 @@ phases is given per row.
 | TR-ENG-09 | **Pluggable `SignalPolicy` interface** (`tick`, `is_green`, `current_phase_index`, `policy_name`); Webster's extracted as `WebsterPolicy` byte-identically; `init_signals()` builds policies via `unique_ptr` | PLANNED | FR-7 | Ph 12 |
 | TR-ENG-10 | **Live `policy_switch` control message** flips one intersection or network-wide policy with no restart, visible in next broadcast frame | PLANNED | FR-7 | Ph 12.5 |
 | TR-ENG-11 | **`FuzzyPolicy`** implementing `SignalPolicy`: Mamdani inference over queue length + wait time, centroid defuzzification → green-time extension | PLANNED | FR-10 | Ph 13.5 |
-| TR-ENG-12 | **ONNX inference off the hot path**: load `policy.onnx`, batch all intersection observations into one tensor call per decision tick, background thread + shared-memory ring buffer, p95 ≤ 8 ms | PLANNED | FR-8, NFR-4, TR-5 | Ph 8 |
+| TR-ENG-12 | **ONNX inference off the hot path**: load `policy.onnx`, batch all intersection observations into one tensor call per decision tick, background thread + shared-memory ring buffer, p95 ≤ 8 ms | DONE (infra); parity/p95 gate pending a trained policy | FR-8, NFR-4, TR-5 | Ph 8 |
 | TR-ENG-13 | **`apply_incident(edges, severity, duration_s)`**: temporary per-edge speed/capacity multipliers expiring on `sim_time_`; reuse Pathfinder's existing stochastic edge-cost mechanism | PLANNED | FR-14 | Ph 17.3 |
 | TR-ENG-14 | Metrics: per-tick avg speed/wait, per-zone wait, Gini every 10 ticks; `avg_tick_ms`/`p95_tick_ms` for perf logging | DONE | FR-3, NFR-2 | Ph 5 |
 | TR-ENG-15 | WebSocket server (uWebSockets) on port 9001; broadcast JSON state frame; accept `bounds` and (Ph 12/17) `policy_switch`/`incident` messages | DONE | FR-5 | Ph 4 |
@@ -125,14 +125,14 @@ phases is given per row.
 
 | ID | Requirement | Status | Maps to | Plan |
 |----|-------------|--------|---------|------|
-| TR-ML-01 | Gym-compatible `NexusSimEnv` (`reset`, `step`, observation/action spaces) wrapping engine state snapshots — no live C++ call during training | PLANNED | FR-8 | Ph 7.3 |
-| TR-ML-02 | Observation: per-approach queue length (from quadtree), current phase, time in phase, time of day, neighbor pressure | PLANNED | FR-8 | Ph 7.1 |
-| TR-ML-03 | Action space `{EXTEND current phase, SWITCH to next phase}` at phase boundaries (matches `SignalController` state machine granularity) | PLANNED | BR-5 | Ph 7 |
-| TR-ML-04 | Reward = `α × pressure_i + β × equity_global`; equity term reuses engine Gini/zone wait metrics; α/β tunable, tradeoff curve a deliverable | PLANNED | FR-8, G3 | Ph 7.2 |
-| TR-ML-05 | MAPPO trainer: 3-layer MLP policy + value network, shared initial weights, one independent agent per intersection | PLANNED | FR-8, BR-5 | Ph 7.5 |
-| TR-ML-06 | MLflow logging (episode reward, pressure, equity, Gini); checkpoint save/resume every 500 episodes | PLANNED | US-D03 | Ph 7.6–7.7 |
+| TR-ML-01 | Gym-compatible `NexusSimEnv` (`reset`, `step`, observation/action spaces) wrapping engine state snapshots — no live C++ call during training | DONE | FR-8 | Ph 7.3 |
+| TR-ML-02 | Observation: per-approach queue length (from quadtree), current phase, time in phase, time of day, neighbor pressure | DONE | FR-8 | Ph 7.1 |
+| TR-ML-03 | Action space `{EXTEND current phase, SWITCH to next phase}` at phase boundaries (matches `SignalController` state machine granularity) | DONE | BR-5 | Ph 7 |
+| TR-ML-04 | Reward = `α × pressure_i + β × equity_global`; equity term reuses engine Gini/zone wait metrics; α/β tunable, tradeoff curve a deliverable | DONE | FR-8, G3 | Ph 7.2 |
+| TR-ML-05 | MAPPO trainer: 3-layer MLP policy + value network, shared initial weights, one independent agent per intersection | DONE | FR-8, BR-5 | Ph 7.5 |
+| TR-ML-06 | MLflow logging (episode reward, pressure, equity, Gini); checkpoint save/resume every 500 episodes | DONE | US-D03 | Ph 7.6–7.7 |
 | TR-ML-06b | **Multi-city MARL** `env/graph_loader.py` parses real `data/<city>/graph.json` (29,733-node Chicago → 3,709 signal intersections, 77 zones); `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` writes multi-city MARL-vs-Webster table to `ml/results/comparison.json`; CI runs `ml/tests` | DONE (train/eval infra); full Chicago run pending | G4, FR-8 | Ph 9 |
-| TR-ML-07 | ONNX export (`export_onnx.py`) validated to match PyTorch outputs on 10 test inputs | PLANNED | FR-8, TR-5 | Ph 8.1 |
+| TR-ML-07 | ONNX export (`export_onnx.py`) validated to match PyTorch outputs on 10 test inputs | DONE | FR-8, TR-5 | Ph 8.1 |
 | TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | PLANNED | FR-12 | Ph 15 |
 | TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | PLANNED | FR-13 | Ph 16 |
 | TR-ML-10 | **NLP incidents** `nlp/incident_parser.py`: `parse(text, graph) -> IncidentSpec` via street-name gazetteer + `rapidfuzz` fuzzy match; `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to engine | PLANNED | FR-14 | Ph 17.1–17.2 |
