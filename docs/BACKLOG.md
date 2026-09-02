@@ -1,8 +1,7 @@
 # NexusSim General Backlog — All Phases
 
 Master backlog across every phase in `docs/TEAM_IMPLEMENTATION_PLAN.md`
-(Phases 0–36). It is the companion file to `docs/PHASE9_BACKLOG.md` (which holds
-the Phase 9 detail) and is updated whenever training/integration work lands.
+(Phases 0–36). Updated whenever training/integration work lands.
 
 Status snapshot: **2026-09-02**.
 
@@ -30,7 +29,7 @@ Status snapshot: **2026-09-02**.
 | 6 | Real traffic demand (OD) + validation | DONE (acceptance pending) | Chicago `passes_checkpoint: false` |
 | 7 | MARL training environment + MAPPO | PARTIAL | O-RL-5 toy reward ≥ Webster not shown |
 | 8 | ONNX export & C++ inference | DONE (acceptance pending) | Parity/p95 gate pending a trained model |
-| 9 | Multi-city training & validation | PARTIAL | See `docs/PHASE9_BACKLOG.md` (Chicago 9.1, validation 9.2/9.6, transfer from final model 9.5, 3-city table 9.7) |
+| 9 | Multi-city training & validation | PARTIAL | Chicago 9.1 training, validation 9.2/9.6, transfer from final model 9.5, 3-city comparison table 9.7 — see Phase 9 section below |
 | 10 | Policy toggles & dashboard polish | PARTIAL | Policy toggle panel, before/after + tradeoff charts, PDF export (blocked on Phase 12) |
 | 11 | Hardening, docs & demo | PARTIAL | `make demo`, benchmark/ablation write-ups |
 | 12 | Signal Policy abstraction + `policy_switch` | PENDING | TR-ENG-09/10, TR-DASH-05 |
@@ -76,7 +75,7 @@ Infrastructure DONE (`ml/export/export_onnx.py`, `validate_onnx.py`,
   currently exercised with a random toy policy). Blocked on 9.1.
 
 ### Phase 9 — Multi-City Training & Validation
-See `docs/PHASE9_BACKLOG.md` for the full breakdown. Summary of what remains:
+Summary of what remains:
 - 9.1 Chicago full training (2000–5000 ep) — the big blocker (CPU-bound).
 - 9.2 Chicago validation re-run to pass acceptance (shared with Phase 6).
 - 9.5 Re-seed Paris/Ahmedabad transfers from the final Chicago checkpoint
