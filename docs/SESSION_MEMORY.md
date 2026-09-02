@@ -64,6 +64,37 @@ Quick orientation:
 
 ---
 
+## Session 3 — 2026-09-02 (later) | TRD alignment + partial 9.7 (PR #29)
+
+**Work done**
+- `docs/TRD.md`: TR-ML-01…06 → `DONE`, TR-ML-07 → `DONE`, TR-ENG-12 →
+  `DONE (infra)`; parity/p95 gate pending a trained policy. `BACKLOG.md`
+  cross-cutting bullets updated to match. Committed `c0dfaf4` + pushed.
+- Partial 9.7: evaluated the two trained transfer checkpoints
+  (`python -m train.evaluate --cities <city> --checkpoint ...499.pt
+  --episodes 20`, from `ml/`). `ml/results/comparison.json` now holds
+  Paris + Ahmedabad rows (gitignored, not committed):
+  - Paris: MARL −53136 vs Webster −52783 → **−0.7%**
+  - Ahmedabad: MARL −61840 vs Webster −56649 → **−9.2%**
+  - Both BELOW the fixed-cycle baseline → backs the 9.5 re-seed-from-real-
+    Chicago-model concern. Chicago row still pending 9.1.
+- Verified the C++ engine runs Paris + Ahmedabad end-to-end
+  (from `Engine\Nexus_Sim\engine`: `.\engine.exe --city <city> --agents 2000
+  --duration 1 --fast --no-ws`). Paris: 90 nodes/183 edges/8 zones;
+  Ahmedabad: 75 nodes/144 edges/6 zones. Dashboard `CITIES` already lists both.
+  Gotcha: engine resolves `../data/<city>` relative to `engine/`, not repo root.
+
+**What to do next** (updated)
+1. 9.1 Chicago full training (the long pole; unblocks 9.5/9.6/9.7, Phase 8 parity).
+2. 9.7: add the Chicago row to `comparison.json` once a trained model exists;
+   un-ignore `ml/results/` in `.gitignore` when the 3-city table is final.
+3. 9.2/Phase 6: `validate.py` sweep until `data/chicago/validation_report.json`
+   passes (`within_25_pct ≥ 75`).
+4. Remove the now-stale "TRD statuses aligned" bullet in `BACKLOG.md` on the
+   next docs pass.
+
+---
+
 ## Session 1 — pre-2026-09-02 | Phase 9 infra (PR #28 / earlier)
 
 - Prior sessions built the multi-city MARL stack: `ml/env/graph_loader.py`,
