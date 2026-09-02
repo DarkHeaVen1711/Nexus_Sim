@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -6,6 +6,7 @@ import { MetricsPanel } from './MetricsPanel';
 import { EquityOverlay } from './EquityOverlay';
 import { ViewportBoundsSender } from './ViewportBoundsSender';
 import { CitySelector } from './CitySelector';
+import { SimControls } from './SimControls';
 import { ComparisonPanel } from './ComparisonPanel';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
@@ -52,39 +53,32 @@ const buildGraphFeature = (data: any): any => {
 };
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, sendMessage, resetState } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, resetState } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [graphLoading, setGraphLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('efficiency');
-  // While a city switch is in flight the engine still broadcasts the OLD city's
-  // frames until it reloads. Track the requested city so those stale frames
-  // never bounce the dashboard's selection back to the previous city.
-  const pendingSwitchRef = useRef<string | null>(null);
+
+  // Single-simulation rule: while a city is running (or paused) the city
+  // buttons are locked and switching is impossible. When the engine stops the
+  // run (reset/stop) the selection clears back to the "choose a city" view.
+  const simActive = simStatus === 'running' || simStatus === 'paused';
+  const cityLocked = simActive;
 
   // Follow the engine's authoritative city (announced when it starts/loads a
   // city, or answered to the get_city probe on connect). When the engine is
   // idling it reports null and the dashboard stays on the "select a city" view.
   useEffect(() => {
-    if (!engineCity) return;
-    if (pendingSwitchRef.current) {
-      if (engineCity === pendingSwitchRef.current) {
-        pendingSwitchRef.current = null;
-        if (selectedCity !== engineCity) setSelectedCity(engineCity);
-      }
+    if (simStatus === 'idle' && engineCity === null) {
+      setSelectedCity(null);
+      setRawGraph(null);
+      setGraphData(null);
       return;
     }
-    if (engineCity !== selectedCity) {
-      setSelectedCity(engineCity);
-    }
-  }, [engineCity, selectedCity]);
-
-  // If the engine rejects the requested city, drop the pending guard so the
-  // selection is stable again (the error banner explains what happened).
-  useEffect(() => {
-    if (engineError) pendingSwitchRef.current = null;
-  }, [engineError]);
+    if (!engineCity) return;
+    if (selectedCity !== engineCity) setSelectedCity(engineCity);
+  }, [simStatus, engineCity, selectedCity]);
 
   // Loading a new city invalidates the previous city's agents and viewport
   // bounds, so old markers and stale LOD culling never leak into the new map.
@@ -125,11 +119,10 @@ export const Map: React.FC = () => {
   }, [selectedCity]);
 
   const switchCity = useCallback((city: string) => {
-    if (city === selectedCity) return;
-    pendingSwitchRef.current = city;
+    if (selectedCity) return; // locked while running
     setSelectedCity(city);
-    sendMessage(JSON.stringify({ type: 'city', city }));
-  }, [selectedCity, sendMessage]);
+    sendCommand('city', city);
+  }, [selectedCity, sendCommand]);
 
   const getAgentColor = (type: number) => {
     switch (type) {
@@ -142,18 +135,10 @@ export const Map: React.FC = () => {
     }
   };
 
-  const toggleStyle = (active: boolean): React.CSSProperties => ({
-    padding: '8px 16px',
-    border: '1px solid #374151',
-    borderRadius: '6px',
-    cursor: 'pointer',
-    fontSize: '13px',
-    fontWeight: 600,
-    fontFamily: 'system-ui, sans-serif',
-    backgroundColor: active ? '#3b82f6' : 'rgba(17, 24, 39, 0.85)',
-    color: active ? '#ffffff' : '#9ca3af',
-    transition: 'all 0.2s',
-  });
+  const handlePause = () => sendCommand('pause');
+  const handleResume = () => sendCommand('resume');
+  const handleRestart = () => sendCommand('restart');
+  const handleReset = () => sendCommand('reset');
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -183,20 +168,31 @@ export const Map: React.FC = () => {
 
       {!selectedCity && isConnected && (
         <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: 'rgba(17, 24, 39, 0.9)', color: '#e5e7eb', padding: '10px 18px', borderRadius: '8px', border: '1px solid #374151', fontSize: '14px', fontWeight: 600 }}>
-          Select a city above to start the simulation
+          Open the Γÿ░ menu to start a simulation
         </div>
       )}
 
-      <CitySelector activeCity={selectedCity} disabled={graphLoading} onSelect={switchCity} />
+      <CitySelector
+        activeCity={selectedCity}
+        disabled={graphLoading}
+        locked={cityLocked}
+        locale="en"
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onSelect={switchCity}
+      />
 
-      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 1000, display: 'flex', gap: '4px', backgroundColor: 'rgba(17, 24, 39, 0.9)', padding: '4px', borderRadius: '8px', border: '1px solid #374151' }}>
-        <button style={toggleStyle(viewMode === 'efficiency')} onClick={() => setViewMode('efficiency')}>
-          Efficiency
-        </button>
-        <button style={toggleStyle(viewMode === 'equity')} onClick={() => setViewMode('equity')}>
-          Equity
-        </button>
-      </div>
+      {selectedCity && (
+        <SimControls
+          status={simStatus}
+          city={selectedCity}
+          disabled={graphLoading}
+          onPause={handlePause}
+          onResume={handleResume}
+          onRestart={handleRestart}
+          onReset={handleReset}
+        />
+      )}
 
       <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} signalMode={engineMode} />
 
