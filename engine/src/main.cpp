@@ -19,7 +19,9 @@ static void handle_signal(int) {
 }
 
 // A city-selection request coming from the dashboard over WebSocket. Written on
-// the uWS event-loop thread, read on the main simulation thread.
+// the uWS event-loop thread, read on the main simulation thread. Honored only
+// while the engine is idle: once a city is running (even paused) the dashboard
+// must reset/stop before picking a different city.
 struct CityRequest {
     std::mutex m;
     std::string city;
@@ -40,9 +42,42 @@ static std::string current_city() {
     return g_current_city.city;
 }
 
-static bool city_change_requested() {
-    std::lock_guard<std::mutex> lock(g_city_req.m);
-    return g_city_req.pending;
+// Dashboard simulation controls (pause/resume, restart, reset/stop). Written on
+// the uWS event-loop thread, read on the main simulation thread.
+struct SimControl {
+    std::mutex m;
+    bool paused = false;
+    enum class Reload { None, Restart, Stop };
+    Reload reload = Reload::None;
+};
+static SimControl g_ctl;
+
+static bool is_paused() {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    return g_ctl.paused;
+}
+
+static bool reload_requested(SimControl::Reload& kind) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    kind = g_ctl.reload;
+    return kind != SimControl::Reload::None;
+}
+
+static SimControl::Reload take_reload() {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    SimControl::Reload kind = g_ctl.reload;
+    g_ctl.reload = SimControl::Reload::None;
+    return kind;
+}
+
+static void set_paused(bool paused) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    g_ctl.paused = paused;
+}
+
+static void request_reload(SimControl::Reload kind) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    g_ctl.reload = kind;
 }
 
 static std::string take_city_request() {
@@ -211,15 +246,25 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     }
 
     // Interactive mode: keep simulating (respawn completed agents so traffic
-    // stays live) until the dashboard picks another city or the engine stops.
+    // stays live) until the dashboard pauses, restarts or resets the run.
+    // Restart reloads this same city from scratch; reset/stop returns the
+    // engine to idle, which unlocks city selection on the dashboard.
     std::cout << "Running " << city << " continuously. "
-              << "Select a city on the dashboard to switch.\n";
+              << "Use the dashboard controls to pause/restart/reset.\n";
     int tick = 0;
     for (;;) {
         if (g_stop) break;
-        if (city_change_requested()) {
-            std::cout << "City switch requested; reloading...\n";
-            break;
+        SimControl::Reload reload_kind;
+        if (reload_requested(reload_kind)) break;
+        if (is_paused()) {
+            // Freeze the sim in place. The run stays alive so Resume continues
+            // exactly where it left off; no frames are broadcast while paused.
+#ifdef _WIN32
+            Sleep(50);
+#else
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+#endif
+            continue;
         }
         sim.tick(dt);
         sim.respawn_arrived();
@@ -289,6 +334,16 @@ int main(int argc, char** argv) {
                 auto j = nlohmann::json::parse(payload);
                 if (!j.contains("type")) return;
                 if (j["type"] == "city" && j.contains("city")) {
+                    // Single-simulation lock: a city request is honored only
+                    // while the engine is idle. Once a run is active (even
+                    // paused) the dashboard must reset/stop before switching.
+                    if (!current_city().empty()) {
+                        std::cout << "Ignoring city request for '"
+                                  << j["city"].get<std::string>()
+                                  << "': " << current_city()
+                                  << " is running (reset/stop first)\n";
+                        return;
+                    }
                     std::lock_guard<std::mutex> lock(g_city_req.m);
                     g_city_req.city = j["city"].get<std::string>();
                     g_city_req.pending = true;
@@ -303,6 +358,16 @@ int main(int argc, char** argv) {
                     ws_server.broadcast_text(
                         "{\"type\":\"city_loaded\",\"city\":" + city_json
                         + "}");
+                } else if (j["type"] == "pause") {
+                    set_paused(true);
+                    ws_server.broadcast_text("{\"type\":\"paused\"}");
+                } else if (j["type"] == "resume") {
+                    set_paused(false);
+                    ws_server.broadcast_text("{\"type\":\"resumed\"}");
+                } else if (j["type"] == "restart") {
+                    request_reload(SimControl::Reload::Restart);
+                } else if (j["type"] == "reset" || j["type"] == "stop") {
+                    request_reload(SimControl::Reload::Stop);
                 }
             } catch (const std::exception&) {
                 // Ignore malformed messages.
@@ -327,13 +392,15 @@ int main(int argc, char** argv) {
 
     // Interactive mode: do NOT auto-start a simulation. The engine idles until
     // the dashboard sends a city selection, then runs that city continuously
-    // (agents respawn so traffic stays live) until another city is picked.
+    // (agents respawn so traffic stays live) until the dashboard restarts it or
+    // resets/stops it (which returns to idle and unlocks city selection).
     std::string current_city;
     for (;;) {
         if (g_stop) break;
 
         if (current_city.empty()) {
-            std::cout << "Engine ready. Select a city on the dashboard to start.\n";
+            std::cout << "Engine ready. Open the dashboard menu and pick a "
+                      << "city to start.\n";
             while (!g_stop) {
                 std::string next = take_city_request();
                 if (!next.empty()) {
@@ -349,15 +416,28 @@ int main(int argc, char** argv) {
             if (g_stop) break;
         }
 
+        set_paused(false); // a fresh run always starts unpaused
         run_city(current_city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
                  journey_csv, &ws_server, policy.get(),
                  od_path, demand_scale, start_hour, auto_scale);
+        if (g_stop) break;
 
-        // run_city returned: the engine is stopping or the dashboard requested
-        // a different city. Consume the request and continue with it.
-        std::string next = take_city_request();
-        current_city = next.empty() ? "" : next;
+        // run_city returned: the dashboard requested a reload. Restart reruns
+        // the same city from scratch; reset/stop clears it and returns to idle.
+        SimControl::Reload reload = take_reload();
+        take_city_request(); // drain any stale city request
+        if (reload == SimControl::Reload::Restart) {
+            std::cout << "Restarting " << current_city << " from scratch...\n";
+            continue;
+        }
+        {
+            std::lock_guard<std::mutex> lock(g_current_city.m);
+            g_current_city.city.clear();
+        }
+        ws_server.broadcast_text("{\"type\":\"stopped\"}");
+        std::cout << "Simulation stopped; engine idling.\n";
+        current_city.clear();
     }
 
     std::cout << "Shutting down.\n";

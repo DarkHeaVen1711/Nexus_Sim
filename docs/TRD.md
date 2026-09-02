@@ -184,6 +184,16 @@ Planned additive fields (Phases 12/17):
 
 **Inbound messages:**
 - `{"type":"bounds", min_lat, min_lon, max_lat, max_lon}` — viewport LOD culling (DONE)
+- `{"type":"city", "city":"<id>"}` — start a simulation for a city. Honored only
+  while the engine is idle: once a city is running (even paused) the request is
+  **ignored** and no switch occurs (single-simulation lock) until reset/stop.
+- `{"type":"get_city"}` — answered with `{"type":"city_loaded","city":"<id>|null"}` (DONE)
+- `{"type":"pause"}` / `{"type":"resume"}` — freeze / continue the running
+  simulation in place; engine broadcasts `{"type":"paused"}` / `{"type":"resumed"}`
+- `{"type":"restart"}` — tear down and reload the **same** city from scratch
+  (a fresh `{"type":"city_loaded"}` follows on reload)
+- `{"type":"reset"}` (alias `stop`) — stop the run and return the engine to
+  idle, which unlocks city selection; broadcasts `{"type":"stopped"}`
 - `{"type":"policy_switch", "intersection_id": 0 | null, "policy": "webster|fuzzy|rl"}` (PLANNED, Ph 12.5)
 - `{"type":"incident", "edges": [0], "severity": 0.5, "duration_s": 10.0}` (PLANNED, Ph 17.3)
 
