@@ -20,6 +20,7 @@ import mlflow
 import numpy as np
 import torch
 import torch.optim as optim
+from tqdm import tqdm
 
 ML_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ML_DIR not in sys.path:
@@ -136,6 +137,9 @@ def main() -> None:
     print("Reward scale:", reward_scale)
 
     experiment = args.experiment or "mappo-%s" % args.city
+    # Keep using the repo's file-based tracking store (mlruns/) instead of the
+    # database backend MLflow now requires by default.
+    os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
     mlflow_uri = "file:///" + os.path.join(ML_DIR, "mlruns").replace("\\", "/")
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment)
@@ -151,14 +155,22 @@ def main() -> None:
             path = args.resume if args.resume != "latest" else latest_checkpoint(checkpoint_dir)
             if path and os.path.isfile(path):
                 start_ep = load_checkpoint(path, policy, value_net, policy_opt, value_opt, device)
-                print("Resumed from %s (episode %d)" % (path, start_ep))
+                pct = 100.0 * start_ep / args.episodes
+                print("Resumed from %s (episode %d of %d — %.1f%% complete)"
+                      % (path, start_ep, args.episodes, pct))
             else:
                 print("No checkpoint found to resume from; training from scratch")
+
+        if start_ep >= args.episodes:
+            print("Training already complete at %d episodes; nothing to do." % args.episodes)
+            return
 
         agents = sorted(env.graph["intersections"])
         episode = start_ep
         next_log = start_ep
         next_ckpt = start_ep
+        pbar = tqdm(total=args.episodes, initial=start_ep, desc=f"mappo {args.city}",
+                    unit="ep", dynamic_ncols=True, mininterval=1.0)
         while episode < args.episodes:
             batch = {
                 i: {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
@@ -182,6 +194,7 @@ def main() -> None:
                     batch[i]["adv"].append(advantages)
                     batch[i]["ret"].append(returns)
                 episode += 1
+            pbar.update(n_collect)
 
             total_p_loss = total_v_loss = 0.0
             for i in agents:
@@ -211,9 +224,11 @@ def main() -> None:
             }, step=step)
 
             if step >= next_log or step == args.episodes - 1:
-                print("episode %d reward=%.3f pressure=%.3f equity=%.3f gini=%.3f"
-                      % (step, summary["episode_reward"], summary["mean_pressure"],
-                         summary["equity"], summary["gini"]))
+                pbar.set_postfix(reward=f"{summary['episode_reward']:.1f}",
+                                 pressure=f"{summary['mean_pressure']:.3f}",
+                                 equity=f"{summary['equity']:.1f}",
+                                 gini=f"{summary['gini']:.3f}",
+                                 complete=f"{100.0 * (step + 1) / args.episodes:.1f}%")
                 next_log = max(next_log + args.log_interval, step + 1)
 
             if step >= next_ckpt or step == args.episodes - 1:
@@ -228,8 +243,11 @@ def main() -> None:
                     "beta": args.beta,
                 }, path)
                 mlflow.log_artifact(path)
-                print("checkpoint saved: %s" % path)
+                pbar.write("checkpoint saved: %s" % path)
                 next_ckpt = max(next_ckpt + args.checkpoint_interval, step + 1)
+        pbar.close()
+        print(f"Training complete: mappo {args.city} "
+              f"({args.episodes} episodes, reward={summary['episode_reward']:.1f})")
 
 
 if __name__ == "__main__":

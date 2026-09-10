@@ -28,8 +28,27 @@ const cityGraphsPlugin: Plugin = {
   },
 }
 
+// Serve the multi-city MARL-vs-Webster comparison table straight from the
+// evaluation output (ml/results/comparison.json) so the dashboard always
+// reflects the latest run without shipping a stale copy.
+const resultsPlugin: Plugin = {
+  name: 'comparison-results',
+  configureServer(server) {
+    server.middlewares.use('/comparison.json', (_req, res, _next) => {
+      const file = path.join(repoRoot, 'ml', 'results', 'comparison.json')
+      if (!fs.existsSync(file)) {
+        res.statusCode = 404
+        res.end('Not found')
+        return
+      }
+      res.setHeader('Content-Type', 'application/json')
+      fs.createReadStream(file).pipe(res)
+    })
+  },
+}
+
 export default defineConfig({
-  plugins: [cityGraphsPlugin, react()],
+  plugins: [cityGraphsPlugin, resultsPlugin, react()],
   server: {
     fs: { allow: [repoRoot] },
   },

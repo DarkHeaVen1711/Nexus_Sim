@@ -18,6 +18,11 @@ jobs:
         cd pipeline
         pip install -r requirements.txt
         python -m pytest tests/ -v
+    - name: ML tests
+      run: |
+        cd ml
+        pip install -r requirements.txt
+        python -m pytest tests/ -v
     - name: C++ build
       run: |
         cd engine

@@ -21,7 +21,9 @@ interface UseWebSocketResult {
   engineCity: string | null;
   engineError: string | null;
   engineMode: 'ai' | 'webster' | null;
+  simStatus: 'idle' | 'running' | 'paused' | null;
   sendMessage: (data: string) => void;
+  sendCommand: (command: string, value?: string) => void;
   resetState: () => void;
 }
 
@@ -39,6 +41,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
   // Phase 8.7: signal control mode reported by the engine ("ai" when a
   // policy is loaded, "webster" for the fixed-time baseline).
   const [engineMode, setEngineMode] = useState<'ai' | 'webster' | null>(null);
+  // Lifecycle of the engine's simulation: requested by the dashboard, mirrored
+  // by the engine's paused/resumed/stopped + city_loaded broadcasts. null until
+  // the first message from the engine tells us where things stand.
+  const [simStatus, setSimStatus] = useState<'idle' | 'running' | 'paused' | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,6 +67,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
         setMetrics(null);
         setZoneMetrics([]);
         setEngineError(null);
+        setSimStatus(null);
         // Ask which city the engine is simulating in case we connected after
         // its startup announcement (or the engine was started with --city).
         ws.send(JSON.stringify({ type: 'get_city' }));
@@ -78,6 +85,19 @@ export function useWebSocket(url: string): UseWebSocketResult {
           if (data.type === 'city_loaded') {
             setEngineCity(data.city);
             setEngineError(null);
+            setSimStatus(data.city ? 'running' : 'idle');
+            return;
+          }
+          if (data.type === 'paused') {
+            setSimStatus('paused');
+            return;
+          }
+          if (data.type === 'resumed') {
+            setSimStatus('running');
+            return;
+          }
+          if (data.type === 'stopped') {
+            setSimStatus('idle');
             return;
           }
           if (data.type === 'error') {
@@ -144,12 +164,20 @@ export function useWebSocket(url: string): UseWebSocketResult {
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(data);
   }, []);
 
+  // Typed convenience for the dashboard's simulation controls. sendMessage
+  // (data type field only) is required by the {type, city} shape.
+  const sendCommand = useCallback((command: string, value?: string) => {
+    sendMessage(value ? JSON.stringify({ type: command, city: value })
+                       : JSON.stringify({ type: command }));
+  }, [sendMessage]);
+
   const resetState = useCallback(() => {
     setAgents([]);
     setMetrics(null);
     setZoneMetrics([]);
     setEngineError(null);
+    setSimStatus(null);
   }, []);
 
-  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, sendMessage, resetState };
+  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, resetState };
 }

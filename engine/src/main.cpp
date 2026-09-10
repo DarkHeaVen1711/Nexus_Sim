@@ -5,6 +5,7 @@
 #include <csignal>
 #include <fstream>
 #include <mutex>
+#include <vector>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
 #include "ai/InferenceEngine.h"
@@ -18,7 +19,9 @@ static void handle_signal(int) {
 }
 
 // A city-selection request coming from the dashboard over WebSocket. Written on
-// the uWS event-loop thread, read on the main simulation thread.
+// the uWS event-loop thread, read on the main simulation thread. Honored only
+// while the engine is idle: once a city is running (even paused) the dashboard
+// must reset/stop before picking a different city.
 struct CityRequest {
     std::mutex m;
     std::string city;
@@ -39,9 +42,42 @@ static std::string current_city() {
     return g_current_city.city;
 }
 
-static bool city_change_requested() {
-    std::lock_guard<std::mutex> lock(g_city_req.m);
-    return g_city_req.pending;
+// Dashboard simulation controls (pause/resume, restart, reset/stop). Written on
+// the uWS event-loop thread, read on the main simulation thread.
+struct SimControl {
+    std::mutex m;
+    bool paused = false;
+    enum class Reload { None, Restart, Stop };
+    Reload reload = Reload::None;
+};
+static SimControl g_ctl;
+
+static bool is_paused() {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    return g_ctl.paused;
+}
+
+static bool reload_requested(SimControl::Reload& kind) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    kind = g_ctl.reload;
+    return kind != SimControl::Reload::None;
+}
+
+static SimControl::Reload take_reload() {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    SimControl::Reload kind = g_ctl.reload;
+    g_ctl.reload = SimControl::Reload::None;
+    return kind;
+}
+
+static void set_paused(bool paused) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    g_ctl.paused = paused;
+}
+
+static void request_reload(SimControl::Reload kind) {
+    std::lock_guard<std::mutex> lock(g_ctl.m);
+    g_ctl.reload = kind;
 }
 
 static std::string take_city_request() {
@@ -51,11 +87,46 @@ static std::string take_city_request() {
     return g_city_req.city;
 }
 
-static std::string graph_path_for(const std::string& city) {
-    std::string filepath = "data/" + city + "/graph.json";
+// Resolves data/<city>/<file>, preferring a path that exists (running from the
+// repo root or from engine/). Used for the graph and the per-city OD matrix.
+static std::string city_data_path(const std::string& city,
+                                  const std::string& file) {
+    std::string filepath = "data/" + city + "/" + file;
     std::ifstream test(filepath);
-    if (!test.good()) filepath = "../data/" + city + "/graph.json";
+    if (!test.good()) filepath = "../data/" + city + "/" + file;
     return filepath;
+}
+
+static std::string graph_path_for(const std::string& city) {
+    return city_data_path(city, "graph.json");
+}
+
+// Target citywide peak vehicles/hour used to auto-derive demand_scale when the
+// caller did not provide one. Keeps OD-driven runs live but tractable on the
+// dashboard regardless of how small (or large) a city's OD matrix is.
+constexpr double kAutoPeakVehiclesPerHour = 600.0;
+
+// Reads an OD matrix and returns the peak citywide hourly demand (sum across
+// all OD pairs for the busiest hour). Returns 0 on any error / empty matrix.
+static double peak_hourly_demand(const std::string& od_path) {
+    std::ifstream f(od_path);
+    if (!f.good()) return 0.0;
+    nlohmann::json j;
+    try {
+        f >> j;
+    } catch (const std::exception&) {
+        return 0.0;
+    }
+    double peak = 0.0;
+    std::vector<double> hourly_sum(24, 0.0);
+    for (const auto& e : j["od"]) {
+        const auto& hourly = e["hourly"];
+        for (size_t h = 0; h < hourly.size() && h < 24; ++h)
+            hourly_sum[h] += hourly[h].get<double>();
+    }
+    for (double s : hourly_sum)
+        if (s > peak) peak = s;
+    return peak;
 }
 
 // Loads the ONNX traffic-signal policy when requested. A missing or invalid
@@ -83,7 +154,9 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
                      double dt, bool fast, bool no_ws,
                      const std::string& journey_csv,
                      nexussim::network::WebSocketServer* ws_server,
-                     nexussim::ai::InferenceEngine* policy) {
+                     nexussim::ai::InferenceEngine* policy,
+                     const std::string& od_path, double demand_scale,
+                     double start_hour, bool auto_scale) {
     std::string filepath = graph_path_for(city);
     std::ifstream test(filepath);
     if (!test.good()) {
@@ -118,8 +191,34 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     sim.set_policy(policy);
     sim.set_signal_mode(policy ? "ai" : "webster");
 
-    std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
-    sim.spawn_agents(agent_count);
+    // OD-driven demand: an explicit --od path wins, otherwise the city's own
+    // od_matrix.json is used when present. Cities without an OD matrix fall
+    // back to uniform random spawning.
+    std::string od = od_path.empty()
+                         ? city_data_path(city, "od_matrix.json")
+                         : od_path;
+    std::ifstream od_test(od);
+    if (od_test.good()) {
+        if (auto_scale) {
+            double peak = peak_hourly_demand(od);
+            if (peak > 0.0) {
+                double scale = kAutoPeakVehiclesPerHour / peak;
+                std::cout << "Auto demand_scale = " << scale
+                          << " (peak " << peak
+                          << " veh/hr -> target ~"
+                          << kAutoPeakVehiclesPerHour << " veh/hr)\n";
+                demand_scale = scale;
+            }
+        }
+        std::cout << "Spawning from OD demand...\n";
+        sim.spawn_agents_from_od(od, demand_scale, start_hour);
+    } else {
+        if (!od_path.empty())
+            std::cerr << "OD file not found: " << od_path
+                      << "; falling back to uniform spawning\n";
+        std::cout << "Spawning " << agent_count << " agents (uniform)...\n";
+        sim.spawn_agents(agent_count);
+    }
 
     if (ws_server) {
         ws_server->broadcast_text(
@@ -147,15 +246,25 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     }
 
     // Interactive mode: keep simulating (respawn completed agents so traffic
-    // stays live) until the dashboard picks another city or the engine stops.
+    // stays live) until the dashboard pauses, restarts or resets the run.
+    // Restart reloads this same city from scratch; reset/stop returns the
+    // engine to idle, which unlocks city selection on the dashboard.
     std::cout << "Running " << city << " continuously. "
-              << "Select a city on the dashboard to switch.\n";
+              << "Use the dashboard controls to pause/restart/reset.\n";
     int tick = 0;
     for (;;) {
         if (g_stop) break;
-        if (city_change_requested()) {
-            std::cout << "City switch requested; reloading...\n";
-            break;
+        SimControl::Reload reload_kind;
+        if (reload_requested(reload_kind)) break;
+        if (is_paused()) {
+            // Freeze the sim in place. The run stays alive so Resume continues
+            // exactly where it left off; no frames are broadcast while paused.
+#ifdef _WIN32
+            Sleep(50);
+#else
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+#endif
+            continue;
         }
         sim.tick(dt);
         sim.respawn_arrived();
@@ -180,6 +289,7 @@ int main(int argc, char** argv) {
     int duration_min = 5;
     std::string od_path;
     double demand_scale = 1.0;
+    bool auto_scale = true;
     double start_hour = 8.0;
     bool fast = false;
     bool no_ws = false;
@@ -202,7 +312,7 @@ int main(int argc, char** argv) {
         else if (arg == "--agents") agent_count = std::stoul(next("--agents"));
         else if (arg == "--duration") duration_min = std::atoi(next("--duration"));
         else if (arg == "--od") od_path = next("--od");
-        else if (arg == "--demand-scale") demand_scale = std::atof(next("--demand-scale"));
+        else if (arg == "--demand-scale") { demand_scale = std::atof(next("--demand-scale")); auto_scale = false; }
         else if (arg == "--start-hour") start_hour = std::atof(next("--start-hour"));
         else if (arg == "--journey") journey_csv = next("--journey");
         else if (arg == "--speed-factor") speed_factor = std::atof(next("--speed-factor"));
@@ -224,6 +334,16 @@ int main(int argc, char** argv) {
                 auto j = nlohmann::json::parse(payload);
                 if (!j.contains("type")) return;
                 if (j["type"] == "city" && j.contains("city")) {
+                    // Single-simulation lock: a city request is honored only
+                    // while the engine is idle. Once a run is active (even
+                    // paused) the dashboard must reset/stop before switching.
+                    if (!current_city().empty()) {
+                        std::cout << "Ignoring city request for '"
+                                  << j["city"].get<std::string>()
+                                  << "': " << current_city()
+                                  << " is running (reset/stop first)\n";
+                        return;
+                    }
                     std::lock_guard<std::mutex> lock(g_city_req.m);
                     g_city_req.city = j["city"].get<std::string>();
                     g_city_req.pending = true;
@@ -238,6 +358,16 @@ int main(int argc, char** argv) {
                     ws_server.broadcast_text(
                         "{\"type\":\"city_loaded\",\"city\":" + city_json
                         + "}");
+                } else if (j["type"] == "pause") {
+                    set_paused(true);
+                    ws_server.broadcast_text("{\"type\":\"paused\"}");
+                } else if (j["type"] == "resume") {
+                    set_paused(false);
+                    ws_server.broadcast_text("{\"type\":\"resumed\"}");
+                } else if (j["type"] == "restart") {
+                    request_reload(SimControl::Reload::Restart);
+                } else if (j["type"] == "reset" || j["type"] == "stop") {
+                    request_reload(SimControl::Reload::Stop);
                 }
             } catch (const std::exception&) {
                 // Ignore malformed messages.
@@ -255,19 +385,22 @@ int main(int argc, char** argv) {
     if (fast) {
         run_city(city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, no_ws ? nullptr : &ws_server, policy.get());
+                 journey_csv, no_ws ? nullptr : &ws_server, policy.get(),
+                 od_path, demand_scale, start_hour, auto_scale);
         return 0;
     }
 
     // Interactive mode: do NOT auto-start a simulation. The engine idles until
     // the dashboard sends a city selection, then runs that city continuously
-    // (agents respawn so traffic stays live) until another city is picked.
+    // (agents respawn so traffic stays live) until the dashboard restarts it or
+    // resets/stops it (which returns to idle and unlocks city selection).
     std::string current_city;
     for (;;) {
         if (g_stop) break;
 
         if (current_city.empty()) {
-            std::cout << "Engine ready. Select a city on the dashboard to start.\n";
+            std::cout << "Engine ready. Open the dashboard menu and pick a "
+                      << "city to start.\n";
             while (!g_stop) {
                 std::string next = take_city_request();
                 if (!next.empty()) {
@@ -283,14 +416,28 @@ int main(int argc, char** argv) {
             if (g_stop) break;
         }
 
+        set_paused(false); // a fresh run always starts unpaused
         run_city(current_city, static_cast<int>(agent_count), duration_min,
                  chaos, speed_factor, route_spread, dt, fast, no_ws,
-                 journey_csv, &ws_server, policy.get());
+                 journey_csv, &ws_server, policy.get(),
+                 od_path, demand_scale, start_hour, auto_scale);
+        if (g_stop) break;
 
-        // run_city returned: the engine is stopping or the dashboard requested
-        // a different city. Consume the request and continue with it.
-        std::string next = take_city_request();
-        current_city = next.empty() ? "" : next;
+        // run_city returned: the dashboard requested a reload. Restart reruns
+        // the same city from scratch; reset/stop clears it and returns to idle.
+        SimControl::Reload reload = take_reload();
+        take_city_request(); // drain any stale city request
+        if (reload == SimControl::Reload::Restart) {
+            std::cout << "Restarting " << current_city << " from scratch...\n";
+            continue;
+        }
+        {
+            std::lock_guard<std::mutex> lock(g_current_city.m);
+            g_current_city.city.clear();
+        }
+        ws_server.broadcast_text("{\"type\":\"stopped\"}");
+        std::cout << "Simulation stopped; engine idling.\n";
+        current_city.clear();
     }
 
     std::cout << "Shutting down.\n";
