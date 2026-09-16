@@ -152,14 +152,16 @@ def neighbor_pressures(graph: dict, queues: dict) -> dict:
             if downstream is None:
                 pressures.append(0.0)
             else:
-                incoming = graph["approach_names"].index(
-                    next(
-                        nm
-                        for nm in graph["approach_names"]
-                        if graph["neighbors"][downstream][nm] == i
-                    )
-                )
-                pressures.append(float(queues[downstream][incoming]))
+                back_approach = None
+                for nm in graph["approach_names"]:
+                    if graph["neighbors"].get(downstream, {}).get(nm) == i:
+                        back_approach = nm
+                        break
+                if back_approach is not None:
+                    incoming = graph["approach_names"].index(back_approach)
+                    pressures.append(float(queues[downstream][incoming]))
+                else:
+                    pressures.append(0.0)
         result[i] = pressures
     return result
 

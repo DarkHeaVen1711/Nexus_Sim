@@ -28,7 +28,7 @@ if ML_DIR not in sys.path:
 from env import NexusSimEnv, build_toy_graph
 from env.graph_loader import load_graph_json
 from models import PolicyNetwork, ValueNetwork
-from train.ppo import compute_gae, ppo_update
+from train.ppo import compute_gae_batched, ppo_update
 from train.rollout import collect_episode, evaluate_fixed_baseline
 
 _CPU = os.environ.get("NEXUS_TORCH_THREADS", "1")
@@ -136,7 +136,7 @@ def main() -> None:
     print("Reward scale:", reward_scale)
 
     experiment = args.experiment or "mappo-%s" % args.city
-    mlflow_uri = "file:///" + os.path.join(ML_DIR, "mlruns").replace("\\", "/")
+    mlflow_uri = "sqlite:///" + os.path.join(ML_DIR, "mlflow.db").replace("\\", "/")
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment)
 
@@ -155,48 +155,40 @@ def main() -> None:
             else:
                 print("No checkpoint found to resume from; training from scratch")
 
-        agents = sorted(env.graph["intersections"])
         episode = start_ep
         next_log = start_ep
         next_ckpt = start_ep
         while episode < args.episodes:
-            batch = {
-                i: {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
-                for i in agents
-            }
+            batch = {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
             summaries = []
             n_collect = min(args.episodes_per_update, args.episodes - episode)
             for _ in range(n_collect):
                 rollout = collect_episode(env, policy, value_net, device)
                 summaries.append(rollout["summary"])
-                for i in agents:
-                    tensors = rollout["tensors"][i]
-                    scaled_rewards = tensors["rew"] / reward_scale
-                    advantages, returns = compute_gae(
-                        scaled_rewards, tensors["val"], tensors["done"],
-                        args.gamma, args.lam,
-                    )
-                    batch[i]["obs"].append(tensors["obs"])
-                    batch[i]["act"].append(tensors["act"])
-                    batch[i]["logp"].append(tensors["logp"])
-                    batch[i]["adv"].append(advantages)
-                    batch[i]["ret"].append(returns)
+                tensors = rollout["tensors"]
+                scaled_rewards = tensors["rew"] / reward_scale
+                advantages, returns = compute_gae_batched(
+                    scaled_rewards, tensors["val"], tensors["done"],
+                    args.gamma, args.lam,
+                )
+                batch["obs"].append(tensors["obs"])
+                batch["act"].append(tensors["act"])
+                batch["logp"].append(tensors["logp"])
+                batch["adv"].append(advantages)
+                batch["ret"].append(returns)
                 episode += 1
 
-            total_p_loss = total_v_loss = 0.0
-            for i in agents:
-                p_loss, v_loss = ppo_update(
-                    policy, value_net, policy_opt, value_opt,
-                    torch.cat(batch[i]["obs"]),
-                    torch.cat(batch[i]["act"]),
-                    torch.cat(batch[i]["logp"]),
-                    torch.cat(batch[i]["adv"]),
-                    torch.cat(batch[i]["ret"]),
-                    clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
-                    n_epochs=4, batch_size=256,
-                )
-                total_p_loss += p_loss
-                total_v_loss += v_loss
+            obs_dim = batch["obs"][0].shape[-1]
+            p_loss, v_loss = ppo_update(
+                policy, value_net, policy_opt, value_opt,
+                torch.cat(batch["obs"], dim=1).reshape(-1, obs_dim),
+                torch.cat(batch["act"], dim=1).reshape(-1),
+                torch.cat(batch["logp"], dim=1).reshape(-1),
+                torch.cat(batch["adv"], dim=1).reshape(-1),
+                torch.cat(batch["ret"], dim=1).reshape(-1),
+                clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
+                n_epochs=4, batch_size=1024,
+            )
 
             summary = {k: sum(s[k] for s in summaries) / len(summaries)
                        for k in summaries[0]}
@@ -206,8 +198,8 @@ def main() -> None:
                 "pressure": summary["mean_pressure"],
                 "equity": summary["equity"],
                 "gini": summary["gini"],
-                "policy_loss": total_p_loss / len(agents),
-                "value_loss": total_v_loss / len(agents),
+                "policy_loss": p_loss,
+                "value_loss": v_loss,
             }, step=step)
 
             if step >= next_log or step == args.episodes - 1:

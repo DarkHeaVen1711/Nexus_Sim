@@ -21,6 +21,7 @@ set CHAOS=0.1
 set JOURNEY_PATH=
 set FAST=0
 set NO_WS=0
+set REBUILD=0
 
 :parse_args
 if "%~1"=="" goto build
@@ -37,6 +38,7 @@ if "%~1"=="--journey" ( set JOURNEY_PATH=%~2 & shift & shift & goto parse_args )
 if "%~1"=="--fast" ( set FAST=1 & shift & goto parse_args )
 if "%~1"=="--no-ws" ( set NO_WS=1 & shift & goto parse_args )
 if "%~1"=="--debug" ( set BUILD_TYPE=Debug & shift & goto parse_args )
+if "%~1"=="--rebuild" ( set REBUILD=1 & shift & goto parse_args )
 if "%~1"=="--dashboard-only" ( goto dashboard_only )
 if "%~1"=="--help" goto show_help
 if "%~1"=="-h" goto show_help
@@ -60,6 +62,7 @@ echo   --journey PATH     Where to write journey times CSV (default: journey_tim
 echo   --fast             Headless mode: no pacing, exits when sim finishes
 echo   --no-ws            Disable WebSocket server (no dashboard)
 echo   --debug            Build in Debug mode
+echo   --rebuild          Force a clean rebuild (default: reuse existing build)
 echo   --dashboard-only   Start dashboard only (skip build/run)
 echo   --help, -h         Show this help message
 echo.
@@ -84,6 +87,12 @@ echo Dashboard: http://localhost:5173
 exit /b 0
 
 :build
+if "%REBUILD%"=="0" if exist "engine\build\engine.exe" (
+    echo [build] engine.exe found - skipping configure/build
+    echo         (pass --rebuild to force a clean rebuild)
+    goto run_engine
+)
+
 echo [1/3] Configuring CMake...
 if not exist "engine\build" mkdir "engine\build"
 cd engine\build
@@ -105,6 +114,7 @@ if errorlevel 1 (
 
 cd ..\..
 
+:run_engine
 echo.
 echo [3/3] Starting dashboard...
 cd dashboard

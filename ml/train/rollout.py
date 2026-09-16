@@ -72,10 +72,18 @@ def evaluate_fixed_baseline(env, n_episodes: int = 10, switch_every: int = 4) ->
 
 
 def collect_episode(env, policy, value_net, device) -> dict:
-    """Step one episode; return per-agent buffers concatenated into tensors."""
+    """Step one episode; return agent-major tensors.
+
+    All tensors are ``[num_agents, horizon]`` (obs is ``[num_agents, horizon,
+    obs_dim]``) so GAE/PPO can run as a single vectorised pass over the whole
+    city instead of one Python loop per intersection.
+    """
     agents = sorted(env.graph["intersections"])
-    per_agent = {i: {"obs": [], "act": [], "logp": [], "rew": [], "val": [], "done": []}
-                 for i in agents}
+    n_agents = len(agents)
+
+    obs_buf, act_buf, logp_buf, val_buf, rew_buf, done_buf = (
+        [], [], [], [], [], []
+    )
 
     obs, _ = env.reset()
     done = False
@@ -92,13 +100,20 @@ def collect_episode(env, policy, value_net, device) -> dict:
 
         action_map = {i: int(actions[idx].item()) for idx, i in enumerate(agents)}
         next_obs, rewards, terminated, truncated, info = env.step(action_map)
-        for idx, i in enumerate(agents):
-            per_agent[i]["obs"].append(obs_t[idx])
-            per_agent[i]["act"].append(torch.tensor(action_map[i]))
-            per_agent[i]["logp"].append(log_probs[idx])
-            per_agent[i]["rew"].append(rewards[i])
-            per_agent[i]["val"].append(values[idx])
-            per_agent[i]["done"].append(terminated or truncated)
+
+        act_t = torch.as_tensor([action_map[i] for i in agents],
+                                dtype=torch.int64, device=device)
+        rew_t = torch.as_tensor([rewards[i] for i in agents],
+                                dtype=torch.float32, device=device)
+        dones_t = torch.full((n_agents,), float(terminated or truncated),
+                             dtype=torch.float32, device=device)
+
+        obs_buf.append(obs_t)
+        act_buf.append(act_t)
+        logp_buf.append(log_probs)
+        val_buf.append(values)
+        rew_buf.append(rew_t)
+        done_buf.append(dones_t)
 
         ep_reward += sum(rewards.values()) / env.num_agents
         pressure_sum += info["mean_pressure"]
@@ -108,16 +123,14 @@ def collect_episode(env, policy, value_net, device) -> dict:
         obs = next_obs
         done = truncated
 
-    tensors = {}
-    for i in agents:
-        tensors[i] = {
-            "obs": torch.stack(per_agent[i]["obs"]),
-            "act": torch.stack(per_agent[i]["act"]),
-            "logp": torch.stack(per_agent[i]["logp"]),
-            "rew": torch.tensor(per_agent[i]["rew"], dtype=torch.float32),
-            "val": torch.stack(per_agent[i]["val"]),
-            "done": torch.tensor(per_agent[i]["done"], dtype=torch.float32),
-        }
+    tensors = {
+        "obs": torch.stack(obs_buf, dim=1),
+        "act": torch.stack(act_buf, dim=1),
+        "logp": torch.stack(logp_buf, dim=1),
+        "rew": torch.stack(rew_buf, dim=1),
+        "val": torch.stack(val_buf, dim=1),
+        "done": torch.stack(done_buf, dim=1),
+    }
     summary = {
         "episode_reward": ep_reward,
         "mean_pressure": pressure_sum / max(1, n_decisions),

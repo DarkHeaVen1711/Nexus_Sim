@@ -33,6 +33,33 @@ def compute_gae(
     return advantages, returns
 
 
+def compute_gae_batched(
+    rewards: torch.Tensor,
+    values: torch.Tensor,
+    dones: torch.Tensor,
+    gamma: float = 0.99,
+    lam: float = 0.95,
+) -> tuple:
+    """GAE vectorised across the agent dimension.
+
+    ``rewards``/``values``/``dones`` are ``[num_agents, horizon]`` (time is the
+    last dim). The temporal recurrence stays a horizon-length Python loop, but
+    each step runs over every agent at once — a single vectorised pass for the
+    whole city instead of one ``compute_gae`` call per intersection.
+    """
+    advantages = torch.zeros_like(values)
+    T = rewards.shape[1]
+    gae = torch.zeros(rewards.shape[0], device=rewards.device, dtype=rewards.dtype)
+    for t in reversed(range(T)):
+        next_value = values[:, t + 1] if t + 1 < T else torch.zeros_like(values[:, t])
+        mask = 1.0 - dones[:, t]
+        delta = rewards[:, t] + gamma * next_value * mask - values[:, t]
+        gae = delta + gamma * lam * mask * gae
+        advantages[:, t] = gae
+    returns = advantages + values
+    return advantages, returns
+
+
 def ppo_update(
     policy,
     value_net,
@@ -47,7 +74,7 @@ def ppo_update(
     entropy_coef: float = 0.01,
     value_coef: float = 0.5,
     n_epochs: int = 4,
-    batch_size: int = 256,
+    batch_size: int = 1024,
 ) -> tuple:
     """Run clipped PPO updates over one rollout; returns (policy, value) loss."""
     adv = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
