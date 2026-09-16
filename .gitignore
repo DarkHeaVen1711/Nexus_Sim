@@ -32,6 +32,14 @@ engine/journey_times.csv
 # ML training artifacts
 ml/mlruns/
 ml/checkpoints/
+ml/mlflow.db
+ml/*_log.txt
+ml/*_err.txt
+ml/*.log
+ml/*.err.log
+
+# Generated training data subsets
+data/chicago_subset/
 
 # IDE / OS
 .vscode/settings.json
