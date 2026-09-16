@@ -42,7 +42,7 @@ ml/*.err.log
 data/chicago_subset/
 
 # IDE / OS
-.vscode/settings.json
+.vscode/
 .DS_Store
 Thumbs.db
 
