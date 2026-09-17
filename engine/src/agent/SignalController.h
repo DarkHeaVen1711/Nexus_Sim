@@ -26,8 +26,12 @@ public:
     int current_phase_idx = 0;
     double current_timer = 0.0;
     PhaseState current_state = PhaseState::GREEN;
+    std::string mode = "webster";
 
     SignalController(int64_t node_id) : node_id(node_id) {}
+
+    void set_mode(const std::string& m) { mode = m; }
+    std::string get_mode() const { return mode; }
 
     // Implements Webster's Formula for fixed cycle timing
     // volumes: traffic flow on each phase (vph)

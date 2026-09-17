@@ -80,6 +80,25 @@ static void request_reload(SimControl::Reload kind) {
     g_ctl.reload = kind;
 }
 
+// Live signal-policy switch requested by the dashboard
+// ({"type":"policy_switch","intersection_id":null,"policy":"webster|rl"}).
+struct PolicySwitchRequest {
+    std::mutex m;
+    std::string policy;
+    int64_t intersection_id = -1;
+    bool pending = false;
+};
+static PolicySwitchRequest g_policy_switch;
+
+static bool take_policy_switch(std::string& out_policy, int64_t& out_id) {
+    std::lock_guard<std::mutex> lock(g_policy_switch.m);
+    if (!g_policy_switch.pending) return false;
+    g_policy_switch.pending = false;
+    out_policy = g_policy_switch.policy;
+    out_id = g_policy_switch.intersection_id;
+    return true;
+}
+
 static std::string take_city_request() {
     std::lock_guard<std::mutex> lock(g_city_req.m);
     if (!g_city_req.pending) return "";
@@ -189,7 +208,9 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
     sim.set_route_spread(route_spread);
     sim.set_city_name(city);
     sim.set_policy(policy);
-    sim.set_signal_mode(policy ? "ai" : "webster");
+    // Canonical signal mode is "rl" (learned) or "webster" (fixed-cycle).
+    // The dashboard toggles it live via the Phase 10 policy_switch message.
+    sim.set_signal_mode(policy ? "rl" : "webster");
 
     // OD-driven demand: an explicit --od path wins, otherwise the city's own
     // od_matrix.json is used when present. Cities without an OD matrix fall
@@ -265,6 +286,30 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
 #endif
             continue;
+        }
+        // Phase 10 & 12 live policy_switch (network-wide or per-intersection).
+        std::string policy_switch;
+        int64_t target_id = -1;
+        if (take_policy_switch(policy_switch, target_id)) {
+            if (policy_switch == "rl"
+                && !(policy && policy->is_loaded())) {
+                ws_server->broadcast_text(
+                    "{\"type\":\"policy_switched\",\"ok\":false,"
+                    "\"error\":\"no AI policy loaded (start the engine with "
+                    "--policy policy.onnx)\"}");
+            } else {
+                if (target_id >= 0) {
+                    bool ok = sim.set_intersection_policy(target_id, policy_switch);
+                    ws_server->broadcast_text(
+                        "{\"type\":\"policy_switched\",\"ok\":" + std::string(ok ? "true" : "false")
+                        + ",\"mode\":\"" + policy_switch + "\",\"intersection_id\":" + std::to_string(target_id) + "}");
+                } else {
+                    sim.set_signal_mode(policy_switch);
+                    ws_server->broadcast_text(
+                        "{\"type\":\"policy_switched\",\"ok\":true,\"mode\":\""
+                        + policy_switch + "\"}");
+                }
+            }
         }
         sim.tick(dt);
         sim.respawn_arrived();
@@ -368,6 +413,24 @@ int main(int argc, char** argv) {
                     request_reload(SimControl::Reload::Restart);
                 } else if (j["type"] == "reset" || j["type"] == "stop") {
                     request_reload(SimControl::Reload::Stop);
+                } else if (j["type"] == "policy_switch") {
+                    if (!j.contains("policy")) return;
+                    std::string pol = j["policy"].get<std::string>();
+                    if (pol == "ai") pol = "rl"; // legacy alias
+                    if (pol != "webster" && pol != "rl" && pol != "fuzzy") {
+                        ws_server.broadcast_text(
+                            "{\"type\":\"policy_switched\",\"ok\":false,"
+                            "\"error\":\"unknown policy '" + pol + "'\"}");
+                        return;
+                    }
+                    int64_t target_id = -1;
+                    if (j.contains("intersection_id") && j["intersection_id"].is_number_integer()) {
+                        target_id = j["intersection_id"].get<int64_t>();
+                    }
+                    std::lock_guard<std::mutex> lock(g_policy_switch.m);
+                    g_policy_switch.policy = pol;
+                    g_policy_switch.intersection_id = target_id;
+                    g_policy_switch.pending = true;
                 }
             } catch (const std::exception&) {
                 // Ignore malformed messages.
@@ -380,7 +443,7 @@ int main(int argc, char** argv) {
     double dt = 0.1;
     auto policy = load_policy_or_warn(policy_path);
     std::cout << "Signal mode: "
-              << (policy ? "ai" : "webster") << "\n";
+              << (policy ? "rl" : "webster") << "\n";
 
     if (fast) {
         run_city(city, static_cast<int>(agent_count), duration_min,

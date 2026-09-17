@@ -29,7 +29,7 @@ export const ViewportBoundsSender: React.FC<Props> = ({ sendMessage }) => {
 
   useEffect(() => {
     sendBounds();
-  });
+  }, [map]);
 
   return null;
 };
