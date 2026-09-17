@@ -11,10 +11,12 @@ struct TriangularMF {
     double a, b, c;
 
     double evaluate(double x) const {
+        if (a == b && x <= a) return 1.0;
+        if (b == c && x >= c) return 1.0;
         if (x <= a || x >= c) return 0.0;
         if (x == b) return 1.0;
-        if (x < b) return (x - a) / (b - a);
-        return (c - x) / (c - b);
+        if (x < b) return (b > a) ? (x - a) / (b - a) : 0.0;
+        return (c > b) ? (c - x) / (c - b) : 0.0;
     }
 };
 
