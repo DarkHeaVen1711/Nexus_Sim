@@ -20,6 +20,7 @@ from .observation import OBSERVATION_DIM, build_observation
 from .reward import baseline_zone_weights, combined_reward
 from .toy_graph import build_toy_graph
 from .traffic_sim import TrafficSim, neighbor_pressures
+from .vectorized_sim import VectorizedTrafficSim
 
 MAX_QUEUE = 50.0
 N_PHASES = 2
@@ -68,12 +69,20 @@ class NexusSimEnv(gym.Env):
         super().reset(seed=seed)
         if seed is not None:
             self.seed = int(seed)
-        self.sim = TrafficSim(
-            self.graph,
-            seed=self.seed,
-            decision_interval=self.decision_interval,
-            start_hour=self.start_hour,
-        )
+        if self.num_agents > 100:
+            self.sim = VectorizedTrafficSim(
+                self.graph,
+                seed=self.seed,
+                decision_interval=self.decision_interval,
+                start_hour=self.start_hour,
+            )
+        else:
+            self.sim = TrafficSim(
+                self.graph,
+                seed=self.seed,
+                decision_interval=self.decision_interval,
+                start_hour=self.start_hour,
+            )
         self.step_count = 0
         obs = self._observe()
         return obs, {}
@@ -81,6 +90,10 @@ class NexusSimEnv(gym.Env):
     def step(self, actions: dict):
         if self.sim is None:
             raise RuntimeError("reset() must be called before step()")
+
+        if isinstance(self.sim, VectorizedTrafficSim):
+            return self._step_vectorized(actions)
+
         metrics = self.sim.step(actions)
         self.step_count += 1
 
@@ -109,7 +122,43 @@ class NexusSimEnv(gym.Env):
             self._render()
         return obs, rewards, False, truncated, info
 
+    def _step_vectorized(self, actions: dict):
+        metrics = self.sim.step(actions)
+        self.step_count += 1
+
+        from .reward import combined_reward as _cr
+        q_arr = self.sim.queues
+        total_queue = q_arr.sum(axis=1)
+        pressure_terms = [-float(total_queue[i]) for i in range(self.sim.N)]
+        zone_waits = [float(metrics["zone_wait"][int(self.sim.intersections[i])])
+                      for i in range(self.sim.N)]
+        weights = [self.zone_weights[int(self.sim.intersections[i])]
+                   for i in range(self.sim.N)]
+        reward_out = _cr(pressure_terms, zone_waits, self.alpha, self.beta, weights)
+        rewards = {
+            int(self.sim.intersections[i]): reward_out["rewards"][i]
+            for i in range(self.sim.N)
+        }
+
+        truncated = self.step_count >= self.episode_steps
+        obs_arr = self.sim.build_observations_vec(self.decision_interval)
+        agents = self.graph["intersections"]
+        obs = {int(agents[i]): obs_arr[i] for i in range(self.sim.N)}
+        info = {
+            "mean_pressure": reward_out["mean_pressure"],
+            "equity": reward_out["equity"],
+            "gini": reward_out["gini"],
+            "zone_wait": zone_waits,
+            "completed": metrics["completed"],
+        }
+        return obs, rewards, False, truncated, info
+
     def _observe(self, metrics: dict | None = None):
+        if isinstance(self.sim, VectorizedTrafficSim):
+            obs_arr = self.sim.build_observations_vec(self.decision_interval)
+            agents = self.graph["intersections"]
+            obs = {int(agents[i]): obs_arr[i] for i in range(self.sim.N)}
+            return obs
         if metrics is None:
             metrics = {
                 "queues": self.sim.queues,

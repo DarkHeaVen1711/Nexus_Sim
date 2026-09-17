@@ -68,13 +68,14 @@ def test_collect_episode_returns_buffers():
     value_net = ValueNetwork(11, hidden=16)
     rollout = collect_episode(env, policy, value_net, "cpu")
     tensors = rollout["tensors"]
-    for i in tensors:
-        t = tensors[i]
-        n = len(t["obs"])
-        assert n == 10
-        assert t["act"].shape == (n,)
-        assert t["rew"].shape == (n,)
-        assert t["done"].shape == (n,)
+    t = tensors
+    n_agents = env.num_agents
+    n = t["obs"].shape[1]
+    assert n == 10
+    assert t["obs"].shape == (n_agents, n, 11)
+    assert t["act"].shape == (n_agents, n)
+    assert t["rew"].shape == (n_agents, n)
+    assert t["done"].shape == (n_agents, n)
     assert rollout["summary"]["episode_reward"] <= 0.0
 
 

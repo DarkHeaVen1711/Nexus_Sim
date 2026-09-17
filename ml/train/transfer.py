@@ -37,7 +37,7 @@ if ML_DIR not in sys.path:
 
 from env import NexusSimEnv, build_toy_graph
 from env.graph_loader import load_graph_json
-from train.ppo import compute_gae, ppo_update
+from train.ppo import compute_gae_batched, ppo_update
 from train.rollout import collect_episode, evaluate_fixed_baseline
 from train.train import build_models, latest_checkpoint
 
@@ -188,10 +188,7 @@ def main() -> None:
     print(f"Reward scale: {reward_scale:.1f}")
 
     experiment = args.experiment or f"transfer-{args.source}-to-{args.target}"
-    # Keep using the repo's file-based tracking store (mlruns/) instead of the
-    # database backend MLflow now requires by default.
-    os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
-    mlflow_uri = "file:///" + os.path.join(ML_DIR, "mlruns").replace("\\", "/")
+    mlflow_uri = "sqlite:///" + os.path.join(ML_DIR, "mlflow.db").replace("\\", "/")
     mlflow.set_tracking_uri(mlflow_uri)
     mlflow.set_experiment(experiment)
 
@@ -205,42 +202,30 @@ def main() -> None:
         mlflow.log_params(params)
         mlflow.log_metrics({("baseline_" + k): v for k, v in baseline.items()})
 
-        agents = sorted(env.graph["intersections"])
         total = args.episodes
         with tqdm(total=total, initial=start_ep,
                   desc=f"transfer {args.source} -> {args.target}",
                   unit="ep", dynamic_ncols=True, mininterval=1.0) as pbar:
             for episode in range(start_ep, total):
-                batch = {
-                    i: {"obs": [], "act": [], "logp": [], "adv": [], "ret": []}
-                    for i in agents
-                }
                 rollout = collect_episode(env, policy, value_net, device)
                 summary = rollout["summary"]
-                for i in agents:
-                    tensors = rollout["tensors"][i]
-                    scaled_rewards = tensors["rew"] / reward_scale
-                    advantages, returns = compute_gae(
-                        scaled_rewards, tensors["val"], tensors["done"],
-                        args.gamma, args.lam,
-                    )
-                    batch[i]["obs"].append(tensors["obs"])
-                    batch[i]["act"].append(tensors["act"])
-                    batch[i]["logp"].append(tensors["logp"])
-                    batch[i]["adv"].append(advantages)
-                    batch[i]["ret"].append(returns)
-
-                for i in agents:
-                    ppo_update(
-                        policy, value_net, policy_opt, value_opt,
-                        torch.cat(batch[i]["obs"]),
-                        torch.cat(batch[i]["act"]),
-                        torch.cat(batch[i]["logp"]),
-                        torch.cat(batch[i]["adv"]),
-                        torch.cat(batch[i]["ret"]),
-                        clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
-                        n_epochs=4, batch_size=256,
-                    )
+                tensors = rollout["tensors"]
+                scaled_rewards = tensors["rew"] / reward_scale
+                advantages, returns = compute_gae_batched(
+                    scaled_rewards, tensors["val"], tensors["done"],
+                    args.gamma, args.lam,
+                )
+                obs_dim = tensors["obs"].shape[-1]
+                ppo_update(
+                    policy, value_net, policy_opt, value_opt,
+                    tensors["obs"].reshape(-1, obs_dim),
+                    tensors["act"].reshape(-1),
+                    tensors["logp"].reshape(-1),
+                    advantages.reshape(-1),
+                    returns.reshape(-1),
+                    clip_eps=args.clip_eps, entropy_coef=args.entropy_coef,
+                    n_epochs=4, batch_size=1024,
+                )
 
                 mlflow.log_metrics({
                     "episode_reward": summary["episode_reward"],

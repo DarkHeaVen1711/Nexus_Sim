@@ -23,18 +23,22 @@ from __future__ import annotations
 
 from typing import List, Optional, Sequence
 
+import numpy as np
+
 
 def gini_coefficient(values: Sequence[float]) -> float:
     """Gini coefficient of inequality over a sequence of zone metrics."""
-    v = [float(x) for x in values]
-    n = len(v)
+    v = np.asarray([float(x) for x in values], dtype=np.float64)
+    n = v.size
     if n <= 1:
         return 0.0
-    total = sum(v)
+    total = float(v.sum())
     if total <= 0.0:
         return 0.0
-    diff = sum(abs(a - b) for a in v for b in v)
-    return diff / (2.0 * n * total)
+    sorted_v = np.sort(v)
+    cum_sum = np.cumsum(sorted_v)
+    return float((2.0 * np.dot(np.arange(1, n + 1), sorted_v) - (n + 1) * total)
+                 / (n * total))
 
 
 def local_pressure(queues: Sequence[float]) -> float:

@@ -1,0 +1,53 @@
+[
+  {
+    "city": "toy",
+    "intersections": 4,
+    "webster": {
+      "episode_reward": -11269.822470439607,
+      "mean_pressure": -57.20375,
+      "equity": -55.49447470439603,
+      "gini": 0.10567214066872063
+    },
+    "marl": {
+      "episode_reward": -6857.848910077444,
+      "mean_pressure": -34.99662499999999,
+      "equity": -33.58186410077444,
+      "gini": 0.15071844646476523
+    },
+    "improvement_pct": 39.14856309347048
+  },
+  {
+    "city": "piedmont",
+    "intersections": 4,
+    "webster": {
+      "episode_reward": -26606.200000000004,
+      "mean_pressure": -133.675,
+      "equity": -132.38699999999986,
+      "gini": 0.19153261199254087
+    },
+    "marl": {
+      "episode_reward": -26190.702500000007,
+      "mean_pressure": -131.6361875,
+      "equity": -130.2708375,
+      "gini": 0.14198754449613654
+    },
+    "improvement_pct": 1.5616566815253496
+  },
+  {
+    "city": "chicago_subset",
+    "intersections": 144,
+    "webster": {
+      "episode_reward": -124461.35090148314,
+      "mean_pressure": -49.4218055555554,
+      "equity": -1195.1917034592777,
+      "gini": 0.44900833987664573
+    },
+    "marl": {
+      "episode_reward": -127671.62035882664,
+      "mean_pressure": -51.814777777777785,
+      "equity": -1224.9014258104883,
+      "gini": 0.5244078324209844
+    },
+    "improvement_pct": -2.5793303978233175
+  }
+]
