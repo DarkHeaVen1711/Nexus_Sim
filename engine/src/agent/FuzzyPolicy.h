@@ -28,11 +28,11 @@ private:
     // Membership Functions
     TriangularMF q_short_{0.0, 0.0, 10.0};
     TriangularMF q_medium_{5.0, 15.0, 25.0};
-    TriangularMF q_long_{20.0, 35.0, 50.0};
+    TriangularMF q_long_{20.0, 35.0, 1e9};
 
     TriangularMF w_short_{0.0, 0.0, 30.0};
     TriangularMF w_medium_{20.0, 60.0, 100.0};
-    TriangularMF w_long_{80.0, 150.0, 300.0};
+    TriangularMF w_long_{80.0, 150.0, 1e9};
 
     // Output: Green Time Extension (0s to 15s)
     // Rule outputs (extension in seconds for centroid defuzzification)
