@@ -8,6 +8,11 @@ import { ViewportBoundsSender } from './ViewportBoundsSender';
 import { CitySelector } from './CitySelector';
 import { SimControls } from './SimControls';
 
+import { CongestionCVOverlay } from './CongestionCVOverlay';
+import { VirtualCameraPanel } from './VirtualCameraPanel';
+import { ChatPanel } from './ChatPanel';
+import { IncidentReportPanel } from './IncidentReportPanel';
+
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
 type ViewMode = 'efficiency' | 'equity';
@@ -52,7 +57,7 @@ const buildGraphFeature = (data: any): any => {
 };
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, resetState } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, signals, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, sendPolicySwitch, resetState } = useWebSocket('ws://localhost:9001');
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [graphLoading, setGraphLoading] = useState(false);
@@ -193,7 +198,40 @@ export const Map: React.FC = () => {
         />
       )}
 
-      <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} signalMode={engineMode} />
+      <MetricsPanel
+        metrics={metrics}
+        zoneMetrics={zoneMetrics}
+        signalMode={engineMode}
+        connected={isConnected}
+        simActive={simActive}
+        onSwitch={sendPolicySwitch}
+        signals={signals}
+        onSwitchPolicy={sendPolicySwitch}
+      />
+
+      {/* Right-Side Secondary Analytics Column (Scrollable Stack for CV, Virtual Camera, NLP & Incidents) */}
+      {simActive && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 1000,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            maxHeight: 'calc(100vh - 460px)',
+            overflowY: 'auto',
+            width: '320px',
+            paddingRight: '4px',
+          }}
+        >
+          <CongestionCVOverlay city={engineCity || selectedCity || 'chicago'} visible={true} />
+          <VirtualCameraPanel visible={true} />
+          <ChatPanel city={engineCity || selectedCity || 'chicago'} visible={true} />
+          <IncidentReportPanel city={engineCity || selectedCity || 'chicago'} visible={true} />
+        </div>
+      )}
 
       <MapContainer
         center={CITY_CENTER}

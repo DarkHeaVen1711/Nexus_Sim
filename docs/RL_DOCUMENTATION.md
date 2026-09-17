@@ -26,19 +26,19 @@ The RL subsystem serves three critical roles in NexusSim:
 
 | ID | Objective | Phase(s) | Status | Acceptance Criteria |
 |----|-----------|----------|--------|---------------------|
-| O-RL-1 | Build a Gym-compatible multi-agent environment wrapping simulation state snapshots | 7 | IN PROGRESS | `NexusSimEnv` with `reset()`, `step()`, observation/action spaces; no live C++ call during training (TR-ML-01) |
+| O-RL-1 | Build a Gym-compatible multi-agent environment wrapping simulation state snapshots | 7 | DONE | `NexusSimEnv` with `reset()`, `step()`, observation/action spaces; no live C++ call during training (TR-ML-01) |
 | O-RL-2 | Design per-agent observation space: 4 queue lengths + 4 neighbor pressures + phase + time-in-phase + time-of-day (11-dim) | 7.1 | DONE | Flat vector in [0,1], shape (11,), unit tests in `ml/tests/test_observation.py` (TR-ML-02) |
 | O-RL-3 | Implement reward function: `α × pressure_i + β × equity_global` with tunable tradeoff curve | 7.2 | DONE | `combined_reward()` returns per-agent rewards + components; Gini computed; unit tests in `ml/tests/test_reward.py` (TR-ML-04) |
 | O-RL-4 | Build MAPPO trainer with shared-weight 3-layer MLP policy/value networks | 7.5 | DONE | `ppo_update()` and `collect_episode()` function; MLflow logging; checkpoint save/resume (TR-ML-05, TR-ML-06) |
-| O-RL-5 | Train on toy 4-intersection graph; verify rising reward curve above Webster baseline | 7.8 | PENDING | MLflow reward curve rises within 500 episodes (Phase 7 checkpoint) |
-| O-RL-6 | Export trained policy to ONNX and integrate C++ inference via `InferenceEngine` | 8 | PLANNED | ONNX parity with PyTorch on 10 inputs; p95 ≤ 8 ms (TR-ML-07, TR-ENG-12) |
+| O-RL-5 | Train on toy 4-intersection graph; verify rising reward curve above Webster baseline | 7.8 | DONE | MLflow reward curve rises within 500 episodes (Phase 7 checkpoint) |
+| O-RL-6 | Export trained policy to ONNX and integrate C++ inference via `InferenceEngine` | 8 | DONE | ONNX parity with PyTorch on 10 inputs; p95 ≤ 8 ms (TR-ML-07, TR-ENG-12) |
 | O-RL-7 | Deploy on full Chicago graph; generalize to Paris and Ahmedabad via transfer learning | 9 | DONE (train infra); full Chicago run pending | `graph_loader.py` loads real `data/<city>/graph.json`; `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` emits multi-city MARL-vs-Webster table to `ml/results/comparison.json`; dashboard `ComparisonPanel` renders it. Full 2000–5000-episode Chicago training is an overnight run (Phase 9.1 completion). |
-| O-RL-8 | Implement 12-algorithm shared harness (`BaseTrainer`, `benchmark.py`, `configs.yaml`) | 19 | PLANNED | `benchmark.py` prints comparison table + MLflow (TR-ML-11) |
-| O-RL-9 | Train 5 value-based algorithms: Q-Learning, SARSA, DQN, DDQN, Dueling DQN | 20 | PLANNED | 5 eval reports vs. Webster (TR-ML-14, TR-ML-15) |
-| O-RL-10 | Train 3 policy-based algorithms: REINFORCE, A2C, PPO | 21 | PLANNED | 8 signal-control algorithms in comparison table (TR-ML-16) |
-| O-RL-11 | Showcase SAC/TD3/DDPG on Pendulum-v1 via Stable-Baselines3 | 22 | PLANNED | Return curves logged to MLflow (TR-ML-17) |
-| O-RL-12 | Deploy MAPPO/PPO/DQN to C++ engine via ONNX; `--signal-policy rl --algo` dispatch | 23 | PLANNED | p95 ≤ 8 ms; dashboard PolicyComparisonPanel shows all three (TR-ML-18) |
-| O-RL-13 | Document 12-algorithm inventory with ablation study in `docs/results.md` | 24 | PLANNED | Table + ablation (TR-ML-19) |
+| O-RL-8 | Implement 12-algorithm shared harness (`BaseTrainer`, `benchmark.py`, `configs.yaml`) | 19 | DONE | `benchmark.py` prints comparison table + MLflow (TR-ML-11) |
+| O-RL-9 | Train 5 value-based algorithms: Q-Learning, SARSA, DQN, DDQN, Dueling DQN | 20 | DONE | 5 eval reports vs. Webster (TR-ML-14, TR-ML-15) |
+| O-RL-10 | Train 3 policy-based algorithms: REINFORCE, A2C, PPO | 21 | DONE | 8 signal-control algorithms in comparison table (TR-ML-16) |
+| O-RL-11 | Showcase SAC/TD3/DDPG on Pendulum-v1 via Stable-Baselines3 | 22 | DONE | Return curves logged to MLflow (TR-ML-17) |
+| O-RL-12 | Deploy MAPPO/PPO/DQN to C++ engine via ONNX; `--signal-policy rl --algo` dispatch | 23 | DONE | p95 ≤ 8 ms; dashboard PolicyComparisonPanel shows all three (TR-ML-18) |
+| O-RL-13 | Document 12-algorithm inventory with ablation study in `docs/results.md` | 24 | DONE | Table + ablation (TR-ML-19) |
 
 ---
 

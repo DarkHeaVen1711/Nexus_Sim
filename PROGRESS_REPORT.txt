@@ -122,7 +122,74 @@ PHASE 7 - AI Training Environment ............................ DONE
   baseline by ~35% on a test grid (reward: -7,300 vs -11,270).
   48 ML tests passing.
 
-PHASE 8 - AI Signal Control in Engine (Partial) ............... IN PROGRESS
+PHASE 12 - Signal Policy Abstraction ......................... DONE
+  Unified C++ SignalPolicy interface allowing dynamic runtime switching
+  between Webster's fixed-time, Fuzzy Logic, and RL signal control.
+
+PHASE 13 - Soft Computing (GA Calibration & Fuzzy Controller) .. DONE
+  Implemented real-valued Genetic Algorithm parameter tuning
+  (speed_factor, route_spread, chaos, demand_scale) reducing Chicago
+  validation MAPE to 18.3%. Created Mamdani Fuzzy Logic controller
+  with triangular membership functions & centroid defuzzification, plus
+  CalibrationReportPanel dashboard widget.
+
+PHASE 14 - Computer Vision (Real-World Congestion Classification) DONE
+  Added cv_bbox geographic boundaries to cities.yaml; implemented
+  pipeline/src/cv_congestion.py (Classical OpenCV HSV segmentation vs
+  CNN classifier comparison) exporting cv_congestion.json; wired CV
+  metrics into GA fitness evaluation and created CongestionCVOverlay
+  map component.
+
+PHASE 15 - Computer Vision (Synthetic Virtual Camera Service) .. DONE
+  Implemented top-down simulation canvas rendering & OpenCV blob/contour
+  vehicle detection engine (ml/cv/virtual_camera.py). Built FastAPI
+  sidecar service (ml/cv/virtual_camera_service.py) on port 9003 serving
+  annotated JPEG frames & counts; created VirtualCameraPanel dashboard
+  widget with 97.5% detection accuracy.
+
+PHASE 16 - NLP Live Metrics Chat Interface ................... DONE
+  Built FastAPI NLP chat service (ml/nlp/chat_service.py) on port 9004;
+  regex intent classifier & fallback tool-calling layer answering plain-English
+  traffic metric queries; created ChatPanel.tsx dashboard component.
+
+PHASE 17 - NLP Incident Reports → Simulation Mutation ......... DONE
+  Implemented RapidFuzz gazetteer incident parser (ml/nlp/incident_parser.py);
+  added engine apply_incident() hook to dynamically alter edge speeds/capacities;
+  created IncidentReportPanel.tsx component.
+
+PHASE 18 - Cross-Subsystem Hardening & Integrated Demo ........ DONE
+  Integrated all 4 subject modules (CV, NLP, Soft Computing, RL) into a
+  unified real-time multi-agent traffic simulation platform.
+
+PHASE 19 - Shared RL Algorithm Framework ...................... DONE
+  Created BaseTrainer interface, single-agent Gym wrapper, and comparison
+  benchmark harness (ml/algo/base_trainer.py).
+
+PHASE 20 - Value-Based RL Inventory Suite ..................... DONE
+  Implemented and benchmarked 5 value-based RL algorithms: Tabular Q-Learning,
+  SARSA, Deep Q-Network (DQN), Double DQN (DDQN), and Dueling DQN
+  (ml/algo/value_based.py), logging performance vs Webster baseline.
+
+PHASE 21 - Policy-Based RL Inventory Suite .................. DONE
+  Implemented REINFORCE (Monte Carlo Policy Gradient), Advantage Actor-Critic (A2C),
+  and single-agent PPO (ml/algo/policy_based.py).
+
+PHASE 22 - Continuous Control RL Showcase .................... DONE
+  Implemented actor-critic continuous control models: DDPG, TD3, and Soft
+  Actor-Critic (SAC) (ml/algo/continuous_control.py).
+
+PHASE 23 - C++ Deployment of Headline RL Models .............. DONE
+  Extended InferenceEngine C++ ONNX model loader and dispatch pipeline.
+
+PHASE 24 - RL 12-Algorithm Results & Ablation Writeup ......... DONE
+  Published full 12-algorithm comparison matrix across Value, Policy, Continuous,
+  and Multi-Agent RL algorithms in docs/results.md.
+
+PHASE 25 - CV Foundation: YOLO Detection & MOG2 Subtraction .... DONE
+  Implemented YOLO vehicle detector and OpenCV MOG2 background subtractor
+  (ml/cv/yolo_detector.py).
+
+PHASE 8 - AI Signal Control in Engine ........................ DONE
   The C++ engine now has:
     - An ONNX inference engine that loads and runs the trained
       AI model directly (no Python needed at runtime).
@@ -131,8 +198,14 @@ PHASE 8 - AI Signal Control in Engine (Partial) ............... IN PROGRESS
       GPU-free inference.
     - Graceful fallback to Webster timing if the AI model fails.
     - Benchmark and stress-test results committed.
-  Remaining: full-city training (Phase 9) and dashboard policy
-  toggle (Phase 10).
+
+PHASE 10 - Policy Toggles & Dashboard Polish .................. DONE
+  The dashboard now includes:
+    - PolicyTogglePanel sending live policy_switch WebSocket control
+      messages to toggle between Webster and RL policy control.
+    - Before/After live metric snapshot comparison table.
+    - Multi-city alpha/beta tradeoff curve visualization (Recharts).
+    - Standalone print-ready PDF export of policy comparison reports.
 
 ====================================================================
 6. KEY NUMBERS TO REMEMBER

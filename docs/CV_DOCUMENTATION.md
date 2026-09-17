@@ -26,26 +26,26 @@ The CV subsystem serves three critical roles in NexusSim:
 
 | ID | Objective | Phase(s) | Status | Acceptance Criteria |
 |----|-----------|----------|--------|---------------------|
-| O-CV-1 | Add `cv_bbox` per-city key to `cities.yaml` (lat/lon bounding box for tile capture) | 14.1 | PLANNED | Config-driven per-city convention (TR-7) |
-| O-CV-2 | Write `pipeline/src/cv_congestion.py`: fetch traffic-flow tiles via Mapbox Traffic Tiles or TomTom Traffic Flow API (ToS-compliant, API key via env var) | 14.2 | PLANNED | Module docstring documents compliance; key never committed (NFR-6, BR-6) |
-| O-CV-3 | Classical CV: HSV color-threshold bucketing of road-colored pixels → congestion_level 0–3 | 14.3 | PLANNED | No training data required; primary/production path |
-| O-CV-4 | CNN comparison: small custom CNN or fine-tuned ResNet-18 (4-class) on hand-labeled tile crops | 14.4 | PLANNED | "Classical vs. learned" comparison for coursework |
-| O-CV-5 | Write `data/<city>/cv_congestion.json` (`{zone_id: {hour: {level, confidence, source}}}`) | 14.5 | PLANNED | Consumed by GA (Phase 13) and potentially RL reward shaping |
-| O-CV-6 | Wire `cv_congestion.json` into GA as additional fitness term (sim zone wait/speed vs. CV-observed level) | 14.6 | PLANNED | Blended with MAPE; weight documented |
-| O-CV-7 | Dashboard: `CongestionCVOverlay.tsx` — zone bubbles colored by CV-observed congestion level | 14.7 | PLANNED | Static per-hour data, not live-streamed (TR-DASH-07) |
-| O-CV-8 | `ml/cv/virtual_camera.py`: WS client on engine stream; rasterize top-down frame (roads from `graph.json`, agents as colored shapes) | 15.1 | PLANNED | Reuses `{"type":"bounds"}` message as viewport client (TR-ML-08) |
-| O-CV-9 | OpenCV contour/blob detection + color segmentation on rendered frame → bounding boxes + count | 15.2 | PLANNED | Detecting on rendered pixels, not reading state directly |
-| O-CV-10 | `ml/cv/virtual_camera_service.py`: FastAPI/websockets server (port 9003), streams annotated PNG + count JSON at ~1 Hz | 15.3 | PLANNED | Independent process; no engine changes (TR-6) |
-| O-CV-11 | Dashboard: `VirtualCameraPanel.tsx` — displays live annotated feed | 15.4 | PLANNED | Polls service, not engine directly (TR-DASH-08) |
-| O-CV-12 | Accuracy sanity check: detected count vs. ground-truth agent count in view, logged as running error % | 15.5 | PLANNED | Documents detection reliability |
+| O-CV-1 | Add `cv_bbox` per-city key to `cities.yaml` (lat/lon bounding box for tile capture) | 14.1 | DONE | Config-driven per-city convention (TR-7) |
+| O-CV-2 | Write `pipeline/src/cv_congestion.py`: fetch traffic-flow tiles via Mapbox Traffic Tiles or TomTom Traffic Flow API (ToS-compliant, API key via env var) | 14.2 | DONE | Module docstring documents compliance; key never committed (NFR-6, BR-6) |
+| O-CV-3 | Classical CV: HSV color-threshold bucketing of road-colored pixels → congestion_level 0–3 | 14.3 | DONE | No training data required; primary/production path |
+| O-CV-4 | CNN comparison: small custom CNN or fine-tuned ResNet-18 (4-class) on hand-labeled tile crops | 14.4 | DONE | "Classical vs. learned" comparison for coursework |
+| O-CV-5 | Write `data/<city>/cv_congestion.json` (`{zone_id: {hour: {level, confidence, source}}}`) | 14.5 | DONE | Consumed by GA (Phase 13) and potentially RL reward shaping |
+| O-CV-6 | Wire `cv_congestion.json` into GA as additional fitness term (sim zone wait/speed vs. CV-observed level) | 14.6 | DONE | Blended with MAPE; weight documented |
+| O-CV-7 | Dashboard: `CongestionCVOverlay.tsx` — zone bubbles colored by CV-observed congestion level | 14.7 | DONE | Static per-hour data, not live-streamed (TR-DASH-07) |
+| O-CV-8 | `ml/cv/virtual_camera.py`: WS client on engine stream; rasterize top-down frame (roads from `graph.json`, agents as colored shapes) | 15.1 | DONE | Reuses `{"type":"bounds"}` message as viewport client (TR-ML-08) |
+| O-CV-9 | OpenCV contour/blob detection + color segmentation on rendered frame → bounding boxes + count | 15.2 | DONE | Detecting on rendered pixels, not reading state directly |
+| O-CV-10 | `ml/cv/virtual_camera_service.py`: FastAPI/websockets server (port 9003), streams annotated PNG + count JSON at ~1 Hz | 15.3 | DONE | Independent process; no engine changes (TR-6) |
+| O-CV-11 | Dashboard: `VirtualCameraPanel.tsx` — displays live annotated feed | 15.4 | DONE | Polls service, not engine directly (TR-DASH-08) |
+| O-CV-12 | Accuracy sanity check: detected count vs. ground-truth agent count in view, logged as running error % | 15.5 | DONE | Documents detection reliability |
 
 ---
 
 ## Current Implementation
 
-### Status: NOT YET IMPLEMENTED
+### Status: IMPLEMENTED (Phases 14, 15, 25)
 
-The CV subsystem is entirely **PLANNED** (Phases 14–15). No CV source files exist in the repository. The following describes the designed architecture.
+The CV subsystem is implemented across `pipeline/src/cv_congestion.py` (Phase 14), `ml/cv/virtual_camera.py` and `ml/cv/virtual_camera_service.py` (Phase 15), and `ml/cv/yolo_detector.py` (Phase 25).
 
 ### Pipeline A: Real-World Congestion Classification (Phase 14)
 
