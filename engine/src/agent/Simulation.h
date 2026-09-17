@@ -49,6 +49,13 @@ public:
     // dashboard can badge the run as AI or baseline (Webster).
     void set_signal_mode(const std::string& m) { signal_mode_ = m; }
 
+    bool set_intersection_policy(int64_t node_id, const std::string& m) {
+        auto it = signals_.find(node_id);
+        if (it == signals_.end()) return false;
+        if (it->second) it->second->set_mode(m);
+        return true;
+    }
+
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
         std::mt19937 rng(42);
