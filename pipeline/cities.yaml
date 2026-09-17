@@ -1,6 +1,7 @@
 chicago:
   query: "Chicago, Illinois, USA"
   chaos: 0.1
+  cv_bbox: [41.83, -87.75, 41.92, -87.60]
   od_source:
     type: socrata
     dataset: m6dm-c72p
@@ -22,6 +23,7 @@ chicago:
 paris:
   query: "Paris, France"
   chaos: 0.1
+  cv_bbox: [48.81, 2.25, 48.90, 2.42]
   od_source:
     type: density-proxy
     note: >-
@@ -33,6 +35,7 @@ paris:
 ahmedabad:
   query: "Ahmedabad, Gujarat, India"
   chaos: 0.4
+  cv_bbox: [22.95, 72.50, 23.08, 72.65]
   od_source:
     type: density-proxy
     note: >-
@@ -44,6 +47,7 @@ ahmedabad:
 piedmont:
   query: "Piedmont, California, USA"
   chaos: 0.1
+  cv_bbox: [37.81, -122.25, 37.83, -122.21]
   od_source:
     type: uniform
     note: "Fallback: no real OD data; engine uses uniform random spawning."
