@@ -12,18 +12,31 @@ export interface Agent {
   speed: number;
 }
 
+// Signal control mode reported by the engine: "webster" (fixed-cycle
+// baseline) or "rl" (learned policy). "ai" is the legacy startup label the
+// engine no longer emits but older engines still do — treated as rl.
+export type SignalMode = 'rl' | 'ai' | 'webster' | 'fuzzy' | null;
+
+export interface IntersectionSignalState {
+  id: number;
+  mode: string;
+  phase: number;
+}
+
 interface UseWebSocketResult {
   agents: Agent[];
   metrics: any;
   zoneMetrics: any[];
+  signals: IntersectionSignalState[];
   isConnected: boolean;
   isReconnecting: boolean;
   engineCity: string | null;
   engineError: string | null;
-  engineMode: 'ai' | 'webster' | null;
+  engineMode: SignalMode;
   simStatus: 'idle' | 'running' | 'paused' | null;
   sendMessage: (data: string) => void;
   sendCommand: (command: string, value?: string) => void;
+  sendPolicySwitch: (policy: 'webster' | 'rl' | 'fuzzy', intersectionId?: number | null) => void;
   resetState: () => void;
 }
 
@@ -34,16 +47,12 @@ export function useWebSocket(url: string): UseWebSocketResult {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [metrics, setMetrics] = useState<any>(null);
   const [zoneMetrics, setZoneMetrics] = useState<any[]>([]);
+  const [signals, setSignals] = useState<IntersectionSignalState[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [engineCity, setEngineCity] = useState<string | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
-  // Phase 8.7: signal control mode reported by the engine ("ai" when a
-  // policy is loaded, "webster" for the fixed-time baseline).
-  const [engineMode, setEngineMode] = useState<'ai' | 'webster' | null>(null);
-  // Lifecycle of the engine's simulation: requested by the dashboard, mirrored
-  // by the engine's paused/resumed/stopped + city_loaded broadcasts. null until
-  // the first message from the engine tells us where things stand.
+  const [engineMode, setEngineMode] = useState<SignalMode>(null);
   const [simStatus, setSimStatus] = useState<'idle' | 'running' | 'paused' | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -75,7 +84,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
         // The server replies with "pong", which also resets its idle-timeout.
         if (heartbeatRef.current) clearInterval(heartbeatRef.current);
         heartbeatRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) ws.send('ping');
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
         }, HEARTBEAT_INTERVAL_MS);
       };
 
@@ -100,6 +109,17 @@ export function useWebSocket(url: string): UseWebSocketResult {
             setSimStatus('idle');
             return;
           }
+          // Phase 10 live policy toggle: the engine acks each switch. A
+          // failure (unextended engine / no policy loaded) surfaces as an
+          // engineError pill on the map so the toggle is never silent.
+          if (data.type === 'policy_switched') {
+            if (data.ok && (data.mode === 'rl' || data.mode === 'ai' || data.mode === 'webster')) {
+              setEngineMode(data.mode);
+            } else if (data.error) {
+              setEngineError(data.error);
+            }
+            return;
+          }
           if (data.type === 'error') {
             setEngineError(data.message || 'Engine error');
             return;
@@ -108,8 +128,10 @@ export function useWebSocket(url: string): UseWebSocketResult {
             setAgents(data.agents);
             setMetrics(data.metrics);
             setZoneMetrics(data.zone_metrics || []);
+            setSignals(data.signals || []);
             if (data.city) setEngineCity(data.city);
-            if (data.metrics.signal_mode === 'ai'
+            if (data.metrics.signal_mode === 'rl'
+                || data.metrics.signal_mode === 'ai'
                 || data.metrics.signal_mode === 'webster') {
               setEngineMode(data.metrics.signal_mode);
             }
@@ -171,6 +193,18 @@ export function useWebSocket(url: string): UseWebSocketResult {
                        : JSON.stringify({ type: command }));
   }, [sendMessage]);
 
+  // Phase 10 (TR-DASH-04): live policy toggle. Sends the exact engine control
+  // message shape {"type":"policy_switch","intersection_id":null,"policy":...}.
+  // Network-wide by default; an intersection id is passed through unchanged for
+  // when the engine grows per-intersection support (Phase 12).
+  const sendPolicySwitch = useCallback((policy: 'webster' | 'rl' | 'fuzzy', intersectionId?: number | null) => {
+    sendMessage(JSON.stringify({
+      type: 'policy_switch',
+      policy,
+      intersection_id: intersectionId ?? null,
+    }));
+  }, [sendMessage]);
+
   const resetState = useCallback(() => {
     setAgents([]);
     setMetrics(null);
@@ -179,5 +213,5 @@ export function useWebSocket(url: string): UseWebSocketResult {
     setSimStatus(null);
   }, []);
 
-  return { agents, metrics, zoneMetrics, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, resetState };
+  return { agents, metrics, zoneMetrics, signals, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, sendPolicySwitch, resetState };
 }

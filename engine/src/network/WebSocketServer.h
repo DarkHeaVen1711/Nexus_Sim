@@ -54,10 +54,14 @@ public:
                 ws->send("pong", uWS::OpCode::TEXT);
                 return;
             }
-            // LOD culling: the dashboard sends its current viewport bounds and
-            // the engine only includes agents inside them in the next broadcast.
+            // LOD culling & client ping: the dashboard sends bounds or ping JSON messages
             try {
-                auto j = nlohmann::json::parse(message);
+                std::string msg_str(message);
+                auto j = nlohmann::json::parse(msg_str);
+                if (j.contains("type") && j["type"] == "ping") {
+                    ws->send("{\"type\":\"pong\"}", uWS::OpCode::TEXT);
+                    return;
+                }
                 if (j.contains("type") && j["type"] == "bounds") {
                     std::lock_guard<std::mutex> lock(bounds_mutex_);
                     if (j.contains("clear") && j["clear"].get<bool>()) {
