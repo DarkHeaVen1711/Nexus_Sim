@@ -56,20 +56,15 @@ export const ComparisonPanel: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
+  // Inline (non-floating) panel intended to render inside the hamburger menu so
+  // it never overlaps the map or the MetricsPanel.
   const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    bottom: '20px',
-    right: '20px',
-    zIndex: 1000,
-    backgroundColor: 'rgba(17, 24, 39, 0.92)',
-    backdropFilter: 'blur(8px)',
     color: '#ffffff',
-    padding: '20px',
-    borderRadius: '12px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    border: '1px solid #374151',
-    maxWidth: '420px',
+    padding: 0,
     fontFamily: 'system-ui, sans-serif',
+    borderTop: '1px solid rgba(107, 114, 128, 0.2)',
+    marginTop: '12px',
+    paddingTop: '12px',
   };
 
   const labelStyle: React.CSSProperties = {
@@ -95,53 +90,55 @@ export const ComparisonPanel: React.FC = () => {
         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700 }}>MARL vs Webster Baseline</h3>
       </div>
 
-      {error && (
-        <div style={{ fontSize: '13px', color: '#f87171' }}>
-          Comparison results unavailable (no evaluation output yet).
-        </div>
-      )}
+      <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+        {error && (
+          <div style={{ fontSize: '13px', color: '#f87171' }}>
+            Comparison results unavailable (no evaluation output yet).
+          </div>
+        )}
 
-      {!error && rows === null && (
-        <div style={{ fontSize: '13px', color: '#9ca3af' }}>Loading comparison results…</div>
-      )}
+        {!error && rows === null && (
+          <div style={{ fontSize: '13px', color: '#9ca3af' }}>Loading comparison results…</div>
+        )}
 
-      {!error && rows && rows.length > 0 && (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>City</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Intersections</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Webster</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>MARL</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Δ Reward</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => (
-              <tr key={row.city}>
-                <td style={tdStyle}>{cityLabel(row.city)}</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#9ca3af' }}>{row.intersections}</td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: '#9ca3af' }}>
-                  {metricCell('episode_reward', row.webster)}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: row.marl ? '#c4b5fd' : '#9ca3af' }}>
-                  {metricCell('episode_reward', row.marl)}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'right', color: improvementColor(row.improvement_pct) }}>
-                  {row.improvement_pct !== undefined ? `${row.improvement_pct >= 0 ? '+' : ''}${row.improvement_pct.toFixed(1)}%` : '—'}
-                </td>
+        {!error && rows && rows.length > 0 && (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>City</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Intersections</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Webster</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>MARL</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>Δ Reward</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {rows.map(row => (
+                <tr key={row.city}>
+                  <td style={tdStyle}>{cityLabel(row.city)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: '#9ca3af' }}>{row.intersections}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: '#9ca3af' }}>
+                    {metricCell('episode_reward', row.webster)}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: row.marl ? '#c4b5fd' : '#9ca3af' }}>
+                    {metricCell('episode_reward', row.marl)}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right', color: improvementColor(row.improvement_pct) }}>
+                    {row.improvement_pct !== undefined ? `${row.improvement_pct >= 0 ? '+' : ''}${row.improvement_pct.toFixed(1)}%` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-      {!error && rows && rows.length === 0 && (
-        <div style={{ fontSize: '13px', color: '#9ca3af' }}>No comparison rows yet.</div>
-      )}
+        {!error && rows && rows.length === 0 && (
+          <div style={{ fontSize: '13px', color: '#9ca3af' }}>No comparison rows yet.</div>
+        )}
 
-      <div style={{ ...labelStyle, marginTop: '12px' }}>
-        Reward (lower magnitude = less wait); Δ % relative to Webster
+        <div style={{ ...labelStyle, marginTop: '12px' }}>
+          Reward (lower magnitude = less wait); Δ % relative to Webster
+        </div>
       </div>
     </div>
   );

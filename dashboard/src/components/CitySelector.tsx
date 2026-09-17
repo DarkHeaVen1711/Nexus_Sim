@@ -1,5 +1,6 @@
 import React from 'react';
 import { CITIES, type CityOption } from '../constants';
+import { ComparisonPanel } from './ComparisonPanel';
 
 interface CitySelectorProps {
   cities?: CityOption[];
@@ -25,7 +26,8 @@ const MENU_STYLE: React.CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
   boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
   padding: '12px',
-  minWidth: '200px',
+  minWidth: '280px',
+  maxWidth: '420px',
 };
 
 const SECTION_STYLE: React.CSSProperties = {
@@ -156,7 +158,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
                   : undefined}
               >
                 <span>{c.label}</span>
-                {isActive && <span style={{ fontSize: '10px', color: '#3b82f6' }}>ΓùÅ</span>}
+                {isActive && <span style={{ fontSize: '10px', color: '#3b82f6' }}>●</span>}
               </button>
             );
           })}
@@ -164,9 +166,11 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
           <div style={{ margin: '10px 0', height: '1px', backgroundColor: 'rgba(107, 114, 128, 0.2)' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>
             <span>Simulation</span>
-            <span>{locked && runningCity ? `running ┬╖ ${runningCity}` : 'idle'}</span>
+            <span>{locked && runningCity ? `running · ${runningCity}` : 'idle'}</span>
           </div>
           <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>{locale}</div>
+
+          <ComparisonPanel />
         </div>
       )}
     </>

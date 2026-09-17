@@ -7,7 +7,6 @@ import { EquityOverlay } from './EquityOverlay';
 import { ViewportBoundsSender } from './ViewportBoundsSender';
 import { CitySelector } from './CitySelector';
 import { SimControls } from './SimControls';
-import { ComparisonPanel } from './ComparisonPanel';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
@@ -168,7 +167,7 @@ export const Map: React.FC = () => {
 
       {!selectedCity && isConnected && (
         <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: 'rgba(17, 24, 39, 0.9)', color: '#e5e7eb', padding: '10px 18px', borderRadius: '8px', border: '1px solid #374151', fontSize: '14px', fontWeight: 600 }}>
-          Open the Γÿ░ menu to start a simulation
+          Open the ☰ menu to start a simulation
         </div>
       )}
 
@@ -195,8 +194,6 @@ export const Map: React.FC = () => {
       )}
 
       <MetricsPanel metrics={metrics} zoneMetrics={zoneMetrics} signalMode={engineMode} />
-
-      <ComparisonPanel />
 
       <MapContainer
         center={CITY_CENTER}
