@@ -1,6 +1,16 @@
-# NexusSim — Session Progress Context (Sep 11, 2026)
+# NexusSim — Session Progress Context (Sep 11, 2026) — SUPERSEDED
 
-> **Purpose:** Handoff document so the next session can resume exactly where this one left off.
+> **Sep 17, 2026 update:** superseded by `SESSION_PROGRESS_2026-09-17.md` (keep only for history).
+> Changes since this file was written:
+> - The "uncommitted" claims in §2/§8 are stale — the batched-PPO refactor, the PPO `batch_size`
+>   256→1024 change, vectorized sim and MLflow sqlite fix are now committed & merged (`a86996d`),
+>   working tree is clean.
+> - The Sep-11 Chicago run (3/7/11.pt → 200) did not persist; a fresh run was re-launched 2026-09-17
+>   21:09 from `chicago/0.pt` and was at **episode ~89/200** (reward ≈ -11.1k vs baseline -13,974) — see
+>   the 09-17 file for live state and resume steps.
+> - Repo path is now `E:\Coding\Nexus_Sim` (old docs said `E:\Project\NexusSim\Nexus_Sim`).
+
+> **Original purpose:** Handoff document so the next session can resume exactly where this one left off.
 > To resume: hand this file to the agent as context, then say "continue the training from where the progress file says."
 
 ---

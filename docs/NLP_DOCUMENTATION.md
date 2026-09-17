@@ -25,26 +25,26 @@ The NLP subsystem serves two critical roles in NexusSim:
 
 | ID | Objective | Phase(s) | Status | Acceptance Criteria |
 |----|-----------|----------|--------|---------------------|
-| O-NLP-1 | Build FastAPI sidecar service that is itself a WS client of the engine, caching latest metrics/zone_metrics/signals | 16.1 | PLANNED | Service on port 9004; keeps Python NLP deps out of frontend and C++ hot path (TR-ML-09) |
-| O-NLP-2 | Implement rule-based intent classifier: regex over fixed intent set (worst_zone, avg_speed, active_agents, gini_explain, compare_policy, incident_status) | 16.2 | PLANNED | Reliable baseline; unit-tested independently of LLM path (TR-ML-09) |
-| O-NLP-3 | Implement optional LLM tool-calling layer: same metric-lookup functions as tools, graceful fallback when no API key configured | 16.3 | PLANNED | "Classical NLP vs. LLM" comparison; not a hard dependency (TR-ML-09) |
-| O-NLP-4 | Expose `POST /chat` endpoint; response includes which intent/tool fired for UI transparency | 16.4 | PLANNED | REST endpoint returns structured response |
-| O-NLP-5 | Build `ChatPanel.tsx` dashboard component calling chat_service.py directly over REST | 16.5 | PLANNED | (TR-DASH-09) |
-| O-NLP-6 | Produce held-out query test set + accuracy report (rule-based vs. LLM path) | 16.6 | PLANNED | Correct answers on held-out queries (Phase 16 checkpoint) |
-| O-NLP-7 | Implement `incident_parser.py`: pure function `parse(text, graph) -> IncidentSpec` using street-name gazetteer + `rapidfuzz` fuzzy matching | 17.1 | PLANNED | Independently unit-testable; small fixed vocabulary (TR-ML-10) |
-| O-NLP-8 | Expose `POST /incident` endpoint; forward parsed spec as `{"type":"incident", edges, severity, duration_s}` over WS to engine | 17.2 | PLANNED | (TR-ML-10) |
-| O-NLP-9 | Engine: `apply_incident()` stores temporary per-edge speed/capacity multiplier, expired after `duration_s` of `sim_time_` | 17.3 | PLANNED | Reuses Pathfinder stochastic edge-cost mechanism (TR-ENG-13) |
-| O-NLP-10 | Add `incidents[]` (active, with remaining duration) to `broadcast_state()` JSON | 17.4 | PLANNED | Additive schema extension (NFR-5) |
-| O-NLP-11 | Build `IncidentReportPanel.tsx` dashboard component: free-text box, active incidents list, effect on nearby zone metrics | 17.5 | PLANNED | (TR-DASH-10) |
-| O-NLP-12 | Unit tests: gazetteer resolution accuracy on ambiguous/misspelled street names; incident expiry correctness | 17.6 | PLANNED | Tests pass |
+| O-NLP-1 | Build FastAPI sidecar service that is itself a WS client of the engine, caching latest metrics/zone_metrics/signals | 16.1 | DONE | Service on port 9004; keeps Python NLP deps out of frontend and C++ hot path (TR-ML-09) |
+| O-NLP-2 | Implement rule-based intent classifier: regex over fixed intent set (worst_zone, avg_speed, active_agents, gini_explain, compare_policy, incident_status) | 16.2 | DONE | Reliable baseline; unit-tested independently of LLM path (TR-ML-09) |
+| O-NLP-3 | Implement optional LLM tool-calling layer: same metric-lookup functions as tools, graceful fallback when no API key configured | 16.3 | DONE | "Classical NLP vs. LLM" comparison; not a hard dependency (TR-ML-09) |
+| O-NLP-4 | Expose `POST /chat` endpoint; response includes which intent/tool fired for UI transparency | 16.4 | DONE | REST endpoint returns structured response |
+| O-NLP-5 | Build `ChatPanel.tsx` dashboard component calling chat_service.py directly over REST | 16.5 | DONE | (TR-DASH-09) |
+| O-NLP-6 | Produce held-out query test set + accuracy report (rule-based vs. LLM path) | 16.6 | DONE | Correct answers on held-out queries (Phase 16 checkpoint) |
+| O-NLP-7 | Implement `incident_parser.py`: pure function `parse(text, graph) -> IncidentSpec` using street-name gazetteer + `rapidfuzz` fuzzy matching | 17.1 | DONE | Independently unit-testable; small fixed vocabulary (TR-ML-10) |
+| O-NLP-8 | Expose `POST /incident` endpoint; forward parsed spec as `{"type":"incident", edges, severity, duration_s}` over WS to engine | 17.2 | DONE | (TR-ML-10) |
+| O-NLP-9 | Engine: `apply_incident()` stores temporary per-edge speed/capacity multiplier, expired after `duration_s` of `sim_time_` | 17.3 | DONE | Reuses Pathfinder stochastic edge-cost mechanism (TR-ENG-13) |
+| O-NLP-10 | Add `incidents[]` (active, with remaining duration) to `broadcast_state()` JSON | 17.4 | DONE | Additive schema extension (NFR-5) |
+| O-NLP-11 | Build `IncidentReportPanel.tsx` dashboard component: free-text box, active incidents list, effect on nearby zone metrics | 17.5 | DONE | (TR-DASH-10) |
+| O-NLP-12 | Unit tests: gazetteer resolution accuracy on ambiguous/misspelled street names; incident expiry correctness | 17.6 | DONE | Tests pass |
 
 ---
 
 ## Current Implementation
 
-### Status: NOT YET IMPLEMENTED
+### Status: IMPLEMENTED (Phases 16, 17)
 
-The NLP subsystem is entirely **PLANNED** (Phases 16–17). No Python NLP source files exist in the repository. The following describes the designed architecture from the implementation plan and TRD.
+The NLP subsystem is implemented across `ml/nlp/chat_service.py` (FastAPI sidecar service on port 9004), `ml/nlp/incident_parser.py` (street gazetteer parser), and C++ engine `apply_incident()` (`engine/src/agent/Simulation.h`).
 
 ### Planned Architecture
 

@@ -1,4 +1,8 @@
-# NexusSim — Session Progress Context (Sep 10, 2026)
+# NexusSim — Session Progress Context (Sep 10, 2026) — SUPERSEDED
+
+> **Sep 17, 2026 update:** superseded by `SESSION_PROGRESS_2026-09-11.md` and then
+> `SESSION_PROGRESS_2026-09-17.md` (keep only for history). The Sep-17 file has the live state of the
+> full Chicago training run (via `E:\Coding\Nexus_Sim`, not the old `E:\Project\NexusSim\Nexus_Sim` path).
 
 > **Purpose:** Handoff document so the next session can resume exactly where this one left off.
 > To resume: hand this file to the agent as context, then say "continue the training from where the progress file says."

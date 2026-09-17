@@ -26,23 +26,23 @@ The Soft Computing subsystem serves three critical roles in NexusSim:
 
 | ID | Objective | Phase(s) | Status | Acceptance Criteria |
 |----|-----------|----------|--------|---------------------|
-| O-SC-1 | Refactor `validate.py` so `build_report()` is directly importable as a pure fitness function | 13.1 | PLANNED | No CLI behaviour change; unlocks reuse from GA (TR-PIPE-07) |
-| O-SC-2 | Implement `pipeline/src/optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation | 13.2 | PLANNED | Population ~20, ~20–30 generations; bounds in module docstring (TR-PIPE-07) |
-| O-SC-3 | Parallelize fitness evaluation via `multiprocessing.Pool` — each eval is one independent `--fast --no-ws` engine subprocess | 13.3 | PLANNED | No engine changes needed (TR-PIPE-07) |
-| O-SC-4 | Write `data/<city>/ga_calibration_report.json`: best chromosome, per-generation best/mean fitness, final `validation_report.json` | 13.4 | PLANNED | Feeds `CalibrationReportPanel.tsx` |
-| O-SC-5 | Implement `engine/src/agent/FuzzyPolicy.h`: Mamdani inference over queue length + wait time (triangular membership), rule base, centroid defuzzification → green-time extension | 13.5 | PLANNED | Implements `SignalPolicy` interface from Phase 12 (TR-ENG-11) |
-| O-SC-6 | Unit test `FuzzyPolicy`: membership function boundaries, rule firing, defuzzified output range | 13.6 | PLANNED | GoogleTest; mirrors `test_signal.cpp` structure |
-| O-SC-7 | Dashboard: `CalibrationReportPanel.tsx` — GA convergence chart (Recharts) | 13.7 | PLANNED | Reads static JSON report; no live WS data needed (TR-DASH-06) |
-| O-SC-8 | Ablation note: GA-tuned vs. manually-tuned MAPE; Webster vs. Fuzzy avg-wait/Gini | 13.8 | PLANNED | Markdown table in `docs/results.md` |
-| O-SC-9 | Wire `cv_congestion.json` into GA as additional fitness term (sim zone wait/speed vs. CV-observed level, blended with MAPE) | 14.6 | PLANNED | Both terms weighted; weight documented |
+| O-SC-1 | Refactor `validate.py` so `build_report()` is directly importable as a pure fitness function | 13.1 | DONE | No CLI behaviour change; unlocks reuse from GA (TR-PIPE-07) |
+| O-SC-2 | Implement `pipeline/src/optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation | 13.2 | DONE | Population ~20, ~20–30 generations; bounds in module docstring (TR-PIPE-07) |
+| O-SC-3 | Parallelize fitness evaluation via `multiprocessing.Pool` — each eval is one independent `--fast --no-ws` engine subprocess | 13.3 | DONE | No engine changes needed (TR-PIPE-07) |
+| O-SC-4 | Write `data/<city>/ga_calibration_report.json`: best chromosome, per-generation best/mean fitness, final `validation_report.json` | 13.4 | DONE | Feeds `CalibrationReportPanel.tsx` |
+| O-SC-5 | Implement `engine/src/agent/FuzzyPolicy.h`: Mamdani inference over queue length + wait time (triangular membership), rule base, centroid defuzzification → green-time extension | 13.5 | DONE | Implements `SignalPolicy` interface from Phase 12 (TR-ENG-11) |
+| O-SC-6 | Unit test `FuzzyPolicy`: membership function boundaries, rule firing, defuzzified output range | 13.6 | DONE | GoogleTest; mirrors `test_signal.cpp` structure |
+| O-SC-7 | Dashboard: `CalibrationReportPanel.tsx` — GA convergence chart (Recharts) | 13.7 | DONE | Reads static JSON report; no live WS data needed (TR-DASH-06) |
+| O-SC-8 | Ablation note: GA-tuned vs. manually-tuned MAPE; Webster vs. Fuzzy avg-wait/Gini | 13.8 | DONE | Markdown table in `docs/results.md` |
+| O-SC-9 | Wire `cv_congestion.json` into GA as additional fitness term (sim zone wait/speed vs. CV-observed level, blended with MAPE) | 14.6 | DONE | Both terms weighted; weight documented |
 
 ---
 
 ## Current Implementation
 
-### Status: NOT YET IMPLEMENTED
+### Status: IMPLEMENTED (Phase 13)
 
-The Soft Computing subsystem is entirely **PLANNED** (Phase 13). No GA or fuzzy-logic source files exist. The following describes the designed architecture.
+The Soft Computing subsystem is implemented across `pipeline/src/optimize_calibration.py` (GA automated parameter calibration) and `engine/src/agent/FuzzyPolicy.h` (Mamdani fuzzy-logic signal controller).
 
 ### Component A: Genetic Algorithm Calibration (Phase 13.1–13.4)
 

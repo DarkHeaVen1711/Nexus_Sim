@@ -1,4 +1,4 @@
-.PHONY: build run test bench clean dashboard help
+.PHONY: build run demo test bench clean dashboard help
 
 CITY ?= piedmont
 AGENTS ?= 500
@@ -9,6 +9,7 @@ help:
 	@echo ""
 	@echo "  make build              Build the C++ engine"
 	@echo "  make run                Build and run simulation (CITY, AGENTS, DURATION)"
+	@echo "  make demo               Build release engine + dashboard & launch demo"
 	@echo "  make test               Run all tests (C++, Python, JS)"
 	@echo "  make bench              Build and run quadtree benchmark"
 	@echo "  make dashboard          Start the React dashboard"
@@ -18,11 +19,15 @@ help:
 	@echo "    CITY=piedmont    AGENTS=500    DURATION=5"
 	@echo ""
 	@echo "  Examples:"
+	@echo "    make demo"
 	@echo "    make run CITY=piedmont AGENTS=1000 DURATION=10"
-	@echo "    make run  (defaults: piedmont, 500 agents, 5 min)"
 
 build:
 	cd engine && mkdir -p build && cd build && cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_TESTING=OFF && cmake --build .
+
+demo: build
+	cd dashboard && npm install --silent && npm run build
+	cd engine && ./build/engine --city $(CITY) --agents $(AGENTS) --duration $(DURATION)
 
 run: build
 	cd engine && ./build/engine --city $(CITY) --agents $(AGENTS) --duration $(DURATION)

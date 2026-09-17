@@ -1,6 +1,9 @@
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { giniLabel, giniColor } from '../constants';
+import type { IntersectionSignalState, SignalMode } from '../hooks/useWebSocket';
+import { PolicyTogglePanel } from './PolicyTogglePanel';
+import { PolicyComparisonPanel } from './PolicyComparisonPanel';
 
 interface ZoneMetric {
   zone_id: number;
@@ -16,7 +19,12 @@ interface MetricsPanelProps {
     gini_coefficient?: number;
   } | null;
   zoneMetrics?: ZoneMetric[];
-  signalMode?: 'ai' | 'webster' | null;
+  signalMode?: SignalMode;
+  connected?: boolean;
+  simActive?: boolean;
+  onSwitch?: (policy: 'webster' | 'rl') => void;
+  signals?: IntersectionSignalState[];
+  onSwitchPolicy?: (policy: 'webster' | 'rl' | 'fuzzy', intersectionId?: number | null) => void;
 }
 
 function barColor(wt: number, maxWt: number): string {
@@ -27,11 +35,24 @@ function barColor(wt: number, maxWt: number): string {
   return '#ef4444';
 }
 
-export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics, signalMode }) => {
+export const MetricsPanel: React.FC<MetricsPanelProps> = ({
+  metrics,
+  zoneMetrics,
+  signalMode,
+  connected = false,
+  simActive = false,
+  onSwitch,
+  signals = [],
+  onSwitchPolicy,
+}) => {
   if (!metrics) return null;
 
   const gini = metrics.gini_coefficient ?? 0;
   const waitTime = metrics.avg_wait_time ?? 0;
+
+  // Phase 10: the engine now reports the canonical "rl" label (legacy "ai"
+  // is still tolerated). Either means the learned policy is controlling.
+  const isAiMode = signalMode === 'rl' || signalMode === 'ai';
 
   const topZones = useMemo(() => {
     if (!zoneMetrics || zoneMetrics.length === 0) return [];
@@ -52,11 +73,13 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics
     backgroundColor: 'rgba(17, 24, 39, 0.9)',
     backdropFilter: 'blur(8px)',
     color: '#ffffff',
-    padding: '24px',
+    padding: '20px',
     borderRadius: '12px',
     boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
     border: '1px solid #374151',
-    width: '300px',
+    width: '320px',
+    maxHeight: '420px',
+    overflowY: 'auto',
     fontFamily: 'system-ui, sans-serif'
   };
 
@@ -78,11 +101,11 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics
             textTransform: 'uppercase' as const,
             padding: '3px 8px',
             borderRadius: '9999px',
-            color: signalMode === 'ai' ? '#c4b5fd' : '#9ca3af',
-            backgroundColor: signalMode === 'ai' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)',
-            border: `1px solid ${signalMode === 'ai' ? '#8b5cf6' : '#4b5563'}`,
+            color: isAiMode ? '#c4b5fd' : '#9ca3af',
+            backgroundColor: isAiMode ? 'rgba(139, 92, 246, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+            border: `1px solid ${isAiMode ? '#8b5cf6' : '#4b5563'}`,
           }}>
-            {signalMode === 'ai' ? 'AI Mode' : 'Baseline'}
+            {isAiMode ? 'AI Mode' : 'Baseline'}
           </span>
         )}
       </h2>
@@ -158,6 +181,26 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({ metrics, zoneMetrics
               </ResponsiveContainer>
             </div>
           </div>
+        )}
+
+        {onSwitch && (
+          <PolicyTogglePanel
+            mode={signalMode ?? null}
+            metrics={metrics}
+            connected={connected}
+            simActive={simActive}
+            onSwitch={onSwitch}
+          />
+        )}
+
+        {onSwitchPolicy && (
+          <PolicyComparisonPanel
+            signals={signals}
+            engineMode={signalMode ?? null}
+            connected={connected}
+            simActive={simActive}
+            onSwitchPolicy={onSwitchPolicy}
+          />
         )}
       </div>
     </div>

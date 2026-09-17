@@ -159,15 +159,23 @@ cd Nexus_Sim
 
 There are **no environment variables** to configure. Dependencies are fetched automatically: the C++ engine pulls its libraries via CMake `FetchContent`, and the dashboard uses `npm`.
 
-### Windows (one command)
+### Quickstart (One Command)
 
+**Linux / macOS:**
+```bash
+make demo
+```
+
+**Windows:**
 ```batch
 run.bat
 ```
 
-This builds the engine, starts the dashboard at http://localhost:5173, and runs a 5-minute simulation with 500 agents on Piedmont. See [Usage](#usage) for all `run.bat` options.
+This builds the Release C++ engine, compiles dashboard assets, starts the dashboard interface at http://localhost:5173, and launches a 5-minute Piedmont simulation with 500 agents.
 
-### Linux / macOS (manual)
+See [`docs/results.md`](file:///e:/Coding/Nexus_Sim/docs/results.md) for full empirical benchmark tables, real-world Chicago travel time validation results, and multi-city MARL signal control metrics.
+
+### Manual Setup (Step-by-Step)
 
 **1. Build and run the engine**
 

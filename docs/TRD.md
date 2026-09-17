@@ -100,11 +100,11 @@ phases is given per row.
 | TR-ENG-06 | Structure-of-Arrays (SoA) agent storage, `alignas(64)`, parallel agent updates via `std::async` chunking over CPU cores | DONE | NFR-1/2 | Ph 2–3 |
 | TR-ENG-07 | OD-driven spawning from `od_matrix.json` at correct time-of-day rate; graceful random fallback when no OD present | DONE | FR-1 | Ph 6 |
 | TR-ENG-08 | Fixed-cycle signals via Webster's formula computed once at startup; agents queue at red | DONE | — | Ph 5 |
-| TR-ENG-09 | **Pluggable `SignalPolicy` interface** (`tick`, `is_green`, `current_phase_index`, `policy_name`); Webster's extracted as `WebsterPolicy` byte-identically; `init_signals()` builds policies via `unique_ptr` | PLANNED | FR-7 | Ph 12 |
-| TR-ENG-10 | **Live `policy_switch` control message** flips one intersection or network-wide policy with no restart, visible in next broadcast frame | PLANNED | FR-7 | Ph 12.5 |
-| TR-ENG-11 | **`FuzzyPolicy`** implementing `SignalPolicy`: Mamdani inference over queue length + wait time, centroid defuzzification → green-time extension | PLANNED | FR-10 | Ph 13.5 |
+| TR-ENG-09 | **Pluggable `SignalPolicy` interface** (`tick`, `is_green`, `current_phase_index`, `policy_name`); Webster's extracted as `WebsterPolicy` byte-identically; `init_signals()` builds policies via `unique_ptr` | DONE | FR-7 | Ph 12 |
+| TR-ENG-10 | **Live `policy_switch` control message** flips one intersection or network-wide policy with no restart, visible in next broadcast frame | DONE | FR-7 | Ph 12.5 |
+| TR-ENG-11 | **`FuzzyPolicy`** implementing `SignalPolicy`: Mamdani inference over queue length + wait time, centroid defuzzification → green-time extension | DONE | FR-10 | Ph 13.5 |
 | TR-ENG-12 | **ONNX inference off the hot path**: load `policy.onnx`, batch all intersection observations into one tensor call per decision tick, background thread + shared-memory ring buffer, p95 ≤ 8 ms | DONE (infra); parity/p95 gate pending a trained policy | FR-8, NFR-4, TR-5 | Ph 8 |
-| TR-ENG-13 | **`apply_incident(edges, severity, duration_s)`**: temporary per-edge speed/capacity multipliers expiring on `sim_time_`; reuse Pathfinder's existing stochastic edge-cost mechanism | PLANNED | FR-14 | Ph 17.3 |
+| TR-ENG-13 | **`apply_incident(edges, severity, duration_s)`**: temporary per-edge speed/capacity multipliers expiring on `sim_time_`; reuse Pathfinder's existing stochastic edge-cost mechanism | DONE | FR-14 | Ph 17.3 |
 | TR-ENG-14 | Metrics: per-tick avg speed/wait, per-zone wait, Gini every 10 ticks; `avg_tick_ms`/`p95_tick_ms` for perf logging | DONE | FR-3, NFR-2 | Ph 5 |
 | TR-ENG-15 | WebSocket server (uWebSockets) on port 9001; broadcast JSON state frame; accept `bounds` and (Ph 12/17) `policy_switch`/`incident` messages | DONE | FR-5 | Ph 4 |
 
@@ -118,8 +118,8 @@ phases is given per row.
 | TR-PIPE-04 | Export `graph.json` conforming to [5]; validated with jsonschema | DONE | TR-2 | Ph 1 |
 | TR-PIPE-05 | OD matrix: real measured feed (Chicago Socrata TNP) → `od_matrix.json`; density-proxy fallback (`od_proxy.py`) emits `confidence: low` and `validation_safe: false` per [6] | DONE | FR-4 | Ph 6 |
 | TR-PIPE-06 | `validate.py` computes per-corridor simulated-vs-observed MAPE and a machine-checked checkpoint: `MAPE ≤ 25% AND ≥ 75% corridors within 25%`; **refuses** proxy matrices (circular-MAPE guard) | DONE | FR-4, NFR-7 | Ph 6 |
-| TR-PIPE-07 | **GA calibration** `optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation, `multiprocessing.Pool` parallel eval (independent `--fast --no-ws` engine subprocesses), output `ga_calibration_report.json` | PLANNED | FR-9 | Ph 13 |
-| TR-PIPE-08 | **CV congestion** `cv_congestion.py`: fetch traffic tiles via Mapbox Traffic Tiles / TomTom Traffic Flow API (ToS-compliant, key via env var, never committed); classical HSV thresholding + CNN comparison; `cv_congestion.json` per zone per hour; feeds GA as blended fitness term | PLANNED | FR-11, BR-6, NFR-6 | Ph 14 |
+| TR-PIPE-07 | **GA calibration** `optimize_calibration.py`: real-valued chromosome `[speed_factor, route_spread, chaos, demand_scale]`, tournament selection, blend crossover, Gaussian mutation, `multiprocessing.Pool` parallel eval (independent `--fast --no-ws` engine subprocesses), output `ga_calibration_report.json` | DONE | FR-9 | Ph 13 |
+| TR-PIPE-08 | **CV congestion** `cv_congestion.py`: fetch traffic tiles via Mapbox Traffic Tiles / TomTom Traffic Flow API (ToS-compliant, key via env var, never committed); classical HSV thresholding + CNN comparison; `cv_congestion.json` per zone per hour; feeds GA as blended fitness term | DONE | FR-11, BR-6, NFR-6 | Ph 14 |
 
 ### 4.3 ML (Python) — `ml/`
 
@@ -133,18 +133,18 @@ phases is given per row.
 | TR-ML-06 | MLflow logging (episode reward, pressure, equity, Gini); checkpoint save/resume every 500 episodes | DONE | US-D03 | Ph 7.6–7.7 |
 | TR-ML-06b | **Multi-city MARL** `env/graph_loader.py` parses real `data/<city>/graph.json` (29,733-node Chicago → 3,709 signal intersections, 77 zones); `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` writes multi-city MARL-vs-Webster table to `ml/results/comparison.json`; CI runs `ml/tests` | DONE (train/eval infra); full Chicago run pending | G4, FR-8 | Ph 9 |
 | TR-ML-07 | ONNX export (`export_onnx.py`) validated to match PyTorch outputs on 10 test inputs | DONE | FR-8, TR-5 | Ph 8.1 |
-| TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | PLANNED | FR-12 | Ph 15 |
-| TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | PLANNED | FR-13 | Ph 16 |
-| TR-ML-10 | **NLP incidents** `nlp/incident_parser.py`: `parse(text, graph) -> IncidentSpec` via street-name gazetteer + `rapidfuzz` fuzzy match; `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to engine | PLANNED | FR-14 | Ph 17.1–17.2 |
-| TR-ML-11 | **Shared RL framework** `BaseTrainer` interface + common CLI; `ml/algo/configs.yaml` per-algorithm hyperparameters; `benchmark.py` comparison table | PLANNED | FR-16 | Ph 19 |
-| TR-ML-12 | **Single-agent wrapper** `ml/env/single_agent.py` wrapping multi-agent `NexusSimEnv` as a Gym env so DQN/PPO/A2C/Q-Learning train on the same signal task | PLANNED | FR-16 | Ph 19.3 |
-| TR-ML-13 | **Eval harness** `ml/eval/report.py`: per-algorithm report vs. Webster baseline (reward, pressure, equity, Gini, avg wait, % change) → `ml/results/<algo>/eval_report.json` | PLANNED | FR-16 | Ph 19.4 |
-| TR-ML-14 | **Tabular value-based RL** Q-Learning + SARSA on a shared state discretizer (queue buckets/phase), ε-greedy | PLANNED | FR-16 | Ph 20.1–20.2 |
-| TR-ML-15 | **Deep value-based RL** DQN, DDQN, Dueling DQN (replay buffer, target network, double estimator, dueling head) | PLANNED | FR-16 | Ph 20.3–20.5 |
-| TR-ML-16 | **Policy-based RL** REINFORCE with baseline, A2C, single-agent PPO (reuses `ppo_update`/`compute_gae`) | PLANNED | FR-16 | Ph 21 |
-| TR-ML-17 | **Continuous showcase** SAC, TD3, DDPG via Stable-Baselines3 on `Pendulum-v1`, returns logged to MLflow | PLANNED | FR-16 | Ph 22 |
-| TR-ML-18 | **Multi-algorithm ONNX deployment** `export_onnx.py` generalized to PPO/DQN; `InferenceEngine` `--algo` dispatch; `SignalPolicy::RLPolicy` keyed by algorithm; DQN inference = argmax over Q outputs | PLANNED | FR-16, FR-8, NFR-4 | Ph 23 |
-| TR-ML-19 | **RL inventory + ablation docs** 12-algorithm table and ablation (value vs. policy, on/off-policy, tabular vs. neural) in `docs/results.md` | PLANNED | FR-16 | Ph 24 |
+| TR-ML-08 | **Virtual camera** `cv/virtual_camera.py`: WS client on engine stream, rasterize top-down frame (roads from `graph.json`, agents as colored shapes), OpenCV contour/blob + color segmentation detection on rendered pixels; service on port 9003 streams annotated PNG + count; accuracy vs ground truth logged | DONE | FR-12 | Ph 15 |
+| TR-ML-09 | **NLP chat** `nlp/chat_service.py`: FastAPI sidecar, WS client of engine caching latest metrics; rule-based intent classifier (fixed intent set) + optional LLM tool-calling with graceful fallback when no API key; `POST /chat` | DONE | FR-13 | Ph 16 |
+| TR-ML-10 | **NLP incidents** `nlp/incident_parser.py`: `parse(text, graph) -> IncidentSpec` via street-name gazetteer + `rapidfuzz` fuzzy match; `POST /incident` forwards `{"type":"incident", edges, severity, duration_s}` to engine | DONE | FR-14 | Ph 17.1–17.2 |
+| TR-ML-11 | **Shared RL framework** `BaseTrainer` interface + common CLI; `ml/algo/configs.yaml` per-algorithm hyperparameters; `benchmark.py` comparison table | DONE | FR-16 | Ph 19 |
+| TR-ML-12 | **Single-agent wrapper** `ml/env/single_agent.py` wrapping multi-agent `NexusSimEnv` as a Gym env so DQN/PPO/A2C/Q-Learning train on the same signal task | DONE | FR-16 | Ph 19.3 |
+| TR-ML-13 | **Eval harness** `ml/eval/report.py`: per-algorithm report vs. Webster baseline (reward, pressure, equity, Gini, avg wait, % change) → `ml/results/<algo>/eval_report.json` | DONE | FR-16 | Ph 19.4 |
+| TR-ML-14 | **Tabular value-based RL** Q-Learning + SARSA on a shared state discretizer (queue buckets/phase), ε-greedy | DONE | FR-16 | Ph 20.1–20.2 |
+| TR-ML-15 | **Deep value-based RL** DQN, DDQN, Dueling DQN (replay buffer, target network, double estimator, dueling head) | DONE | FR-16 | Ph 20.3–20.5 |
+| TR-ML-16 | **Policy-based RL** REINFORCE with baseline, A2C, single-agent PPO (reuses `ppo_update`/`compute_gae`) | DONE | FR-16 | Ph 21 |
+| TR-ML-17 | **Continuous showcase** SAC, TD3, DDPG via Stable-Baselines3 on `Pendulum-v1`, returns logged to MLflow | DONE | FR-16 | Ph 22 |
+| TR-ML-18 | **Multi-algorithm ONNX deployment** `export_onnx.py` generalized to PPO/DQN; `InferenceEngine` `--algo` dispatch; `SignalPolicy::RLPolicy` keyed by algorithm; DQN inference = argmax over Q outputs | DONE | FR-16, FR-8, NFR-4 | Ph 23 |
+| TR-ML-19 | **RL inventory + ablation docs** 12-algorithm table and ablation (value vs. policy, on/off-policy, tabular vs. neural) in `docs/results.md` | DONE | FR-16 | Ph 24 |
 
 ### 4.4 Dashboard (React + TypeScript) — `dashboard/`
 
@@ -153,13 +153,13 @@ phases is given per row.
 | TR-DASH-01 | WebSocket client hook with exponential-backoff reconnection capped at `MAX_RECONNECT_DELAY_MS`; tolerates unknown broadcast keys | DONE | FR-5, NFR-5 | Ph 4.2, 4.7 |
 | TR-DASH-02 | Leaflet map base from city config; agent markers colored by type; LOD culling via `bounds` message | DONE | FR-5 | Ph 4.3–4.6 |
 | TR-DASH-03 | Efficiency view (avg wait, top-5 congested corridors) and Equity view (per-zone heatmap bubbles, Gini gauge, plain-language labels) | DONE | G3, US-P02/P04 | Ph 5.6–5.8 |
-| TR-DASH-04 | Policy toggle panel → control message to engine; before/after metric comparison; tradeoff curve chart; city selector; PDF export | PLANNED | G5 | Ph 10 |
-| TR-DASH-05 | **`PolicyComparisonPanel.tsx`**: per-policy dropdown sends `policy_switch`, shows before/after avg-wait/Gini | PLANNED | FR-7 | Ph 12.6 |
-| TR-DASH-06 | **`CalibrationReportPanel.tsx`**: GA convergence chart from static JSON | PLANNED | FR-9 | Ph 13.7 |
-| TR-DASH-07 | **`CongestionCVOverlay.tsx`**: zone bubbles colored by CV-observed congestion (static per-hour data) | PLANNED | FR-11 | Ph 14.7 |
-| TR-DASH-08 | **`VirtualCameraPanel.tsx`**: live annotated feed from virtual-camera service | PLANNED | FR-12 | Ph 15.4 |
-| TR-DASH-09 | **`ChatPanel.tsx`**: REST calls to `chat_service.py` | PLANNED | FR-13 | Ph 16.5 |
-| TR-DASH-10 | **`IncidentReportPanel.tsx`**: free-text box, active incidents list, effect on zone metrics | PLANNED | FR-14 | Ph 17.5 |
+| TR-DASH-04 | Policy toggle panel → control message to engine; before/after metric comparison; tradeoff curve chart; city selector; PDF export | DONE | G5 | Ph 10 |
+| TR-DASH-05 | **`PolicyComparisonPanel.tsx`**: per-policy dropdown sends `policy_switch`, shows before/after avg-wait/Gini | DONE | FR-7 | Ph 12.6 |
+| TR-DASH-06 | **`CalibrationReportPanel.tsx`**: GA convergence chart from static JSON | DONE | FR-9 | Ph 13.7 |
+| TR-DASH-07 | **`CongestionCVOverlay.tsx`**: zone bubbles colored by CV-observed congestion (static per-hour data) | DONE | FR-11 | Ph 14.7 |
+| TR-DASH-08 | **`VirtualCameraPanel.tsx`**: live annotated feed from virtual-camera service | DONE | FR-12 | Ph 15.4 |
+| TR-DASH-09 | **`ChatPanel.tsx`**: REST calls to `chat_service.py` | DONE | FR-13 | Ph 16.5 |
+| TR-DASH-10 | **`IncidentReportPanel.tsx`**: free-text box, active incidents list, effect on zone metrics | DONE | FR-14 | Ph 17.5 |
 
 ---
 
