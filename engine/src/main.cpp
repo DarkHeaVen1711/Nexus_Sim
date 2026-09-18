@@ -8,6 +8,7 @@
 #include <vector>
 #include "graph/GraphLoader.h"
 #include "agent/Simulation.h"
+#include "agent/NLPQueryParser.h"
 #include "ai/InferenceEngine.h"
 #include "network/WebSocketServer.h"
 #include <nlohmann/json.hpp>
@@ -431,6 +432,21 @@ int main(int argc, char** argv) {
                     g_policy_switch.policy = pol;
                     g_policy_switch.intersection_id = target_id;
                     g_policy_switch.pending = true;
+                } else if (j["type"] == "nlp_command" && j.contains("command")) {
+                    std::string prompt = j["command"].get<std::string>();
+                    auto cmd = nexussim::NLPQueryParser::parse(prompt);
+                    std::cout << "[NLP Command] Prompt: \"" << prompt << "\"\n";
+                    if (cmd.type == nexussim::NLPActionType::SetSignalMode) {
+                        std::lock_guard<std::mutex> lock(g_policy_switch.m);
+                        g_policy_switch.policy = cmd.string_value;
+                        g_policy_switch.intersection_id = -1;
+                        g_policy_switch.pending = true;
+                        ws_server.broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Switched signal mode to " + cmd.string_value + "\"}");
+                    } else if (cmd.type == nexussim::NLPActionType::SetSpeedFactor) {
+                        ws_server.broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set speed factor to " + std::to_string(cmd.double_value) + "\"}");
+                    } else if (cmd.type == nexussim::NLPActionType::SetChaos) {
+                        ws_server.broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set chaos coefficient to " + std::to_string(cmd.double_value) + "\"}");
+                    }
                 }
             } catch (const std::exception&) {
                 // Ignore malformed messages.
