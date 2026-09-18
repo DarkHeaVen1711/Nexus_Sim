@@ -68,7 +68,11 @@ public:
             while (start == end && valid_nodes_.size() > 1)
                 end = valid_nodes_[dist(rng)];
 
-            AgentType t = static_cast<AgentType>(type_dist(rng));
+            int32_t lanes = get_num_lanes(start, end);
+            const Node* snode = graph_.get_node(start);
+            int32_t zone_id = snode ? snode->zone_id : 0;
+            AgentType t = select_agent_type_for_road(lanes, zone_id, rng);
+
             size_t idx = agents_.add_agent(i, start, end, t);
             agents_.path[idx] = Pathfinder::compute_path(graph_, start, end);
             if (agents_.path[idx].size() < 2)
@@ -77,7 +81,7 @@ public:
                 get_default_idm_params(t, chaos_coefficient_).v0
                 * speed_factor_;
             agents_.lane[idx] =
-                static_cast<int32_t>(rng() % std::max(1, get_num_lanes(start, end)));
+                static_cast<int32_t>(rng() % std::max(1, lanes));
             agents_.start_time[idx] = 0.0;
         }
     }
@@ -88,7 +92,6 @@ public:
     void respawn_arrived(double min_rest_seconds = 20.0) {
         if (valid_nodes_.empty()) return;
         std::uniform_int_distribution<size_t> dist(0, valid_nodes_.size() - 1);
-        std::uniform_int_distribution<int> type_dist(0, 4);
         for (size_t i = 0; i < agents_.size(); ++i) {
             if (agents_.state[i] != AgentState::Arrived) continue;
             if (agents_.start_time[i] >= 0.0 && agents_.journey_time[i] >= 0.0) {
@@ -100,7 +103,11 @@ public:
             while (start == end && valid_nodes_.size() > 1)
                 end = valid_nodes_[dist(respawn_rng_)];
 
-            AgentType t = static_cast<AgentType>(type_dist(respawn_rng_));
+            int32_t lanes = get_num_lanes(start, end);
+            const Node* snode = graph_.get_node(start);
+            int32_t zone_id = snode ? snode->zone_id : 0;
+            AgentType t = select_agent_type_for_road(lanes, zone_id, respawn_rng_);
+
             agents_.origin[i] = start;
             agents_.destination[i] = end;
             agents_.type[i] = t;
@@ -112,7 +119,7 @@ public:
             agents_.start_time[i] = sim_time_;
             agents_.journey_time[i] = -1.0;
             agents_.lane[i] = static_cast<int32_t>(
-                respawn_rng_() % std::max(1, get_num_lanes(start, end)));
+                respawn_rng_() % std::max(1, lanes));
             agents_.path[i] = Pathfinder::compute_path(graph_, start, end);
             if (agents_.path[i].size() < 2)
                 agents_.state[i] = AgentState::Arrived;
@@ -260,6 +267,11 @@ public:
         bool has_bounds = ws_server->get_bounds(min_lat_, min_lon_,
                                                 max_lat_, max_lon_);
 
+        auto safe_num = [](double val) -> std::string {
+            if (std::isnan(val) || std::isinf(val)) return "0.0";
+            return std::to_string(val);
+        };
+
         std::string json = "{\"tick\":";
         json += std::to_string(tick_count_);
         json += ",\"city\":\"";
@@ -279,15 +291,15 @@ public:
             json += "{\"id\":";
             json += std::to_string(agents_.id[i]);
             json += ",\"lat\":";
-            json += std::to_string(snap_lat_[i]);
+            json += safe_num(snap_lat_[i]);
             json += ",\"lon\":";
-            json += std::to_string(snap_lon_[i]);
+            json += safe_num(snap_lon_[i]);
             json += ",\"heading\":";
-            json += std::to_string(std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]));
+            json += safe_num(std::atan2(snap_edge_dir_y_[i], snap_edge_dir_x_[i]));
             json += ",\"type\":";
             json += std::to_string(static_cast<int>(agents_.type[i]));
             json += ",\"speed\":";
-            json += std::to_string(agents_.velocity[i]);
+            json += safe_num(agents_.velocity[i]);
             json += "}";
         }
 
@@ -300,7 +312,7 @@ public:
                 nav_count++;
             }
         }
-        json += std::to_string(nav_count > 0 ? total_v / nav_count : 0.0);
+        json += safe_num(nav_count > 0 ? total_v / nav_count : 0.0);
         json += ",\"active_agents\":";
         json += std::to_string(nav_count);
         json += ",\"completed_agents\":";
@@ -309,18 +321,18 @@ public:
             if (s == AgentState::Arrived) arrived++;
         json += std::to_string(arrived);
         json += ",\"avg_wait_time\":";
-        json += std::to_string(avg_wait_time_);
+        json += safe_num(avg_wait_time_);
         json += ",\"signal_mode\":\"";
         json += signal_mode_;
         json += "\",\"gini_coefficient\":";
-        json += std::to_string(gini_coefficient_);
+        json += safe_num(gini_coefficient_);
         json += "},\"zone_metrics\":[";
         for (size_t z = 0; z < zone_wait_times_.size(); ++z) {
             if (z > 0) json += ",";
             json += "{\"zone_id\":";
             json += std::to_string(zone_wait_times_[z].first);
             json += ",\"wait_time\":";
-            json += std::to_string(zone_wait_times_[z].second);
+            json += safe_num(zone_wait_times_[z].second);
             json += "}";
         }
         json += "]}";
@@ -640,7 +652,7 @@ private:
         agents_.velocity[i] += acc * dt;
         agents_.velocity[i] = std::max(0.0, agents_.velocity[i]);
 
-        // Signal check: stop at red lights
+        // Signal check: smooth deceleration & stop at red lights
         const auto& path = agents_.path[i];
         size_t ei = static_cast<size_t>(agents_.current_edge_idx[i]);
         if (ei + 1 < path.size()) {
@@ -649,9 +661,16 @@ private:
             if (sig_it != signals_.end()) {
                 int64_t u = path[ei];
                 if (!sig_it->second->is_green(u)) {
-                    agents_.velocity[i] = 0.0;
-                    agents_.wait_time[i] += dt;
-                    return;
+                    double elen = lookup_edge_len(u, next_node);
+                    double dist_to_signal = elen - agents_.position[i];
+                    if (dist_to_signal <= 25.0) {
+                        agents_.velocity[i] = std::max(0.0, agents_.velocity[i] - p.b * dt);
+                        if (dist_to_signal <= 5.0) {
+                            agents_.velocity[i] = 0.0;
+                            agents_.wait_time[i] += dt;
+                            return;
+                        }
+                    }
                 }
             }
         }

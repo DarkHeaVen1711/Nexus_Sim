@@ -12,6 +12,7 @@ import { CongestionCVOverlay } from './CongestionCVOverlay';
 import { VirtualCameraPanel } from './VirtualCameraPanel';
 import { ChatPanel } from './ChatPanel';
 import { IncidentReportPanel } from './IncidentReportPanel';
+import { NLPCommandConsole } from './NLPCommandConsole';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
@@ -174,6 +175,10 @@ export const Map: React.FC = () => {
         <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, backgroundColor: 'rgba(17, 24, 39, 0.9)', color: '#e5e7eb', padding: '10px 18px', borderRadius: '8px', border: '1px solid #374151', fontSize: '14px', fontWeight: 600 }}>
           Open the ☰ menu to start a simulation
         </div>
+      )}
+
+      {isConnected && (
+        <NLPCommandConsole onSendMessage={sendMessage} simStatus={simStatus} />
       )}
 
       <CitySelector

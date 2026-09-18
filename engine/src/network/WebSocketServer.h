@@ -34,6 +34,7 @@ public:
         // dashboard payload is small text JSON, so compression buys nothing.
         behavior.compression = uWS::DISABLED;
         behavior.maxPayloadLength = 16 * 1024 * 1024;
+        behavior.maxBackpressure = 64 * 1024 * 1024;
         // 5-minute idle timeout: long enough to survive graph loads and city
         // switches; the server also sends protocol pings every 30 s to keep
         // the connection alive even when no simulation data is flowing.
@@ -171,7 +172,11 @@ private:
         loop->defer([this, msg, op_code]() {
             std::lock_guard<std::mutex> lock(clients_mutex_);
             for (auto *ws : clients_) {
-                ws->send(*msg, op_code);
+                // If a client's backpressure buffer is full (>4MB), skip sending
+                // transient animation frame deltas to avoid uWS closing the connection.
+                if (ws->getBufferedAmount() < 4 * 1024 * 1024) {
+                    ws->send(*msg, op_code);
+                }
             }
         });
     }
