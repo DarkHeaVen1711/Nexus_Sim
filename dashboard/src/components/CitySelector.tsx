@@ -39,7 +39,7 @@ const SECTION_STYLE: React.CSSProperties = {
   marginBottom: '8px',
 };
 
-const cityButtonStyle = (active: boolean, locked: boolean): React.CSSProperties => ({
+const cityButtonStyle = (active: boolean): React.CSSProperties => ({
   display: 'flex',
   width: '100%',
   justifyContent: 'space-between',
@@ -49,14 +49,13 @@ const cityButtonStyle = (active: boolean, locked: boolean): React.CSSProperties 
   textAlign: 'left',
   border: active ? '1px solid #3b82f6' : '1px solid transparent',
   borderRadius: '6px',
-  cursor: locked && !active ? 'not-allowed' : 'pointer',
+  cursor: 'pointer',
   fontSize: '13px',
   fontWeight: 600,
   fontFamily: 'system-ui, sans-serif',
   textTransform: 'capitalize',
   backgroundColor: active ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
   color: active ? '#ffffff' : '#9ca3af',
-  opacity: locked && !active ? 0.45 : 1,
   transition: 'all 0.2s',
 });
 
@@ -146,16 +145,12 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
           <div style={SECTION_STYLE}>City</div>
           {cities.map((c) => {
             const isActive = runningCity === c.id;
-            const isLocked = !!locked && !isActive;
             return (
               <button
                 key={c.id}
-                onClick={() => { if (!isLocked) onSelect(c.id); }}
+                onClick={() => { onSelect(c.id); }}
                 disabled={disabled}
-                style={cityButtonStyle(isActive, isLocked)}
-                title={locked && runningCity
-                  ? `Stop ${runningCity} before switching cities`
-                  : undefined}
+                style={cityButtonStyle(isActive)}
               >
                 <span>{c.label}</span>
                 {isActive && <span style={{ fontSize: '10px', color: '#3b82f6' }}>●</span>}

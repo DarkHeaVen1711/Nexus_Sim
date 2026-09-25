@@ -21,6 +21,7 @@
 #include "../nlohmann/json.hpp"
 #include "agent_delta_generated.h"
 #include "flatbuffers/flatbuffers.h"
+#include "ThreadPool.h"
 #include <memory>
 
 namespace nexussim {
@@ -199,53 +200,36 @@ public:
         maybe_apply_policy();
 
         // Snapshot phase (sequential) — safe reads for parallel updates
-        snap_x_.resize(N);
-        snap_y_.resize(N);
-        snap_v_.resize(N);
-        snap_lat_.resize(N);
-        snap_lon_.resize(N);
-        snap_state_.resize(N);
-        snap_edge_dir_x_.resize(N);
-        snap_edge_dir_y_.resize(N);
+        if (snap_x_.size() < N) {
+            snap_x_.resize(N);
+            snap_y_.resize(N);
+            snap_v_.resize(N);
+            snap_lat_.resize(N);
+            snap_lon_.resize(N);
+            snap_state_.resize(N);
+            snap_edge_dir_x_.resize(N);
+            snap_edge_dir_y_.resize(N);
+        }
 
-        std::vector<size_t> active;
-        active.reserve(N);
+        active_.clear();
+        active_.reserve(N);
         for (size_t i = 0; i < N; ++i) {
             auto s = agents_.state[i];
             if (s == AgentState::Spawned || s == AgentState::Navigating) {
                 compute_world(i);
                 snap_v_[i] = agents_.velocity[i];
-                active.push_back(i);
+                active_.push_back(i);
             }
             snap_state_[i] = agents_.state[i];
         }
 
         // Rebuild quadtree
-        rebuild_quadtree(active);
+        rebuild_quadtree(active_);
 
-        // Parallel agent updates (with fallback to sequential if C++11 thread support is missing)
-#if defined(_GLIBCXX_HAS_GTHREADS) || defined(_MSC_VER)
-        size_t nthreads = std::thread::hardware_concurrency();
-        if (nthreads == 0) nthreads = 4;
-        size_t chunk = (active.size() + nthreads - 1) / nthreads;
-        std::vector<std::future<void>> futures;
-        for (size_t t = 0; t < nthreads; ++t) {
-            size_t s = t * chunk;
-            size_t e = std::min(s + chunk, active.size());
-            if (s >= e) continue;
-            futures.push_back(std::async(std::launch::async,
-                [this, &active, s, e, dt]() {
-                    for (size_t k = s; k < e; ++k)
-                        update_agent(active[k], dt);
-                }));
-        }
-        for (auto& f : futures) f.get();
-#else
-        for (size_t k = 0; k < active.size(); ++k) {
-            update_agent(active[k], dt);
-        }
-#endif
-
+        // Parallel agent updates via persistent ThreadPool
+        thread_pool_.parallel_for(0, active_.size(), [this, dt](size_t k) {
+            update_agent(active_[k], dt);
+        });
 
         // FPS tracking
         auto t1 = std::chrono::high_resolution_clock::now();
@@ -272,7 +256,9 @@ public:
             return std::to_string(val);
         };
 
-        std::string json = "{\"tick\":";
+        std::string json;
+        json.reserve(1024 + agents_.size() * 96);
+        json += "{\"tick\":";
         json += std::to_string(tick_count_);
         json += ",\"city\":\"";
         json += city_name_;
@@ -441,6 +427,9 @@ private:
     std::vector<double> snap_lat_, snap_lon_;
     std::vector<double> snap_edge_dir_x_, snap_edge_dir_y_;
     std::vector<AgentState> snap_state_;
+    std::vector<size_t> active_;
+    std::vector<double> qt_xs_, qt_ys_;
+    ThreadPool thread_pool_;
 
     // Edge length lookup cache
     struct PairHash {
@@ -625,12 +614,13 @@ private:
 
     void rebuild_quadtree(const std::vector<size_t>& active) {
         if (active.empty()) return;
-        std::vector<double> xs(active.size()), ys(active.size());
+        qt_xs_.resize(active.size());
+        qt_ys_.resize(active.size());
         for (size_t k = 0; k < active.size(); ++k) {
-            xs[k] = snap_x_[active[k]];
-            ys[k] = snap_y_[active[k]];
+            qt_xs_[k] = snap_x_[active[k]];
+            qt_ys_[k] = snap_y_[active[k]];
         }
-        qt_.rebuild(xs, ys, active);
+        qt_.rebuild(qt_xs_, qt_ys_, active);
     }
 
     void update_agent(size_t i, double dt) {
@@ -691,12 +681,13 @@ private:
         double dy = snap_edge_dir_y_[i];
 
         double follow_dist = agents_.target_speed[i] * 3.0 + 20.0;
-        std::vector<QuadPoint<double>> nearby;
-        qt_.query_radius(ax, ay, follow_dist, nearby);
+        static thread_local std::vector<QuadPoint<double>> tl_nearby;
+        tl_nearby.clear();
+        qt_.query_radius(ax, ay, follow_dist, tl_nearby);
 
         double best_s = 1e18;
         double best_v = 0;
-        for (const auto& pt : nearby) {
+        for (const auto& pt : tl_nearby) {
             size_t j = pt.idx;
             if (j == i) continue;
             if (snap_state_[j] != AgentState::Navigating
@@ -752,11 +743,12 @@ private:
         double tx = ax + px * shift;
         double ty = ay + py * shift;
 
-        std::vector<QuadPoint<double>> lateral;
-        qt_.query_radius(tx, ty, 5.0, lateral);
+        static thread_local std::vector<QuadPoint<double>> tl_lateral;
+        tl_lateral.clear();
+        qt_.query_radius(tx, ty, 5.0, tl_lateral);
 
         bool blocked = false;
-        for (const auto& pt : lateral) {
+        for (const auto& pt : tl_lateral) {
             size_t j = pt.idx;
             if (j == i) continue;
             double dx2 = pt.x - tx;

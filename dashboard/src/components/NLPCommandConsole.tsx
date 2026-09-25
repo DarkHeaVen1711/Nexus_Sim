@@ -5,16 +5,14 @@ interface NLPCommandConsoleProps {
   simStatus: string | null;
 }
 
-export const NLPCommandConsole: React.FC<NLPCommandConsoleProps> = ({ onSendMessage, simStatus }) => {
+export const NLPCommandConsole: React.FC<NLPCommandConsoleProps> = ({ onSendMessage }) => {
   const [query, setQuery] = useState('');
-  const [history, setHistory] = useState<{ query: string; time: string }[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     onSendMessage(JSON.stringify({ type: 'nlp_command', command: query.trim() }));
-    setHistory(prev => [{ query: query.trim(), time: new Date().toLocaleTimeString() }, ...prev.slice(0, 4)]);
     setQuery('');
   };
 

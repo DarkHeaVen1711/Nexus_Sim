@@ -278,6 +278,10 @@ static void run_city(const std::string& city, int agent_count, int duration_min,
         if (g_stop) break;
         SimControl::Reload reload_kind;
         if (reload_requested(reload_kind)) break;
+        {
+            std::lock_guard<std::mutex> lock(g_city_req.m);
+            if (g_city_req.pending) break;
+        }
         if (is_paused()) {
             // Freeze the sim in place. The run stays alive so Resume continues
             // exactly where it left off; no frames are broadcast while paused.
@@ -505,7 +509,12 @@ int main(int argc, char** argv) {
         // run_city returned: the dashboard requested a reload. Restart reruns
         // the same city from scratch; reset/stop clears it and returns to idle.
         SimControl::Reload reload = take_reload();
-        take_city_request(); // drain any stale city request
+        std::string next_city = take_city_request();
+        if (!next_city.empty()) {
+            current_city = next_city;
+            std::cout << "Switching to " << current_city << "...\n";
+            continue;
+        }
         if (reload == SimControl::Reload::Restart) {
             std::cout << "Restarting " << current_city << " from scratch...\n";
             continue;

@@ -124,7 +124,7 @@ export const Map: React.FC = () => {
   }, [selectedCity]);
 
   const switchCity = useCallback((city: string) => {
-    if (selectedCity) return; // locked while running
+    if (city === selectedCity) return;
     setSelectedCity(city);
     sendCommand('city', city);
   }, [selectedCity, sendCommand]);

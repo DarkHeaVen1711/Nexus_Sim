@@ -56,3 +56,8 @@ build_*.txt
 *_log.txt
 *_err.txt
 cmake_config.txt
+
+# Documents & Presentations
+*.pdf
+*.pptx
+* (z-lib.org).md
