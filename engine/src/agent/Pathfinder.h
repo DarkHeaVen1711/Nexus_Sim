@@ -2,6 +2,7 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
+#include <unordered_set>
 #include <cmath>
 #include <limits>
 #include <algorithm>
@@ -26,6 +27,34 @@ struct PathfinderState {
     uint32_t session;
 };
 
+struct RoutingPolicy {
+    bool is_transit = false;
+    double toll_weight = 1.0;
+    std::unordered_map<int64_t, double> edge_toll;
+    std::unordered_set<int64_t> bus_only_edges;
+    std::unordered_set<int64_t> blocked_edges;
+
+    static int64_t edge_key(int64_t u, int64_t v) {
+        return (u * 0x9e3779b9) ^ v;
+    }
+
+    bool is_blocked(int64_t u, int64_t v) const {
+        if (blocked_edges.empty()) return false;
+        return blocked_edges.find(edge_key(u, v)) != blocked_edges.end();
+    }
+
+    bool is_bus_only(int64_t u, int64_t v) const {
+        if (bus_only_edges.empty()) return false;
+        return bus_only_edges.find(edge_key(u, v)) != bus_only_edges.end();
+    }
+
+    double get_toll(int64_t u, int64_t v) const {
+        if (edge_toll.empty()) return 0.0;
+        auto it = edge_toll.find(edge_key(u, v));
+        return it != edge_toll.end() ? it->second : 0.0;
+    }
+};
+
 class Pathfinder {
     struct ThreadContext {
         std::unordered_map<int64_t, PathfinderState> node_state;
@@ -48,7 +77,9 @@ class Pathfinder {
     }
 
 public:
-    static std::vector<int64_t> compute_path(const Graph& g, int64_t start, int64_t goal) {
+    static std::vector<int64_t> compute_path(
+            const Graph& g, int64_t start, int64_t goal,
+            const RoutingPolicy* policy = nullptr) {
         const Node* goal_node = g.get_node(goal);
         if (!goal_node) return {};
 
@@ -79,7 +110,17 @@ public:
             double current_g = (it != state_map.end() && it->second.session == sess) ? it->second.g_score : 0.0;
 
             for (const auto& edge : g.get_edges_from(current)) {
-                double tentative_g_score = current_g + edge.length_m;
+                if (policy) {
+                    if (policy->is_blocked(edge.u, edge.v)) continue;
+                    if (!policy->is_transit && policy->is_bus_only(edge.u, edge.v)) continue;
+                }
+
+                double edge_cost = edge.length_m;
+                if (policy && !policy->is_transit) {
+                    edge_cost += policy->get_toll(edge.u, edge.v) * policy->toll_weight * 50.0;
+                }
+
+                double tentative_g_score = current_g + edge_cost;
                 auto v_it = state_map.find(edge.v);
                 bool visited = (v_it != state_map.end() && v_it->second.session == sess);
                 
@@ -95,8 +136,9 @@ public:
 
     static std::vector<int64_t> compute_path_stochastic(
             const Graph& g, int64_t start, int64_t goal,
-            std::mt19937& rng, double spread = 0.15) {
-        if (spread <= 0.0) return compute_path(g, start, goal);
+            std::mt19937& rng, double spread = 0.15,
+            const RoutingPolicy* policy = nullptr) {
+        if (spread <= 0.0) return compute_path(g, start, goal, policy);
         std::lognormal_distribution<double> noise(0.0, spread);
 
         const Node* goal_node = g.get_node(goal);
@@ -129,7 +171,17 @@ public:
             double current_g = (it != state_map.end() && it->second.session == sess) ? it->second.g_score : 0.0;
 
             for (const auto& edge : g.get_edges_from(current)) {
-                double tentative_g_score = current_g + edge.length_m * noise(rng);
+                if (policy) {
+                    if (policy->is_blocked(edge.u, edge.v)) continue;
+                    if (!policy->is_transit && policy->is_bus_only(edge.u, edge.v)) continue;
+                }
+
+                double edge_cost = edge.length_m * noise(rng);
+                if (policy && !policy->is_transit) {
+                    edge_cost += policy->get_toll(edge.u, edge.v) * policy->toll_weight * 50.0;
+                }
+
+                double tentative_g_score = current_g + edge_cost;
                 auto v_it = state_map.find(edge.v);
                 bool visited = (v_it != state_map.end() && v_it->second.session == sess);
 
@@ -149,16 +201,18 @@ private:
         return std::hypot(a->x - b->x, a->y - b->y);
     }
 
-    static std::vector<int64_t> reconstruct_path(const std::unordered_map<int64_t, PathfinderState>& state_map, int64_t current, uint32_t sess) {
+    static std::vector<int64_t> reconstruct_path(
+            const std::unordered_map<int64_t, PathfinderState>& state_map,
+            int64_t current, uint32_t session) {
         std::vector<int64_t> total_path;
         total_path.push_back(current);
         while (true) {
             auto it = state_map.find(current);
-            if (it == state_map.end() || it->second.session != sess || it->second.came_from == -1) {
-                break;
-            }
-            current = it->second.came_from;
-            total_path.push_back(current);
+            if (it == state_map.end() || it->second.session != session) break;
+            int64_t prev = it->second.came_from;
+            if (prev == -1) break;
+            total_path.push_back(prev);
+            current = prev;
         }
         std::reverse(total_path.begin(), total_path.end());
         return total_path;

@@ -22,6 +22,7 @@
 #include "agent_delta_generated.h"
 #include "flatbuffers/flatbuffers.h"
 #include "ThreadPool.h"
+#include "../core/Metrics.h"
 #include <memory>
 
 namespace nexussim {
@@ -57,6 +58,33 @@ public:
         return true;
     }
 
+    void set_bus_lane(int64_t u, int64_t v, bool enable = true) {
+        int64_t k = RoutingPolicy::edge_key(u, v);
+        if (enable) routing_policy_.bus_only_edges.insert(k);
+        else routing_policy_.bus_only_edges.erase(k);
+    }
+
+    void set_blocked_edge(int64_t u, int64_t v, bool blocked = true) {
+        int64_t k = RoutingPolicy::edge_key(u, v);
+        if (blocked) routing_policy_.blocked_edges.insert(k);
+        else routing_policy_.blocked_edges.erase(k);
+    }
+
+    void set_congestion_toll(int64_t u, int64_t v, double toll) {
+        int64_t k = RoutingPolicy::edge_key(u, v);
+        if (toll > 0.0) routing_policy_.edge_toll[k] = toll;
+        else routing_policy_.edge_toll.erase(k);
+    }
+
+    void set_ev_ratio(double r) {
+        ev_ratio_ = std::clamp(r, 0.0, 1.0);
+    }
+
+    double total_co2_kg() const { return total_co2_grams_ / 1000.0; }
+    double total_nox_g() const { return total_nox_mg_ / 1000.0; }
+    double transit_equity_index() const { return transit_equity_index_; }
+    RoutingPolicy& routing_policy() { return routing_policy_; }
+
     void spawn_agents(size_t target_count) {
         if (valid_nodes_.empty()) return;
         std::mt19937 rng(42);
@@ -75,7 +103,9 @@ public:
             AgentType t = select_agent_type_for_road(lanes, zone_id, rng);
 
             size_t idx = agents_.add_agent(i, start, end, t);
-            agents_.path[idx] = Pathfinder::compute_path(graph_, start, end);
+            RoutingPolicy pol = routing_policy_;
+            pol.is_transit = (t == AgentType::Bus);
+            agents_.path[idx] = Pathfinder::compute_path(graph_, start, end, &pol);
             if (agents_.path[idx].size() < 2)
                 agents_.state[idx] = AgentState::Arrived;
             agents_.target_speed[idx] =
@@ -121,7 +151,9 @@ public:
             agents_.journey_time[i] = -1.0;
             agents_.lane[i] = static_cast<int32_t>(
                 respawn_rng_() % std::max(1, lanes));
-            agents_.path[i] = Pathfinder::compute_path(graph_, start, end);
+            RoutingPolicy pol = routing_policy_;
+            pol.is_transit = (t == AgentType::Bus);
+            agents_.path[i] = Pathfinder::compute_path(graph_, start, end, &pol);
             if (agents_.path[i].size() < 2)
                 agents_.state[i] = AgentState::Arrived;
             agents_.target_speed[i] =
@@ -231,10 +263,21 @@ public:
             update_agent(active_[k], dt);
         });
 
-        // FPS tracking
+        // Accumulate emissions
+        for (size_t i : active_) {
+            bool is_ev = ((agents_.id[i] % 100) < static_cast<int64_t>(ev_ratio_ * 100.0));
+            if (!is_ev) {
+                double v = agents_.velocity[i];
+                double co2_rate = (v < 0.5) ? 0.4 : (0.4 + 0.15 * v);
+                total_co2_grams_ += co2_rate * dt;
+                total_nox_mg_ += co2_rate * 1.8 * dt;
+            }
+        }
+
+        // FPS & Latency tracking
         auto t1 = std::chrono::high_resolution_clock::now();
-        double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-        tick_times_.push_back(ms);
+        uint64_t us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+        tick_histogram_.record_us(us);
         tick_count_++;
         if (tick_count_ % 500 == 0) log_fps();
 
@@ -312,6 +355,14 @@ public:
         json += signal_mode_;
         json += "\",\"gini_coefficient\":";
         json += safe_num(gini_coefficient_);
+        json += ",\"co2_kg\":";
+        json += safe_num(total_co2_grams_ / 1000.0);
+        json += ",\"nox_g\":";
+        json += safe_num(total_nox_mg_ / 1000.0);
+        json += ",\"transit_equity_index\":";
+        json += safe_num(transit_equity_index_);
+        json += ",\"ev_ratio\":";
+        json += safe_num(ev_ratio_);
         json += "},\"zone_metrics\":[";
         for (size_t z = 0; z < zone_wait_times_.size(); ++z) {
             if (z > 0) json += ",";
@@ -376,18 +427,31 @@ public:
     }
 
     double avg_tick_ms() const {
-        if (tick_times_.empty()) return 0.0;
-        return std::accumulate(tick_times_.begin(),
-                               tick_times_.end(), 0.0)
-               / tick_times_.size();
+        return tick_histogram_.mean_us() / 1000.0;
+    }
+
+    double p50_tick_ms() const {
+        return tick_histogram_.percentile(0.50) / 1000.0;
+    }
+
+    double p90_tick_ms() const {
+        return tick_histogram_.percentile(0.90) / 1000.0;
     }
 
     double p95_tick_ms() const {
-        if (tick_times_.empty()) return 0.0;
-        auto v = tick_times_;
-        std::sort(v.begin(), v.end());
-        size_t idx = static_cast<size_t>(v.size() * 0.95);
-        return v[std::min(idx, v.size() - 1)];
+        return tick_histogram_.percentile(0.95) / 1000.0;
+    }
+
+    double p99_tick_ms() const {
+        return tick_histogram_.percentile(0.99) / 1000.0;
+    }
+
+    double max_tick_ms() const {
+        return tick_histogram_.max_us() / 1000.0;
+    }
+
+    const core::LatencyHistogram& tick_histogram() const {
+        return tick_histogram_;
     }
 
 private:
@@ -452,13 +516,18 @@ private:
     std::unordered_map<std::pair<int64_t,int64_t>,int,PairHash> wait_counts_;
     std::string signal_mode_ = "webster";
 
-    // Metrics
+    // Metrics & What-If Policy
+    RoutingPolicy routing_policy_;
+    double ev_ratio_ = 0.0;
+    double total_co2_grams_ = 0.0;
+    double total_nox_mg_ = 0.0;
+    double transit_equity_index_ = 1.0;
     double avg_wait_time_ = 0.0;
     double gini_coefficient_ = 0.0;
     std::vector<std::pair<int32_t, double>> zone_wait_times_;
 
-    // FPS tracking
-    std::vector<double> tick_times_;
+    // FPS & Latency tracking
+    core::LatencyHistogram tick_histogram_;
     uint64_t tick_count_ = 0;
 
     void precompute_edge_lengths() {
@@ -505,8 +574,10 @@ private:
 
             AgentType t = AgentType::Car;
             size_t idx = agents_.add_agent(next_agent_id_++, start, end, t);
+            RoutingPolicy pol = routing_policy_;
+            pol.is_transit = false;
             agents_.path[idx] = Pathfinder::compute_path_stochastic(
-                graph_, start, end, od_rng_, route_spread_);
+                graph_, start, end, od_rng_, route_spread_, &pol);
             if (agents_.path[idx].size() < 2) {
                 agents_.state[idx] = AgentState::Arrived;
                 agents_.journey_time[idx] = -1.0;
@@ -886,11 +957,15 @@ private:
 
     void log_fps() {
         double avg = avg_tick_ms();
+        double p50 = p50_tick_ms();
         double p95 = p95_tick_ms();
+        double p99 = p99_tick_ms();
         double fps = (avg > 0) ? 1000.0 / avg : 0;
         std::cout << "[FPS] tick=" << tick_count_
                   << " avg=" << avg << "ms"
+                  << " p50=" << p50 << "ms"
                   << " p95=" << p95 << "ms"
+                  << " p99=" << p99 << "ms"
                   << " fps=" << fps << "\n";
     }
 };
