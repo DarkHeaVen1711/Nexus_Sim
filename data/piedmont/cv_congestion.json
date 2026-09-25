@@ -1,0 +1,2673 @@
+{
+  "city": "piedmont",
+  "generated_at": "2026-09-25T18:36:35Z",
+  "methodology": "Classical HSV color-space thresholding vs. CNN feature extraction comparison",
+  "congestion_levels_legend": {
+    "0": "Free-Flow (Green)",
+    "1": "Light Congestion (Yellow)",
+    "2": "Moderate Congestion (Orange)",
+    "3": "Heavy Congestion (Red)"
+  },
+  "zones": {
+    "1": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "2": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "3": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "4": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "5": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "6": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "7": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "8": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "9": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    },
+    "10": {
+      "0": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "1": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "2": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "3": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "4": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "5": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "6": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "7": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "8": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "9": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "10": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "11": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "12": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "13": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "14": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "15": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.9
+        },
+        "cnn": {
+          "level": 3,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "16": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "17": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "18": {
+        "classical": {
+          "level": 3,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 0,
+          "confidence": 0.91
+        },
+        "consensus_level": 3
+      },
+      "19": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "20": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "21": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "22": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      },
+      "23": {
+        "classical": {
+          "level": 0,
+          "confidence": 0.98
+        },
+        "cnn": {
+          "level": 2,
+          "confidence": 0.91
+        },
+        "consensus_level": 0
+      }
+    }
+  }
+}

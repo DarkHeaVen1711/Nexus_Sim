@@ -53,6 +53,8 @@ const CITY_LABELS: Record<string, string> = {
 
 const ALPHAS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 
+const LINE_CHART_MARGIN = { top: 4, right: 8, bottom: 0, left: -14 };
+
 const isRlMode = (mode: SignalMode): boolean => mode === 'rl' || mode === 'ai';
 
 function snapshotMetrics(m: any): MetricsSnapshot | null {
@@ -388,7 +390,7 @@ export const PolicyTogglePanel: React.FC<PolicyTogglePanelProps> = ({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={tradeoff} margin={{ top: 4, right: 8, bottom: 0, left: -14 }}>
+            <LineChart data={tradeoff} margin={LINE_CHART_MARGIN}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(107,114,128,0.2)" />
               <XAxis
                 dataKey="alpha"
@@ -414,6 +416,7 @@ export const PolicyTogglePanel: React.FC<PolicyTogglePanelProps> = ({
                   stroke={CITY_COLORS[i % CITY_COLORS.length]}
                   strokeWidth={2}
                   dot={false}
+                  isAnimationActive={false}
                 />
               ))}
             </LineChart>

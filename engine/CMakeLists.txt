@@ -133,6 +133,20 @@ if(NOT uwebsockets_POPULATED)
   FetchContent_Populate(uWebSockets)
 endif()
 
+# Fix upstream uWebSockets bug in WebSocket.h where payload is lost on backpressure when written <= header_length
+set(UWS_WS_H "${uwebsockets_SOURCE_DIR}/src/WebSocket.h")
+if(EXISTS "${UWS_WS_H}")
+  file(READ "${UWS_WS_H}" UWS_WS_CONTENT)
+  string(FIND "${UWS_WS_CONTENT}" "webSocketData->buffer.append(message.data(), message.length());" UWS_ALREADY_PATCHED)
+  if(UWS_ALREADY_PATCHED EQUAL -1)
+    string(REPLACE
+      "webSocketData->buffer.append(header + written, (size_t) header_length - (size_t) written);"
+      "webSocketData->buffer.append(header + written, (size_t) header_length - (size_t) written);\n                    webSocketData->buffer.append(message.data(), message.length());"
+      UWS_WS_CONTENT_PATCHED "${UWS_WS_CONTENT}")
+    file(WRITE "${UWS_WS_H}" "${UWS_WS_CONTENT_PATCHED}")
+  endif()
+endif()
+
 
 # Build uSockets as a static C library from source
 enable_language(C)

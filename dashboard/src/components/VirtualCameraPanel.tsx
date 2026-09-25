@@ -19,7 +19,7 @@ export const VirtualCameraPanel: React.FC<VirtualCameraPanelProps> = ({ visible 
     if (!visible) return;
 
     const fetchFeed = () => {
-      fetch('http://localhost:9003/api/camera/feed')
+      fetch('http://localhost:9001/api/camera/feed')
         .then((res) => {
           if (!res.ok) throw new Error('Camera offline');
           return res.json();
@@ -68,7 +68,7 @@ export const VirtualCameraPanel: React.FC<VirtualCameraPanelProps> = ({ visible 
           }}
         ></span>
         <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>
-          Synthetic Virtual Camera (Port 9003)
+          Synthetic Virtual Camera (Port 9001)
         </h3>
       </div>
 
