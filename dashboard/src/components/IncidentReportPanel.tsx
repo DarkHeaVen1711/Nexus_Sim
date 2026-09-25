@@ -22,7 +22,7 @@ export const IncidentReportPanel: React.FC<IncidentReportPanelProps> = ({
     setSubmitting(true);
     setStatusMsg(null);
 
-    fetch('http://localhost:9004/incident', {
+    fetch('http://localhost:9001/incident', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.trim(), city: city || 'chicago' }),

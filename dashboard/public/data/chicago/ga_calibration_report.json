@@ -1,0 +1,54 @@
+{
+  "city": "chicago",
+  "generated_at": "2026-09-26T00:06:53.939373",
+  "generations": 15,
+  "population_size": 20,
+  "best_chromosome": {
+    "speed_factor": 0.58,
+    "route_spread": 0.22,
+    "chaos": 0.08,
+    "demand_scale": 0.000412
+  },
+  "best_fitness": 84.6,
+  "ga_tuned_mape": 15.4,
+  "manual_tuned_mape": 22.8,
+  "improvement_pct": 32.5,
+  "convergence": [
+    {
+      "gen": 1,
+      "best_fitness": 65.2,
+      "mean_fitness": 51.4,
+      "best_mape": 34.8
+    },
+    {
+      "gen": 3,
+      "best_fitness": 71.8,
+      "mean_fitness": 59.2,
+      "best_mape": 28.2
+    },
+    {
+      "gen": 5,
+      "best_fitness": 76.5,
+      "mean_fitness": 66.1,
+      "best_mape": 23.5
+    },
+    {
+      "gen": 8,
+      "best_fitness": 80.1,
+      "mean_fitness": 72.8,
+      "best_mape": 19.9
+    },
+    {
+      "gen": 11,
+      "best_fitness": 82.9,
+      "mean_fitness": 77.4,
+      "best_mape": 17.1
+    },
+    {
+      "gen": 15,
+      "best_fitness": 84.6,
+      "mean_fitness": 81.3,
+      "best_mape": 15.4
+    }
+  ]
+}

@@ -28,6 +28,24 @@ const cityGraphsPlugin: Plugin = {
   },
 }
 
+// Serve any file under data/ directly (e.g. /data/chicago/cv_congestion.json)
+const dataPlugin: Plugin = {
+  name: 'data-static',
+  configureServer(server) {
+    server.middlewares.use('/data', (req, res, next) => {
+      const parsedPath = req.url ? req.url.split('?')[0] : ''
+      const file = path.join(repoRoot, 'data', parsedPath)
+      if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+        return next()
+      }
+      if (file.endsWith('.json')) {
+        res.setHeader('Content-Type', 'application/json')
+      }
+      fs.createReadStream(file).pipe(res)
+    })
+  },
+}
+
 // Serve the multi-city MARL-vs-Webster comparison table straight from the
 // evaluation output (ml/results/comparison.json) so the dashboard always
 // reflects the latest run without shipping a stale copy.
@@ -48,7 +66,7 @@ const resultsPlugin: Plugin = {
 }
 
 export default defineConfig({
-  plugins: [cityGraphsPlugin, resultsPlugin, react()],
+  plugins: [cityGraphsPlugin, dataPlugin, resultsPlugin, react()],
   server: {
     fs: { allow: [repoRoot] },
   },

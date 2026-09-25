@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useMap, useMapEvents } from 'react-leaflet';
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
 export const ViewportBoundsSender: React.FC<Props> = ({ sendMessage }) => {
   const map = useMap();
 
-  const sendBounds = () => {
+  const sendBounds = useCallback(() => {
     const b = map.getBounds();
     const msg = {
       type: 'bounds',
@@ -20,7 +20,7 @@ export const ViewportBoundsSender: React.FC<Props> = ({ sendMessage }) => {
       max_lon: b.getNorthEast().lng,
     };
     sendMessage(JSON.stringify(msg));
-  };
+  }, [map, sendMessage]);
 
   useMapEvents({
     moveend: sendBounds,
@@ -29,7 +29,7 @@ export const ViewportBoundsSender: React.FC<Props> = ({ sendMessage }) => {
 
   useEffect(() => {
     sendBounds();
-  }, [map]);
+  }, [sendBounds]);
 
   return null;
 };

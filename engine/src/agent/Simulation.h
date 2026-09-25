@@ -105,7 +105,15 @@ public:
             size_t idx = agents_.add_agent(i, start, end, t);
             RoutingPolicy pol = routing_policy_;
             pol.is_transit = (t == AgentType::Bus);
-            agents_.path[idx] = Pathfinder::compute_path(graph_, start, end, &pol);
+            std::vector<int64_t> p = Pathfinder::compute_path(graph_, start, end, &pol);
+            for (int attempt = 0; attempt < 6 && p.size() < 2; ++attempt) {
+                end = valid_nodes_[dist(rng)];
+                if (start != end) {
+                    p = Pathfinder::compute_path(graph_, start, end, &pol);
+                }
+            }
+            agents_.destination[idx] = end;
+            agents_.path[idx] = std::move(p);
             if (agents_.path[idx].size() < 2)
                 agents_.state[idx] = AgentState::Arrived;
             agents_.target_speed[idx] =
@@ -153,7 +161,15 @@ public:
                 respawn_rng_() % std::max(1, lanes));
             RoutingPolicy pol = routing_policy_;
             pol.is_transit = (t == AgentType::Bus);
-            agents_.path[i] = Pathfinder::compute_path(graph_, start, end, &pol);
+            std::vector<int64_t> p = Pathfinder::compute_path(graph_, start, end, &pol);
+            for (int attempt = 0; attempt < 6 && p.size() < 2; ++attempt) {
+                end = valid_nodes_[dist(respawn_rng_)];
+                if (start != end) {
+                    p = Pathfinder::compute_path(graph_, start, end, &pol);
+                }
+            }
+            agents_.destination[i] = end;
+            agents_.path[i] = std::move(p);
             if (agents_.path[i].size() < 2)
                 agents_.state[i] = AgentState::Arrived;
             agents_.target_speed[i] =
@@ -300,7 +316,7 @@ public:
         };
 
         std::string json;
-        json.reserve(1024 + agents_.size() * 96);
+        json.reserve(2048 + agents_.size() * 256);
         json += "{\"tick\":";
         json += std::to_string(tick_count_);
         json += ",\"city\":\"";
@@ -329,7 +345,19 @@ public:
             json += std::to_string(static_cast<int>(agents_.type[i]));
             json += ",\"speed\":";
             json += safe_num(agents_.velocity[i]);
-            json += "}";
+            json += ",\"origin\":";
+            json += std::to_string(agents_.origin[i]);
+            json += ",\"destination\":";
+            json += std::to_string(agents_.destination[i]);
+            json += ",\"edge_idx\":";
+            json += std::to_string(agents_.current_edge_idx[i]);
+            json += ",\"path\":[";
+            const auto& p = agents_.path[i];
+            for (size_t pi = 0; pi < p.size(); ++pi) {
+                if (pi > 0) json += ",";
+                json += std::to_string(p[pi]);
+            }
+            json += "]}";
         }
 
         json += "],\"metrics\":{\"avg_speed\":";
@@ -370,6 +398,19 @@ public:
             json += std::to_string(zone_wait_times_[z].first);
             json += ",\"wait_time\":";
             json += safe_num(zone_wait_times_[z].second);
+            json += "}";
+        }
+        json += "],\"signals\":[";
+        bool first_sig = true;
+        for (const auto& kv : signals_) {
+            if (!first_sig) json += ",";
+            first_sig = false;
+            json += "{\"id\":";
+            json += std::to_string(kv.first);
+            json += ",\"mode\":\"";
+            json += kv.second->get_mode();
+            json += "\",\"phase\":";
+            json += std::to_string(kv.second->current_phase_idx);
             json += "}";
         }
         json += "]}";

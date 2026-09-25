@@ -25,6 +25,8 @@ interface MetricsPanelProps {
   onSwitch?: (policy: 'webster' | 'rl') => void;
   signals?: IntersectionSignalState[];
   onSwitchPolicy?: (policy: 'webster' | 'rl' | 'fuzzy', intersectionId?: number | null) => void;
+  embedded?: boolean;
+  style?: React.CSSProperties;
 }
 
 function barColor(wt: number, maxWt: number): string {
@@ -35,6 +37,8 @@ function barColor(wt: number, maxWt: number): string {
   return '#ef4444';
 }
 
+const BAR_CHART_MARGIN = { top: 4, right: 4, bottom: 0, left: -20 };
+
 export const MetricsPanel: React.FC<MetricsPanelProps> = ({
   metrics,
   zoneMetrics,
@@ -44,16 +48,9 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
   onSwitch,
   signals = [],
   onSwitchPolicy,
+  embedded = false,
+  style,
 }) => {
-  if (!metrics) return null;
-
-  const gini = metrics.gini_coefficient ?? 0;
-  const waitTime = metrics.avg_wait_time ?? 0;
-
-  // Phase 10: the engine now reports the canonical "rl" label (legacy "ai"
-  // is still tolerated). Either means the learned policy is controlling.
-  const isAiMode = signalMode === 'rl' || signalMode === 'ai';
-
   const topZones = useMemo(() => {
     if (!zoneMetrics || zoneMetrics.length === 0) return [];
     const sorted = [...zoneMetrics].sort((a, b) => b.wait_time - a.wait_time);
@@ -65,23 +62,41 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
     return Math.max(...topZones.map(z => z.wait_time), 0.1);
   }, [topZones]);
 
-  const panelStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
-    zIndex: 1000,
-    backgroundColor: 'rgba(17, 24, 39, 0.9)',
-    backdropFilter: 'blur(8px)',
-    color: '#ffffff',
-    padding: '20px',
-    borderRadius: '12px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    border: '1px solid #374151',
-    width: '320px',
-    maxHeight: '420px',
-    overflowY: 'auto',
-    fontFamily: 'system-ui, sans-serif'
-  };
+  if (!metrics) return null;
+
+  const gini = metrics.gini_coefficient ?? 0;
+  const waitTime = metrics.avg_wait_time ?? 0;
+
+  // Phase 10: the engine now reports the canonical "rl" label (legacy "ai"
+  // is still tolerated). Either means the learned policy is controlling.
+  const isAiMode = signalMode === 'rl' || signalMode === 'ai';
+
+  const panelStyle: React.CSSProperties = embedded
+    ? {
+        color: '#ffffff',
+        fontFamily: 'system-ui, sans-serif',
+        width: '100%',
+        boxSizing: 'border-box',
+        ...style,
+      }
+    : {
+        position: 'absolute',
+        top: '20px',
+        right: '20px',
+        zIndex: 1000,
+        backgroundColor: 'rgba(17, 24, 39, 0.9)',
+        backdropFilter: 'blur(8px)',
+        color: '#ffffff',
+        padding: '20px',
+        borderRadius: '12px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        border: '1px solid #374151',
+        width: '320px',
+        maxHeight: '420px',
+        overflowY: 'auto',
+        fontFamily: 'system-ui, sans-serif',
+        ...style,
+      };
 
   const divider = <div style={{ height: '1px', backgroundColor: 'rgba(55, 65, 81, 0.5)', width: '100%' }} />;
   const labelStyle: React.CSSProperties = { color: '#9ca3af', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '1px', marginBottom: '4px' };
@@ -163,7 +178,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
             <div style={labelStyle}>Top Congested Zones</div>
             <div style={{ marginTop: '8px' }}>
               <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={topZones} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <BarChart data={topZones} margin={BAR_CHART_MARGIN}>
                   <XAxis dataKey="zone_id" tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#9ca3af', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <Tooltip
@@ -172,7 +187,7 @@ export const MetricsPanel: React.FC<MetricsPanelProps> = ({
                     formatter={(value) => [`${Number(value).toFixed(1)}s`, 'Wait Time']}
                     labelFormatter={(label) => `Zone ${String(label)}`}
                   />
-                  <Bar dataKey="wait_time" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="wait_time" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                     {topZones.map((entry, idx) => (
                       <Cell key={idx} fill={barColor(entry.wait_time, maxBarWt)} />
                     ))}

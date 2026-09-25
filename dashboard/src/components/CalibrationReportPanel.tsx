@@ -179,8 +179,8 @@ export const CalibrationReportPanel: React.FC = () => {
             <Tooltip
               contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '11px' }}
             />
-            <Line type="monotone" dataKey="best_fitness" name="Best Fitness" stroke="#10b981" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="mean_fitness" name="Mean Fitness" stroke="#60a5fa" strokeWidth={1} strokeDasharray="3 3" dot={false} />
+            <Line type="monotone" dataKey="best_fitness" name="Best Fitness" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="mean_fitness" name="Mean Fitness" stroke="#60a5fa" strokeWidth={1} strokeDasharray="3 3" dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

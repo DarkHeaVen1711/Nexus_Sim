@@ -101,7 +101,7 @@ public:
 
             set_current_city("");
             if (ws_server_) {
-                ws_server_->broadcast_text("{\"type\":\"stopped\"}");
+                ws_server_->broadcast_control("{\"type\":\"stopped\"}");
             }
             std::cout << "Simulation stopped; engine idling.\n";
             current_city.clear();
@@ -207,27 +207,21 @@ private:
             std::string type = j["type"].get<std::string>();
 
             if (type == "city" && j.contains("city")) {
-                std::string cur = get_current_city();
                 std::string target = j["city"].get<std::string>();
-                if (!cur.empty()) {
-                    std::cout << "Ignoring city request for '" << target << "': "
-                              << cur << " is running (reset/stop first)\n";
-                    return;
-                }
                 std::lock_guard<std::mutex> lock(ctl_.m);
                 ctl_.city_request = target;
             } else if (type == "get_city") {
                 std::string c = get_current_city();
                 std::string city_json = c.empty() ? "null" : "\"" + c + "\"";
                 if (ws_server_) {
-                    ws_server_->broadcast_text("{\"type\":\"city_loaded\",\"city\":" + city_json + "}");
+                    ws_server_->broadcast_control("{\"type\":\"city_loaded\",\"city\":" + city_json + "}");
                 }
             } else if (type == "pause") {
                 set_paused(true);
-                if (ws_server_) ws_server_->broadcast_text("{\"type\":\"paused\"}");
+                if (ws_server_) ws_server_->broadcast_control("{\"type\":\"paused\"}");
             } else if (type == "resume") {
                 set_paused(false);
-                if (ws_server_) ws_server_->broadcast_text("{\"type\":\"resumed\"}");
+                if (ws_server_) ws_server_->broadcast_control("{\"type\":\"resumed\"}");
             } else if (type == "restart") {
                 std::lock_guard<std::mutex> lock(ctl_.m);
                 ctl_.reload = ReloadKind::Restart;
@@ -240,7 +234,7 @@ private:
                 if (pol == "ai") pol = "rl";
                 if (pol != "webster" && pol != "rl" && pol != "fuzzy") {
                     if (ws_server_) {
-                        ws_server_->broadcast_text(
+                        ws_server_->broadcast_control(
                             "{\"type\":\"policy_switched\",\"ok\":false,\"error\":\"unknown policy '" + pol + "'\"}");
                     }
                     return;
@@ -263,53 +257,53 @@ private:
                     ctl_.policy_switch_intersection = -1;
                     ctl_.policy_switch_pending = true;
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Switched signal mode to " + cmd.string_value + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Switched signal mode to " + cmd.string_value + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetSpeedFactor) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set speed factor to " + std::to_string(cmd.double_value) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Set speed factor to " + std::to_string(cmd.double_value) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetChaos) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set chaos coefficient to " + std::to_string(cmd.double_value) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Set chaos coefficient to " + std::to_string(cmd.double_value) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetRouteSpread) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set route spread to " + std::to_string(cmd.double_value) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Set route spread to " + std::to_string(cmd.double_value) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetBusLane) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Added bus lane on edge " + std::to_string(cmd.node_u) + " -> " + std::to_string(cmd.node_v) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Added bus lane on edge " + std::to_string(cmd.node_u) + " -> " + std::to_string(cmd.node_v) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetBlockEdge) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Simulated incident/roadblock on edge " + std::to_string(cmd.node_u) + " -> " + std::to_string(cmd.node_v) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Simulated incident/roadblock on edge " + std::to_string(cmd.node_u) + " -> " + std::to_string(cmd.node_v) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetCongestionPricing) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set congestion toll penalty to " + std::to_string(cmd.double_value) + "\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Set congestion toll penalty to " + std::to_string(cmd.double_value) + "\"}");
                     }
                 } else if (cmd.type == NLPActionType::SetEvRatio) {
                     std::lock_guard<std::mutex> lock(ctl_.m);
                     ctl_.pending_whatif.push_back(cmd);
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Set EV fleet ratio to " + std::to_string(cmd.double_value * 100.0) + "%\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Set EV fleet ratio to " + std::to_string(cmd.double_value * 100.0) + "%\"}");
                     }
                 } else if (cmd.type == NLPActionType::QueryMetrics) {
                     if (ws_server_) {
-                        ws_server_->broadcast_text("{\"type\":\"nlp_ack\",\"message\":\"Telemetry and equity metrics stream active on dashboard.\"}");
+                        ws_server_->broadcast_control("{\"type\":\"nlp_ack\",\"message\":\"Telemetry and equity metrics stream active on dashboard.\"}");
                     }
                 }
             }
@@ -383,7 +377,7 @@ private:
         if (!test.good()) {
             std::cerr << "No graph data for city: " << city << " (" << filepath << ")\n";
             if (ws_server_) {
-                ws_server_->broadcast_text("{\"type\":\"error\",\"message\":\"No graph data for city " + city + "\"}");
+                ws_server_->broadcast_control("{\"type\":\"error\",\"message\":\"No graph data for city " + city + "\"}");
             }
             return;
         }
@@ -405,30 +399,35 @@ private:
         sim.set_policy(policy_.get());
         sim.set_signal_mode(policy_ ? "rl" : "webster");
 
-        std::string od = config_.od_path.empty() ? city_data_path(city, "od_matrix.json") : config_.od_path;
-        std::ifstream od_test(od);
-        if (od_test.good()) {
-            double demand_scale = config_.demand_scale;
-            if (config_.auto_scale) {
-                double peak = compute_peak_hourly_demand(od);
-                if (peak > 0.0) {
-                    demand_scale = 600.0 / peak;
-                    std::cout << "Auto demand_scale = " << demand_scale
-                              << " (peak " << peak << " veh/hr -> target ~600 veh/hr)\n";
+        // Explicit OD matrix if requested via CLI option --od
+        if (!config_.od_path.empty()) {
+            std::string od = config_.od_path;
+            std::ifstream od_test(od);
+            if (od_test.good()) {
+                double demand_scale = config_.demand_scale;
+                if (config_.auto_scale) {
+                    double peak = compute_peak_hourly_demand(od);
+                    if (peak > 0.0) {
+                        demand_scale = 600.0 / peak;
+                        std::cout << "Auto demand_scale = " << demand_scale
+                                  << " (peak " << peak << " veh/hr -> target ~600 veh/hr)\n";
+                    }
                 }
-            }
-            std::cout << "Spawning from OD demand...\n";
-            sim.spawn_agents_from_od(od, demand_scale, config_.start_hour);
-        } else {
-            if (!config_.od_path.empty()) {
+                std::cout << "Spawning from OD demand...\n";
+                sim.spawn_agents_from_od(od, demand_scale, config_.start_hour);
+            } else {
                 std::cerr << "OD file not found: " << config_.od_path << "; falling back to uniform spawning\n";
             }
+        }
+
+        // Always ensure the active fleet has vehicles navigating the network
+        if (sim.active_agents() == 0 && config_.agent_count > 0) {
             std::cout << "Spawning " << config_.agent_count << " agents (uniform)...\n";
             sim.spawn_agents(config_.agent_count);
         }
 
         if (ws_server_) {
-            ws_server_->broadcast_text(
+            ws_server_->broadcast_control(
                 "{\"type\":\"city_loaded\",\"city\":\"" + city
                 + "\",\"nodes\":" + std::to_string(g->node_count())
                 + ",\"edges\":" + std::to_string(g->edge_count()) + "}");
@@ -486,7 +485,7 @@ private:
             if (take_policy_switch(policy_switch, target_id)) {
                 if (policy_switch == "rl" && !(policy_ && policy_->is_loaded())) {
                     if (ws_server_) {
-                        ws_server_->broadcast_text(
+                        ws_server_->broadcast_control(
                             "{\"type\":\"policy_switched\",\"ok\":false,"
                             "\"error\":\"no AI policy loaded (start the engine with --policy policy.onnx)\"}");
                     }
@@ -494,14 +493,14 @@ private:
                     if (target_id >= 0) {
                         bool ok = sim.set_intersection_policy(target_id, policy_switch);
                         if (ws_server_) {
-                            ws_server_->broadcast_text(
+                            ws_server_->broadcast_control(
                                 "{\"type\":\"policy_switched\",\"ok\":" + std::string(ok ? "true" : "false")
                                 + ",\"mode\":\"" + policy_switch + "\",\"intersection_id\":" + std::to_string(target_id) + "}");
                         }
                     } else {
                         sim.set_signal_mode(policy_switch);
                         if (ws_server_) {
-                            ws_server_->broadcast_text(
+                            ws_server_->broadcast_control(
                                 "{\"type\":\"policy_switched\",\"ok\":true,\"mode\":\""
                                 + policy_switch + "\"}");
                         }
@@ -532,7 +531,7 @@ private:
             sim.tick(config_.dt);
             sim.respawn_arrived();
 
-            if (!config_.no_ws && ws_server_) {
+            if (!config_.no_ws && ws_server_ && (tick % 2 == 0)) {
                 sim.broadcast_state(ws_server_.get());
             }
 

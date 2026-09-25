@@ -123,7 +123,7 @@ if not exist "node_modules" (
     call npm install
 )
 start "" cmd /c "npm run dev"
-timeout /t 3 /nobreak >nul
+%SystemRoot%\System32\timeout.exe /t 3 /nobreak >nul
 cd ..
 
 echo.

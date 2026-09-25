@@ -10,6 +10,10 @@ export interface Agent {
   heading: number;
   type: number;
   speed: number;
+  origin?: number;
+  destination?: number;
+  edge_idx?: number;
+  path?: number[];
 }
 
 // Signal control mode reported by the engine: "webster" (fixed-cycle
@@ -65,6 +69,7 @@ export function useWebSocket(url: string): UseWebSocketResult {
     if (stoppedRef.current) return;
     try {
       const ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer';
 
       ws.onopen = () => {
         setIsConnected(true);
@@ -88,9 +93,9 @@ export function useWebSocket(url: string): UseWebSocketResult {
         }, HEARTBEAT_INTERVAL_MS);
       };
 
-      ws.onmessage = (event) => {
+      const handlePayload = (rawStr: string) => {
         try {
-          const data = JSON.parse(typeof event.data === 'string' ? event.data : new TextDecoder().decode(event.data));
+          const data = JSON.parse(rawStr);
           if (data.type === 'city_loaded') {
             setEngineCity(data.city);
             setEngineError(null);
@@ -107,13 +112,14 @@ export function useWebSocket(url: string): UseWebSocketResult {
           }
           if (data.type === 'stopped') {
             setSimStatus('idle');
+            setEngineCity(null);
             return;
           }
           // Phase 10 live policy toggle: the engine acks each switch. A
           // failure (unextended engine / no policy loaded) surfaces as an
           // engineError pill on the map so the toggle is never silent.
           if (data.type === 'policy_switched') {
-            if (data.ok && (data.mode === 'rl' || data.mode === 'ai' || data.mode === 'webster')) {
+            if (data.ok && (data.mode === 'rl' || data.mode === 'ai' || data.mode === 'webster' || data.mode === 'fuzzy')) {
               setEngineMode(data.mode);
             } else if (data.error) {
               setEngineError(data.error);
@@ -132,12 +138,31 @@ export function useWebSocket(url: string): UseWebSocketResult {
             if (data.city) setEngineCity(data.city);
             if (data.metrics.signal_mode === 'rl'
                 || data.metrics.signal_mode === 'ai'
-                || data.metrics.signal_mode === 'webster') {
+                || data.metrics.signal_mode === 'webster'
+                || data.metrics.signal_mode === 'fuzzy') {
               setEngineMode(data.metrics.signal_mode);
             }
           }
         } catch (e) {
-          console.error("Failed to parse websocket message", e);
+          console.error("Failed to parse websocket JSON message", e);
+        }
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          if (typeof event.data === 'string') {
+            handlePayload(event.data);
+          } else if (event.data instanceof ArrayBuffer) {
+            const decoded = new TextDecoder('utf-8', { fatal: false }).decode(event.data);
+            handlePayload(decoded);
+          } else if (typeof Blob !== 'undefined' && event.data instanceof Blob) {
+            event.data.text().then(handlePayload).catch(() => {});
+          } else {
+            const decoded = new TextDecoder('utf-8', { fatal: false }).decode(event.data);
+            handlePayload(decoded);
+          }
+        } catch (e) {
+          console.error("Failed to decode websocket message", e);
         }
       };
 
@@ -210,7 +235,6 @@ export function useWebSocket(url: string): UseWebSocketResult {
     setMetrics(null);
     setZoneMetrics([]);
     setEngineError(null);
-    setSimStatus(null);
   }, []);
 
   return { agents, metrics, zoneMetrics, signals, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, sendPolicySwitch, resetState };
