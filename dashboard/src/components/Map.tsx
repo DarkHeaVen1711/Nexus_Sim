@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { MapContainer, TileLayer, GeoJSON, CircleMarker, Popup, Polyline, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { EquityOverlay } from './EquityOverlay';
@@ -117,12 +118,12 @@ export const Map: React.FC = () => {
   }, [selectedAgent, nodeMap]);
 
   const selectedOriginCoord = useMemo(() => {
-    if (!selectedAgent?.origin || !nodeMap.size) return null;
+    if (selectedAgent?.origin === undefined || selectedAgent?.origin === null || !nodeMap.size) return null;
     return nodeMap.get(selectedAgent.origin) ?? null;
   }, [selectedAgent, nodeMap]);
 
   const selectedDestCoord = useMemo(() => {
-    if (!selectedAgent?.destination || !nodeMap.size) return null;
+    if (selectedAgent?.destination === undefined || selectedAgent?.destination === null || !nodeMap.size) return null;
     return nodeMap.get(selectedAgent.destination) ?? null;
   }, [selectedAgent, nodeMap]);
 
@@ -407,7 +408,7 @@ export const Map: React.FC = () => {
             </div>
           </div>
 
-          {selectedAgent.origin && selectedAgent.destination && (
+          {selectedAgent.origin !== undefined && selectedAgent.destination !== undefined && (
             <div style={{ marginTop: '8px', fontSize: '11px', color: '#9ca3af', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #374151', paddingTop: '6px' }}>
               <span>From: Node {selectedAgent.origin}</span>
               <span>To: Node {selectedAgent.destination}</span>
@@ -512,7 +513,7 @@ export const Map: React.FC = () => {
         })}
 
         {/* Selected Agent Route Highlights */}
-        {viewMode === 'efficiency' && selectedAgent && (
+        {viewMode === 'efficiency' && (pathMode === 'all' || pathMode === 'selected') && selectedAgent && (
           <>
             {/* Planned Route Line */}
             {selectedFullPath.length > 1 && (
@@ -595,9 +596,16 @@ export const Map: React.FC = () => {
                 weight: isSelected ? 2.5 : 1,
                 fillColor: getAgentColor(agent.type),
                 fillOpacity: 1,
+                bubblingMouseEvents: false,
               }}
               eventHandlers={{
-                click: () => setSelectedAgentId(agent.id),
+                click: (e) => {
+                  if (e.originalEvent) {
+                    e.originalEvent.stopPropagation();
+                  }
+                  L.DomEvent.stopPropagation(e as any);
+                  setSelectedAgentId(agent.id);
+                },
               }}
             >
               <Popup>

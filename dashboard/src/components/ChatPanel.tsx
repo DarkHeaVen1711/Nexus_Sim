@@ -29,7 +29,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ city = 'chicago', visible 
     setMessages((prev) => [...prev, { sender: 'user', text: userText }]);
     setLoading(true);
 
-    fetch('http://localhost:9001/chat', {
+    fetch('http://localhost:9004/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: userText, city: city || 'chicago' }),
@@ -37,6 +37,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ city = 'chicago', visible 
       .then((res) => {
         if (!res.ok) throw new Error('NLP service offline');
         return res.json();
+      })
+      .catch(() => {
+        return fetch('http://localhost:9001/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: userText, city: city || 'chicago' }),
+        }).then((res) => {
+          if (!res.ok) throw new Error('Engine offline');
+          return res.json();
+        });
       })
       .then((data) => {
         setMessages((prev) => [
@@ -82,7 +92,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ city = 'chicago', visible 
           }}
         ></span>
         <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 700 }}>
-          NLP Live Metrics Chat (Port 9001)
+          NLP Live Metrics Chat (Port 9004)
         </h3>
       </div>
 

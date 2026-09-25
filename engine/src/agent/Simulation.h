@@ -102,7 +102,7 @@ public:
             int32_t zone_id = snode ? snode->zone_id : 0;
             AgentType t = select_agent_type_for_road(lanes, zone_id, rng);
 
-            size_t idx = agents_.add_agent(i, start, end, t);
+            size_t idx = agents_.add_agent(next_agent_id_++, start, end, t);
             RoutingPolicy pol = routing_policy_;
             pol.is_transit = (t == AgentType::Bus);
             std::vector<int64_t> p = Pathfinder::compute_path(graph_, start, end, &pol);
@@ -181,7 +181,7 @@ public:
     // Phase 6: spawn agents from a real OD demand matrix. Agents are emitted
     // over sim time at the OD pair's hourly rate for the current time-of-day
     // (start_hour + elapsed sim time), scaled by demand_scale for tractability.
-    void spawn_agents_from_od(const std::string& od_path,
+    bool spawn_agents_from_od(const std::string& od_path,
                               double demand_scale = 1.0,
                               double start_hour = 8.0) {
         demand_scale_ = demand_scale;
@@ -190,7 +190,7 @@ public:
         std::ifstream f(od_path);
         if (!f.good()) {
             std::cerr << "OD file not found: " << od_path << "\n";
-            return;
+            return false;
         }
         nlohmann::json j;
         f >> j;
@@ -235,6 +235,7 @@ public:
         if (zones_without_nodes)
             std::cout << "Zones without graph nodes: "
                       << zones_without_nodes << "\n";
+        return !od_pairs_.empty();
     }
 
     void tick(double dt) {

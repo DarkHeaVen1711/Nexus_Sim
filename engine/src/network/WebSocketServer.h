@@ -114,10 +114,11 @@ public:
                    ->end();
             });
 
-            app_->get("/health", [](auto *res, auto *req) {
+            app_->get("/health", [this](auto *res, auto *req) {
+                std::string health_json = "{\"status\":\"ok\",\"service\":\"unified_backend\",\"port\":" + std::to_string(port_) + "}";
                 res->writeHeader("Access-Control-Allow-Origin", "*")
                    ->writeHeader("Content-Type", "application/json")
-                   ->end("{\"status\":\"ok\",\"service\":\"unified_backend\",\"port\":9001}");
+                   ->end(health_json);
             });
 
             app_->get("/api/camera/feed", [](auto *res, auto *req) {
@@ -127,13 +128,15 @@ public:
             });
 
             app_->post("/chat", [this](auto *res, auto *req) {
-                res->onData([res, this](std::string_view data, bool last) {
+                auto body = std::make_shared<std::string>();
+                res->onData([res, this, body](std::string_view data, bool last) {
+                    body->append(data.data(), data.size());
                     if (last) {
                         std::string answer = "Active traffic flow is normal across all corridors.";
                         std::string intent = "status";
                         double confidence = 0.95;
                         try {
-                            auto j = nlohmann::json::parse(std::string(data));
+                            auto j = nlohmann::json::parse(*body);
                             if (j.contains("query")) {
                                 std::string q = j["query"].get<std::string>();
                                 std::string q_lower = q;
@@ -176,11 +179,13 @@ public:
             });
 
             app_->post("/incident", [this](auto *res, auto *req) {
-                res->onData([res, this](std::string_view data, bool last) {
+                auto body = std::make_shared<std::string>();
+                res->onData([res, this, body](std::string_view data, bool last) {
+                    body->append(data.data(), data.size());
                     if (last) {
                         std::string msg = "Incident report registered and simulation mutated.";
                         try {
-                            auto j = nlohmann::json::parse(std::string(data));
+                            auto j = nlohmann::json::parse(*body);
                             if (j.contains("text")) {
                                 std::string text = j["text"].get<std::string>();
                                 if (message_handler_) {

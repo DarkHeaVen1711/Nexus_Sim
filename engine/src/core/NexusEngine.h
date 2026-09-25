@@ -399,6 +399,7 @@ private:
         sim.set_policy(policy_.get());
         sim.set_signal_mode(policy_ ? "rl" : "webster");
 
+        bool od_active = false;
         // Explicit OD matrix if requested via CLI option --od
         if (!config_.od_path.empty()) {
             std::string od = config_.od_path;
@@ -414,14 +415,17 @@ private:
                     }
                 }
                 std::cout << "Spawning from OD demand...\n";
-                sim.spawn_agents_from_od(od, demand_scale, config_.start_hour);
+                od_active = sim.spawn_agents_from_od(od, demand_scale, config_.start_hour);
+                if (!od_active) {
+                    std::cerr << "OD demand matrix has no valid OD pairs for graph; falling back to uniform spawning\n";
+                }
             } else {
                 std::cerr << "OD file not found: " << config_.od_path << "; falling back to uniform spawning\n";
             }
         }
 
-        // Always ensure the active fleet has vehicles navigating the network
-        if (sim.active_agents() == 0 && config_.agent_count > 0) {
+        // Only fall back to uniform mode if no OD demand is active
+        if (!od_active && config_.agent_count > 0) {
             std::cout << "Spawning " << config_.agent_count << " agents (uniform)...\n";
             sim.spawn_agents(config_.agent_count);
         }

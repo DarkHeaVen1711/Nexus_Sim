@@ -32,9 +32,16 @@ const cityGraphsPlugin: Plugin = {
 const dataPlugin: Plugin = {
   name: 'data-static',
   configureServer(server) {
+    const dataDir = path.resolve(repoRoot, 'data')
     server.middlewares.use('/data', (req, res, next) => {
       const parsedPath = req.url ? req.url.split('?')[0] : ''
-      const file = path.join(repoRoot, 'data', parsedPath)
+      const safePath = path.normalize(parsedPath).replace(/^(\.\.(\/|\\|$))+/, '')
+      const file = path.resolve(dataDir, '.' + safePath)
+      if (!file.startsWith(dataDir + path.sep)) {
+        res.statusCode = 403
+        res.end('Forbidden')
+        return
+      }
       if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
         return next()
       }

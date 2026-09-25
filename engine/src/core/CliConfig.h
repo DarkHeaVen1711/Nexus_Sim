@@ -16,8 +16,8 @@ struct EngineConfig {
     bool fast = false;
     bool no_ws = false;
     std::string journey_csv = "journey_times.csv";
-    double speed_factor = 1.0;
-    double route_spread = 0.0;
+    double speed_factor = 0.55;
+    double route_spread = 0.2;
     double chaos = 0.1;
     std::string policy_path;
     double dt = 0.1;
@@ -40,8 +40,27 @@ public:
             };
 
             if (arg == "--city") cfg.city = next("--city");
-            else if (arg == "--agents") cfg.agent_count = std::stoul(next("--agents"));
-            else if (arg == "--duration") cfg.duration_min = std::atoi(next("--duration"));
+            else if (arg == "--agents") {
+                try {
+                    long long val = std::stoll(next("--agents"));
+                    if (val < 0) {
+                        std::cerr << "Invalid --agents value: must be non-negative\n";
+                        std::exit(1);
+                    }
+                    cfg.agent_count = static_cast<size_t>(val);
+                } catch (...) {
+                    std::cerr << "Invalid --agents format\n";
+                    std::exit(1);
+                }
+            }
+            else if (arg == "--duration") {
+                int val = std::atoi(next("--duration"));
+                if (val < 0) {
+                    std::cerr << "Invalid --duration value: must be non-negative\n";
+                    std::exit(1);
+                }
+                cfg.duration_min = val;
+            }
             else if (arg == "--od") cfg.od_path = next("--od");
             else if (arg == "--demand-scale") { cfg.demand_scale = std::atof(next("--demand-scale")); cfg.auto_scale = false; }
             else if (arg == "--start-hour") cfg.start_hour = std::atof(next("--start-hour"));
@@ -50,7 +69,14 @@ public:
             else if (arg == "--route-spread") cfg.route_spread = std::atof(next("--route-spread"));
             else if (arg == "--chaos") cfg.chaos = std::atof(next("--chaos"));
             else if (arg == "--policy") cfg.policy_path = next("--policy");
-            else if (arg == "--port") cfg.port = std::atoi(next("--port"));
+            else if (arg == "--port") {
+                int val = std::atoi(next("--port"));
+                if (val <= 0 || val > 65535) {
+                    std::cerr << "Invalid --port value: must be between 1 and 65535\n";
+                    std::exit(1);
+                }
+                cfg.port = val;
+            }
             else if (arg == "--dt") {
                 cfg.dt = std::atof(next("--dt"));
                 if (cfg.dt <= 0.0) {

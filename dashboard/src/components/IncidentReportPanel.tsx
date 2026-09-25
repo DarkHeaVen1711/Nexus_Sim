@@ -22,7 +22,7 @@ export const IncidentReportPanel: React.FC<IncidentReportPanelProps> = ({
     setSubmitting(true);
     setStatusMsg(null);
 
-    fetch('http://localhost:9001/incident', {
+    fetch('http://localhost:9004/incident', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.trim(), city: city || 'chicago' }),
@@ -30,6 +30,16 @@ export const IncidentReportPanel: React.FC<IncidentReportPanelProps> = ({
       .then((res) => {
         if (!res.ok) throw new Error('NLP service offline');
         return res.json();
+      })
+      .catch(() => {
+        return fetch('http://localhost:9001/incident', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text.trim(), city: city || 'chicago' }),
+        }).then((res) => {
+          if (!res.ok) throw new Error('Engine offline');
+          return res.json();
+        });
       })
       .then((data) => {
         setStatusMsg(`✅ ${data.message}`);
