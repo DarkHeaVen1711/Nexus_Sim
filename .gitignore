@@ -61,5 +61,6 @@ cmake_config.txt
 *.pdf
 *.pptx
 * (z-lib.org).md
-A Philosophy of Software Design*.md
-systems-performance-enterprise-and-the-cloud*.md
+A Philosophy of Software Design by John Ousterhout.md
+systems-performance-enterprise-and-the-cloud-by-brendan-gregg*.md
+
