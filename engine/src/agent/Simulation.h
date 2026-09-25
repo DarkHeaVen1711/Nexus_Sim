@@ -22,6 +22,7 @@
 #include "agent_delta_generated.h"
 #include "flatbuffers/flatbuffers.h"
 #include "ThreadPool.h"
+#include "../core/Metrics.h"
 #include <memory>
 
 namespace nexussim {
@@ -231,10 +232,10 @@ public:
             update_agent(active_[k], dt);
         });
 
-        // FPS tracking
+        // FPS & Latency tracking
         auto t1 = std::chrono::high_resolution_clock::now();
-        double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
-        tick_times_.push_back(ms);
+        uint64_t us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+        tick_histogram_.record_us(us);
         tick_count_++;
         if (tick_count_ % 500 == 0) log_fps();
 
@@ -376,18 +377,31 @@ public:
     }
 
     double avg_tick_ms() const {
-        if (tick_times_.empty()) return 0.0;
-        return std::accumulate(tick_times_.begin(),
-                               tick_times_.end(), 0.0)
-               / tick_times_.size();
+        return tick_histogram_.mean_us() / 1000.0;
+    }
+
+    double p50_tick_ms() const {
+        return tick_histogram_.percentile(0.50) / 1000.0;
+    }
+
+    double p90_tick_ms() const {
+        return tick_histogram_.percentile(0.90) / 1000.0;
     }
 
     double p95_tick_ms() const {
-        if (tick_times_.empty()) return 0.0;
-        auto v = tick_times_;
-        std::sort(v.begin(), v.end());
-        size_t idx = static_cast<size_t>(v.size() * 0.95);
-        return v[std::min(idx, v.size() - 1)];
+        return tick_histogram_.percentile(0.95) / 1000.0;
+    }
+
+    double p99_tick_ms() const {
+        return tick_histogram_.percentile(0.99) / 1000.0;
+    }
+
+    double max_tick_ms() const {
+        return tick_histogram_.max_us() / 1000.0;
+    }
+
+    const core::LatencyHistogram& tick_histogram() const {
+        return tick_histogram_;
     }
 
 private:
@@ -457,8 +471,8 @@ private:
     double gini_coefficient_ = 0.0;
     std::vector<std::pair<int32_t, double>> zone_wait_times_;
 
-    // FPS tracking
-    std::vector<double> tick_times_;
+    // FPS & Latency tracking
+    core::LatencyHistogram tick_histogram_;
     uint64_t tick_count_ = 0;
 
     void precompute_edge_lengths() {
@@ -886,11 +900,15 @@ private:
 
     void log_fps() {
         double avg = avg_tick_ms();
+        double p50 = p50_tick_ms();
         double p95 = p95_tick_ms();
+        double p99 = p99_tick_ms();
         double fps = (avg > 0) ? 1000.0 / avg : 0;
         std::cout << "[FPS] tick=" << tick_count_
                   << " avg=" << avg << "ms"
+                  << " p50=" << p50 << "ms"
                   << " p95=" << p95 << "ms"
+                  << " p99=" << p99 << "ms"
                   << " fps=" << fps << "\n";
     }
 };
