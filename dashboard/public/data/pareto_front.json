@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "wait_time_s": 27.82,
+    "gini_coefficient": 0.386,
+    "parameters": {
+      "alpha_efficiency": 0.95,
+      "beta_equity": 0.439,
+      "speed_factor": 0.096,
+      "chaos": 0.415
+    }
+  },
+  {
+    "id": 3,
+    "wait_time_s": 28.43,
+    "gini_coefficient": 0.355,
+    "parameters": {
+      "alpha_efficiency": 0.95,
+      "beta_equity": 0.555,
+      "speed_factor": 0.133,
+      "chaos": 0.535
+    }
+  },
+  {
+    "id": 0,
+    "wait_time_s": 29.07,
+    "gini_coefficient": 0.269,
+    "parameters": {
+      "alpha_efficiency": 0.828,
+      "beta_equity": 0.787,
+      "speed_factor": 0.676,
+      "chaos": 0.298
+    }
+  },
+  {
+    "id": 4,
+    "wait_time_s": 35.47,
+    "gini_coefficient": 0.24,
+    "parameters": {
+      "alpha_efficiency": 0.539,
+      "beta_equity": 0.924,
+      "speed_factor": 0.585,
+      "chaos": 0.711
+    }
+  },
+  {
+    "id": 2,
+    "wait_time_s": 37.82,
+    "gini_coefficient": 0.239,
+    "parameters": {
+      "alpha_efficiency": 0.39,
+      "beta_equity": 0.95,
+      "speed_factor": 0.466,
+      "chaos": 0.735
+    }
+  }
+]
