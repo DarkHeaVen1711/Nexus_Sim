@@ -1,0 +1,135 @@
+{
+  "city": "paris",
+  "checkpoint": "E:\\Coding\\Nexus_Sim\\ml\\checkpoints\\chicago_to_paris\\19.pt",
+  "total_configurations": 16,
+  "configurations": [
+    {
+      "chaos": 0.05,
+      "demand_scale": 0.5,
+      "mean_reward": -67993.95,
+      "mean_pressure": -17.3972,
+      "mean_gini": 0.382,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.05,
+      "demand_scale": 0.8,
+      "mean_reward": -67586.71,
+      "mean_pressure": -17.2244,
+      "mean_gini": 0.3839,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.05,
+      "demand_scale": 1.0,
+      "mean_reward": -66715.65,
+      "mean_pressure": -17.0503,
+      "mean_gini": 0.3802,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.05,
+      "demand_scale": 1.5,
+      "mean_reward": -66831.98,
+      "mean_pressure": -17.1036,
+      "mean_gini": 0.3829,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.1,
+      "demand_scale": 0.5,
+      "mean_reward": -69408.83,
+      "mean_pressure": -17.6847,
+      "mean_gini": 0.3816,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.1,
+      "demand_scale": 0.8,
+      "mean_reward": -69518.82,
+      "mean_pressure": -17.6694,
+      "mean_gini": 0.377,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.1,
+      "demand_scale": 1.0,
+      "mean_reward": -68546.87,
+      "mean_pressure": -17.4339,
+      "mean_gini": 0.3713,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.1,
+      "demand_scale": 1.5,
+      "mean_reward": -68250.32,
+      "mean_pressure": -17.3806,
+      "mean_gini": 0.3796,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.2,
+      "demand_scale": 0.5,
+      "mean_reward": -70538.68,
+      "mean_pressure": -17.9564,
+      "mean_gini": 0.3721,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.2,
+      "demand_scale": 0.8,
+      "mean_reward": -70359.89,
+      "mean_pressure": -17.8642,
+      "mean_gini": 0.3598,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.2,
+      "demand_scale": 1.0,
+      "mean_reward": -69443.95,
+      "mean_pressure": -17.6878,
+      "mean_gini": 0.3714,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.2,
+      "demand_scale": 1.5,
+      "mean_reward": -69850.47,
+      "mean_pressure": -17.7711,
+      "mean_gini": 0.3576,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.4,
+      "demand_scale": 0.5,
+      "mean_reward": -70320.27,
+      "mean_pressure": -17.8781,
+      "mean_gini": 0.3469,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.4,
+      "demand_scale": 0.8,
+      "mean_reward": -72612.78,
+      "mean_pressure": -18.4397,
+      "mean_gini": 0.3412,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.4,
+      "demand_scale": 1.0,
+      "mean_reward": -71835.36,
+      "mean_pressure": -18.2114,
+      "mean_gini": 0.3573,
+      "stability": "STABLE"
+    },
+    {
+      "chaos": 0.4,
+      "demand_scale": 1.5,
+      "mean_reward": -71402.11,
+      "mean_pressure": -18.1536,
+      "mean_gini": 0.3334,
+      "stability": "STABLE"
+    }
+  ]
+}
