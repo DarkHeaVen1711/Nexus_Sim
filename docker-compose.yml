@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  engine:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.engine
+    container_name: nexussim-engine
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./data:/app/data:ro
+    restart: unless-stopped
+    command: ["--city", "chicago", "--duration", "60", "--port", "9001"]
+
+  sidecars:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sidecars
+    container_name: nexussim-sidecars
+    ports:
+      - "9003:9003"  # Virtual Camera service
+      - "9004:9004"  # NLP Chat & Incident service
+      - "9005:9005"  # Cross-subject Event Bus
+      - "9006:9006"  # Algo Explorer catalog service
+    depends_on:
+      - engine
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.dashboard
+    container_name: nexussim-dashboard
+    ports:
+      - "3000:3000"
+    depends_on:
+      - engine
+      - sidecars
+    restart: unless-stopped
+
+networks:
+  default:
+    name: nexussim-network
