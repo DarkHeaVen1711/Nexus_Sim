@@ -75,6 +75,17 @@ const resultsPlugin: Plugin = {
 export default defineConfig({
   plugins: [cityGraphsPlugin, dataPlugin, resultsPlugin, react()],
   server: {
+    port: 3000,
     fs: { allow: [repoRoot] },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://localhost:8000',
+        ws: true,
+      },
+    },
   },
 })

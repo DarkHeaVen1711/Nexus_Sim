@@ -9,6 +9,7 @@ import { CitySelector } from './CitySelector';
 import { SimControls } from './SimControls';
 import { RightDock } from './RightDock';
 import { NLPCommandConsole } from './NLPCommandConsole';
+import { ENDPOINTS } from '../config/api';
 
 const CITY_CENTER: [number, number] = [37.8242201, -122.247198];
 
@@ -66,7 +67,7 @@ const buildGraphFeature = (data: any): any => {
 };
 
 export const Map: React.FC = () => {
-  const { agents, metrics, zoneMetrics, signals, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, sendPolicySwitch, resetState } = useWebSocket('ws://localhost:9001');
+  const { agents, metrics, zoneMetrics, signals, isConnected, isReconnecting, engineCity, engineError, engineMode, simStatus, sendMessage, sendCommand, sendPolicySwitch, resetState } = useWebSocket(ENDPOINTS.ENGINE_WS);
   const [graphData, setGraphData] = useState<any>(null);
   const [rawGraph, setRawGraph] = useState<any>(null);
   const [graphLoading, setGraphLoading] = useState(false);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ENDPOINTS } from '../config/api';
 
 interface IncidentReportPanelProps {
   city?: string | null;
@@ -22,7 +23,7 @@ export const IncidentReportPanel: React.FC<IncidentReportPanelProps> = ({
     setSubmitting(true);
     setStatusMsg(null);
 
-    fetch('http://localhost:9004/incident', {
+    fetch(ENDPOINTS.INCIDENT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: text.trim(), city: city || 'chicago' }),
@@ -32,12 +33,12 @@ export const IncidentReportPanel: React.FC<IncidentReportPanelProps> = ({
         return res.json();
       })
       .catch(() => {
-        return fetch('http://localhost:9001/incident', {
+        return fetch('/api/incident', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: text.trim(), city: city || 'chicago' }),
         }).then((res) => {
-          if (!res.ok) throw new Error('Engine offline');
+          if (!res.ok) throw new Error('Gateway/NLP offline');
           return res.json();
         });
       })
