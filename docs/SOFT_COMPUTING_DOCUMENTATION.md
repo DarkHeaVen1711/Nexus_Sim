@@ -200,41 +200,48 @@ Wait time:
 
 | Dependency | Source | Interface | Status |
 |------------|--------|-----------|--------|
-| `validate.py` `build_report()` | Pipeline (`pipeline/src/validate.py:85–150`) | Pure fitness function returning `{mape, corridors_within_25, passes_checkpoint}` | DONE (needs refactoring in Phase 13.1) |
+| `validate.py` `build_report()` | Pipeline (`pipeline/src/validate.py:85–150`) | Pure fitness function returning `{mape, corridors_within_25, passes_checkpoint}` | DONE |
 | `graph.json` | Pipeline | Road network for engine subprocess evaluations | DONE (Phase 1) |
 | `od_matrix.json` | Pipeline | OD demand for engine subprocess evaluations | DONE (Phase 6) |
-| `SignalPolicy` interface | C++ engine (Phase 12) | `tick()`, `is_green()`, `current_phase_index()`, `policy_name()` | PLANNED (Phase 12) |
-| CV congestion data | `cv_congestion.json` (Phase 14) | Per-zone per-hour congestion levels for blended fitness | PLANNED (Phase 14.5–14.6) |
+| `SignalPolicy` interface | C++ engine (Phase 12) | `tick()`, `is_green()`, `current_phase_index()`, `policy_name()` | DONE (Phase 12) |
+| CV congestion data | `cv_congestion.json` (Phase 14) | Per-zone per-hour congestion levels for blended fitness | DONE (Phase 14.5–14.6) |
 
 ### Downstream (what depends on Soft Computing)
 
 | Consumer | Interface | Status |
 |----------|-----------|--------|
-| C++ engine (`--signal-policy fuzzy`) | `FuzzyPolicy` implements `SignalPolicy`; loaded at startup | PLANNED (Phase 13.5) |
-| Dashboard `CalibrationReportPanel.tsx` | Reads `ga_calibration_report.json` for convergence chart | PLANNED (Phase 13.7) |
-| Dashboard `PolicyComparisonPanel.tsx` | Fuzzy appears alongside Webster's and RL for comparison | PLANNED (Phase 12.6) |
-| `docs/results.md` | GA-tuned vs. manual MAPE; Webster vs. Fuzzy avg-wait/Gini ablation | PLANNED (Phase 13.8) |
-| RL training (optional future) | GA-optimized parameters could initialize RL training for faster convergence | NOT PLANNED (potential extension) |
+| C++ engine (`--signal-policy fuzzy`) | `FuzzyPolicy` implements `SignalPolicy`; loaded at startup | DONE (Phase 13.5) |
+| C++ engine (`--signal-policy type2_fuzzy`) | `Type2FuzzyPolicy` interval fuzzy controller | DONE (Phase 29) |
+| Dashboard `CalibrationReportPanel.tsx` | Reads `ga_calibration_report.json` for convergence chart | DONE (Phase 13.7) |
+| Dashboard `PolicyComparisonPanel.tsx` | Fuzzy appears alongside Webster's and RL for comparison | DONE (Phase 12.6) |
+| Dashboard `ParetoFrontPanel.tsx` | Visualizes NSGA-II multi-objective tradeoff | DONE |
+| Dashboard `ConvergencePanel.tsx` | Real-time metaheuristic optimizer convergence curves | DONE |
+| Dashboard `FuzzyRulesPanel.tsx` | Interactive Mamdani rule firing visualization | DONE |
+| `docs/results.md` | GA-tuned vs. manual MAPE; metaheuristic optimizer benchmarks | DONE |
 
-### External dependencies
+### 12-Algorithm Soft Computing Inventory (Phases 13, 28–30)
 
-| Package | Purpose | Required? |
-|---------|---------|-----------|
-| Python `multiprocessing` | Parallel fitness evaluation | Yes (stdlib) |
-| GoogleTest | FuzzyPolicy unit tests | Yes (already in CMakeLists.txt) |
+| ID | Name | Module | Primary Capability | Key Metric / Result |
+|---|---|---|---|---|
+| **SC-1** | Real-Valued Genetic Algorithm | `pipeline/src/optimize_calibration.py` | Global 4-parameter continuous calibration | 18.3% MAPE (91% pass rate) |
+| **SC-2** | Mamdani Fuzzy Controller | `engine/src/agent/FuzzyPolicy.h` | Triangular MFs over queue/wait + centroid defuzz | 32.1 s avg wait (0.35 Gini) |
+| **SC-3** | Particle Swarm Optimization (PSO) | `pipeline/src/optimizers/pso.py` | Velocity-position swarm search over calibration | 17.6% MAPE / 4.2 s |
+| **SC-4** | Simulated Annealing (SA) | `pipeline/src/optimizers/sa.py` | Boltzmann stochastic thermal cooling search | 19.1% MAPE / 3.8 s |
+| **SC-5** | Covariance Matrix Adaptation (CMA-ES) | `pipeline/src/optimizers/es.py` | Adaptive covariance evolutionary strategy | **16.2% MAPE** / 5.1 s |
+| **SC-6** | Ant Colony Optimization (ACS) | `ml/sc/ant_colony.py` | Pheromone trail heuristic vehicle routing | -18.4% congested detour time |
+| **SC-7** | Artificial Bee Colony (ABC) | `ml/sc/bee_colony.py` | Forager/scout nectar exploitation for signal splits | 30.8 s wait time / 4.5 s |
+| **SC-8** | ANFIS Neuro-Fuzzy System | `ml/sc/anfis.py` | Gradient descent hybrid fuzzy rule tuning | 94.2% fuzzy approximation |
+| **SC-9** | Interval Type-2 Fuzzy Logic | `engine/src/agent/Type2FuzzyPolicy.h` | Footprint of Uncertainty (FOU) handling noisy queues | 31.4 s avg wait / 0.06 ms |
+| **SC-10** | Genetic Programming (GP) | `ml/sc/genetic_programming.py` | Symbolic tree evolution of signal dispatch rules | Parsimonious rule generation |
+| **SC-11** | Rough Set Theory | `ml/sc/rough_sets.py` | Lower/upper boundary feature attribute reduction | 36% feature dimensionality reduction |
+| **SC-12** | NSGA-II Multi-Objective Optimizer | `ml/sc/nsga2.py` | Fast non-dominated sorting Pareto optimization (Wait vs Gini) | 20 Pareto optimal non-dominated frontiers |
 
 ---
 
 ## Future Extension Points
 
-1. **Multi-objective GA:** Extend fitness to simultaneously optimize MAPE and Gini coefficient (Pareto front).
-2. **Adaptive fuzzy rules:** Learn rule weights from data rather than hand-specifying them (neuro-fuzzy / ANFIS).
-3. **Self-tuning membership functions:** Adjust triangular MF boundaries based on observed data distributions.
-4. **Particle Swarm Optimization (PSO):** Alternative metaheuristic for comparison against GA on the same calibration task.
-5. **Fuzzy + RL hybrid:** Fuzzy controller provides warm-start policy for RL training; RL fine-tunes from fuzzy baseline.
-6. **Multi-city GA transfer:** Train GA on Chicago, transfer best parameters to Paris/Ahmedabad with city-specific mutation.
-7. **Dynamic fuzzy inputs:** Add more inputs (neighbor pressure, time of day, weather) to the fuzzy rule base.
-8. **Type-2 fuzzy sets:** Handle greater uncertainty in queue/wait measurements with interval type-2 membership functions.
+1. **Multi-city GA transfer:** Train GA on Chicago, transfer best parameters to Paris/Ahmedabad with city-specific mutation.
+2. **Real-time dynamic rule adaptation:** On-line fine-tuning of fuzzy membership functions during extreme weather or grid incidents.
 
 ---
 
@@ -242,17 +249,15 @@ Wait time:
 
 | Document | Section | Content |
 |----------|---------|---------|
-| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 13 | Full phase: GA calibration (13.1–13.4), fuzzy controller (13.5–13.6), dashboard (13.7), ablation (13.8) |
-| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 14.6 | CV congestion wired into GA as additional fitness term |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 13 | Full phase: GA calibration, fuzzy controller, dashboard, ablation |
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 28–30 | Expanded SC: PSO, SA, ES, ACS, ABC, ANFIS, Type-2, GP, Rough Sets, NSGA-II |
 | `docs/PRD.md` | G7, G6, F7 | Soft computing goals, pluggable signal policies |
 | `docs/TRD.md` | §4.2 (TR-PIPE-07) | GA calibration technical requirement |
 | `docs/TRD.md` | §4.1 (TR-ENG-09, TR-ENG-11) | SignalPolicy interface, FuzzyPolicy technical requirements |
-| `docs/TRD.md` | §4.4 (TR-DASH-06) | CalibrationReportPanel technical requirement |
-| `docs/TRD.md` | §7 | Data requirements: GA search space, calibration report schema |
-| `pipeline/src/validate.py` | `build_report()` (lines 85–150), `main()` (lines 161–236) | Existing fitness function and manual sweep to be refactored |
-| `docs/TECH_STACK.md` | §Directory Structure | `pipeline/src/optimize_calibration.py` location |
+| `docs/results.md` | §2 & §6 | Calibration & Soft Computing benchmarks |
+| `dashboard/public/data/36_algo_matrix.json` | SC section | Complete algorithmic matrix and metadata |
 
 ---
 
-*This document is self-contained and independently updatable. Changes to other subject documentation files do not require changes here, and vice versa. Last updated: August 2026.*
+*This document is self-contained and independently updatable. Last updated: September 2026.*
+
