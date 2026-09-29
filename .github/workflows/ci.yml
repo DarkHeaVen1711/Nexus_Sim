@@ -132,6 +132,10 @@ jobs:
           cd ml
           pip install -r requirements.txt
 
+      - name: Unified Backend Gateway Verification
+        run: |
+          python -m pytest gateway/test_gateway.py -v
+
       - name: Cross-Subject E2E Verification
         run: |
           python -m pytest ml/tests/test_cross_subject_e2e.py -v
