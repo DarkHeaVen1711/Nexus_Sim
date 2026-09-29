@@ -34,6 +34,9 @@ private:
     TriangularMF w_medium_{20.0, 60.0, 100.0};
     TriangularMF w_long_{80.0, 150.0, 1e9};
 
+    // CV-7 / Task 26.4: Road condition factor (1.0 = normal/dry, 1.3 = wet/rain, 1.6 = hazardous)
+    double road_surface_factor_ = 1.0;
+
     // Output: Green Time Extension (0s to 15s)
     // Rule outputs (extension in seconds for centroid defuzzification)
     // 3x3 matrix:
@@ -45,11 +48,19 @@ private:
 public:
     explicit FuzzyPolicy(SignalController* controller) : controller_(controller) {}
 
+    void set_road_surface_factor(double factor) {
+        road_surface_factor_ = std::max(0.5, std::min(3.0, factor));
+    }
+
+    double road_surface_factor() const { return road_surface_factor_; }
+
     // Evaluate Mamdani Fuzzy Inference Engine for given queue and wait time
     double compute_green_extension(double queue_len, double wait_time) const {
-        double mu_q_s = q_short_.evaluate(queue_len);
-        double mu_q_m = q_medium_.evaluate(queue_len);
-        double mu_q_l = q_long_.evaluate(queue_len);
+        // CV-7: Wet/slippery roads lengthen effective clearing queue requirements
+        double effective_queue = queue_len * road_surface_factor_;
+        double mu_q_s = q_short_.evaluate(effective_queue);
+        double mu_q_m = q_medium_.evaluate(effective_queue);
+        double mu_q_l = q_long_.evaluate(effective_queue);
 
         double mu_w_s = w_short_.evaluate(wait_time);
         double mu_w_m = w_medium_.evaluate(wait_time);
