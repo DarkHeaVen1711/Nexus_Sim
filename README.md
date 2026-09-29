@@ -80,7 +80,7 @@ NexusSim is built on an isolated sidecar architecture. The C++ engine remains co
                           └────────────▲─────────────┘                 │
                                        │ Inbound Mutation              │
                                        │ WebSocket                     │
-     ┌─────────────────────────────────┴───────────────────────────────┴───────────────────────────────┐
+     ┌─────────────────────────────────┴───────────────────────────────┴────────────────────────────────┐
      │                                     Python Microservice Sidecars                                 │
      │  ┌────────────────────┐ ┌───────────────────┐ ┌────────────────────┐ ┌─────────────────────────┐ │
      │  │  Virtual Camera    │ │   NLP Chat &      │ │   Cross-Subject    │ │   Algo Explorer         │ │
@@ -108,9 +108,9 @@ NexusSim is built on an isolated sidecar architecture. The C++ engine remains co
 NexusSim features 48 algorithms across all four computing disciplines:
 
 ```text
- ╭──────────────────────────────────────────────────────────────────────────────────────────╮
+ ╭─────────────────────────────────────────────────────────────────────────────────────────────────╮
  │  12 COMPUTER VISION   │  12 SOFT COMPUTING    │  12 NLP ALGORITHMS    │  12 REINFORCEMENT LEARN │
- ╰──────────────────────────────────────────────────────────────────────────────────────────╯
+ ╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
 <details open>
