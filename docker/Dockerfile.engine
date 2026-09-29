@@ -1,0 +1,31 @@
+# Multi-stage Dockerfile for NexusSim C++ Simulation Engine
+FROM ubuntu:24.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    ninja-build \
+    wget \
+    libssl-dev \
+    zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY engine/ /app/engine/
+
+WORKDIR /app/engine/build
+RUN cmake -DCMAKE_BUILD_TYPE=Release .. && cmake --build . -j$(nproc)
+
+# Final runtime image
+FROM ubuntu:24.04
+
+WORKDIR /app
+COPY --from=builder /app/engine/build/engine /app/engine
+COPY data/ /app/data/
+
+EXPOSE 9001
+
+ENTRYPOINT ["/app/engine"]
+CMD ["--city", "chicago", "--duration", "60", "--port", "9001"]

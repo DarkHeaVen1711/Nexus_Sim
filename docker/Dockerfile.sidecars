@@ -1,0 +1,30 @@
+# Dockerfile for NexusSim Python Microservices & Sidecars
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for OpenCV and builds
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libgl1 \
+    libglib2.0-0 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ml/requirements.txt /app/ml/requirements.txt
+RUN pip install --no-cache-dir -r /app/ml/requirements.txt
+
+COPY ml/ /app/ml/
+COPY pipeline/ /app/pipeline/
+COPY data/ /app/data/
+COPY dashboard/public/data/ /app/dashboard/public/data/
+
+ENV PYTHONPATH="/app/ml:/app/pipeline/src"
+
+EXPOSE 9003 9004 9005 9006
+
+# Start entrypoint script launching all sidecars in parallel
+COPY docker/start_sidecars.sh /app/start_sidecars.sh
+RUN chmod +x /app/start_sidecars.sh
+
+ENTRYPOINT ["/app/start_sidecars.sh"]
