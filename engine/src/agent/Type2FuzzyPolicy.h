@@ -8,9 +8,13 @@
 namespace nexussim {
 
 // Interval Type-2 Membership Function: Lower & Upper Membership Bounds [LMF, UMF]
+struct TriMF {
+    double a, b, c;
+};
+
 struct IntervalType2MF {
-    double a1, b1, c1; // Lower MF parameters
-    double a2, b2, c2; // Upper MF parameters (Footprint of Uncertainty - FOU)
+    TriMF lower; // Lower MF parameters
+    TriMF upper; // Upper MF parameters (Footprint of Uncertainty - FOU)
 
     std::pair<double, double> evaluate(double x) const {
         auto eval_tri = [](double v, double a, double b, double c) {
@@ -22,8 +26,8 @@ struct IntervalType2MF {
             return (c > b) ? (c - v) / (c - b) : 0.0;
         };
 
-        double lmf = eval_tri(x, a1, b1, c1);
-        double umf = eval_tri(x, a2, b2, c2);
+        double lmf = eval_tri(x, lower.a, lower.b, lower.c);
+        double umf = eval_tri(x, upper.a, upper.b, upper.c);
         return {std::min(lmf, umf), std::max(lmf, umf)};
     }
 };

@@ -21,13 +21,13 @@ describe("Algorithm Matrix & Multi-Subject Catalog Suite", () => {
   });
 
   it("should have all active algorithm entries with valid latency and metrics", () => {
-    for (const [subject, algos] of Object.entries(algoMatrix.subjects)) {
+    for (const [, algos] of Object.entries(algoMatrix.subjects)) {
       for (const algo of algos) {
         expect(algo.id).toBeTruthy();
         expect(algo.name).toBeTruthy();
         expect(["ACTIVE", "DEPLOYED_C++", "BENCHMARKED", "SHOWCASE"]).toContain(algo.status);
         expect(algo.latency_ms).toBeGreaterThan(0);
-        expect(algo.accuracy || algo.reward || algo.metric).toBeTruthy();
+        expect((algo as any).accuracy || (algo as any).reward || (algo as any).metric).toBeTruthy();
       }
     }
   });
@@ -47,9 +47,11 @@ describe("Multi-City Comparison & Policy Benchmark Suite", () => {
 
     const chicago = comparisonData.find((c: any) => c.city === "chicago");
     expect(chicago).toBeDefined();
-    expect(chicago.intersections).toBe(3709);
-    expect(chicago.improvement_pct).toBeGreaterThan(20);
-    expect(chicago.marl.episode_reward).toBeGreaterThan(chicago.webster.episode_reward);
+    if (chicago) {
+      expect(chicago.intersections).toBe(3709);
+      expect(chicago.improvement_pct).toBeGreaterThan(20);
+      expect(chicago.marl.episode_reward).toBeGreaterThan(chicago.webster.episode_reward);
+    }
   });
 
   it("should have valid schema definitions for Webster baseline vs MARL metrics", () => {
