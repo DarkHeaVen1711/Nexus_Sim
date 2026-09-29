@@ -16,6 +16,9 @@ def test_haversine_distance_calculation():
 
 
 def test_paris_telemetry_od_generation():
+    graph_path = os.path.join(DATA_DIR, "paris", "graph.json")
+    if not os.path.isfile(graph_path):
+        pytest.skip("Paris road graph not present (gitignored); telemetry OD ingestion test skipped")
     res = generate_telemetry_od("paris")
     assert res["city"] == "paris"
     assert res["validation_safe"] is True
@@ -25,9 +28,26 @@ def test_paris_telemetry_od_generation():
 
 
 def test_ahmedabad_telemetry_od_generation():
+    graph_path = os.path.join(DATA_DIR, "ahmedabad", "graph.json")
+    if not os.path.isfile(graph_path):
+        pytest.skip("Ahmedabad road graph not present (gitignored); telemetry OD ingestion test skipped")
     res = generate_telemetry_od("ahmedabad")
     assert res["city"] == "ahmedabad"
     assert res["validation_safe"] is True
     assert res["confidence"] == "high"
     assert len(res["od_pairs"]) == 36
     assert res["zone_count"] == 6
+
+
+def test_synthetic_telemetry_od_generation():
+    # Synthetic test to guarantee CI validation without external gitignored city data
+    synthetic_nodes = [
+        {"id": i, "lat": 48.85 + (i * 0.001), "lon": 2.35 + (i * 0.001), "zone_id": (i % 4) + 1}
+        for i in range(12)
+    ]
+    res = generate_telemetry_od("paris", graph={"nodes": synthetic_nodes, "edges": []})
+    assert res["city"] == "paris"
+    assert res["validation_safe"] is True
+    assert res["confidence"] == "high"
+    assert res["zone_count"] == 4
+    assert len(res["od_pairs"]) == 16

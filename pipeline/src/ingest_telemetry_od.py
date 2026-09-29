@@ -58,17 +58,18 @@ def haversine_distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> 
     return 2.0 * r * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
 
 
-def generate_telemetry_od(city: str) -> dict:
+def generate_telemetry_od(city: str, graph: dict | None = None) -> dict:
     if city not in TELEMETRY_SOURCES:
         raise ValueError(f"No telemetry configuration for {city}")
 
     cfg = TELEMETRY_SOURCES[city]
-    graph_path = os.path.join(DATA_DIR, city, "graph.json")
-    if not os.path.isfile(graph_path):
-        raise FileNotFoundError(f"Missing {graph_path}")
+    if graph is None:
+        graph_path = os.path.join(DATA_DIR, city, "graph.json")
+        if not os.path.isfile(graph_path):
+            raise FileNotFoundError(f"Missing {graph_path}")
 
-    with open(graph_path, "r") as f:
-        graph = json.load(f)
+        with open(graph_path, "r") as f:
+            graph = json.load(f)
 
     # Compute zone centroids and node counts
     zones = {}
@@ -139,7 +140,9 @@ def generate_telemetry_od(city: str) -> dict:
         "od_pairs": od_pairs,
     }
 
-    out_file = os.path.join(DATA_DIR, city, "telemetry_od_matrix.json")
+    out_dir = os.path.join(DATA_DIR, city)
+    os.makedirs(out_dir, exist_ok=True)
+    out_file = os.path.join(out_dir, "telemetry_od_matrix.json")
     with open(out_file, "w") as f:
         json.dump(output, f, indent=1)
 
