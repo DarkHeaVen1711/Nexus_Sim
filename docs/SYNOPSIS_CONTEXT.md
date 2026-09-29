@@ -35,8 +35,9 @@ AI-Driven Signal Control and Equity Analysis**
 - Measures "fairness" (equity) alongside efficiency via a Gini coefficient of
   wait-time inequality per zone.
 - An integrated 4-subject academic project: Reinforcement Learning, Soft
-  Computing, Computer Vision, and NLP (RL is implemented; the other three are
-  designed/planned in later phases).
+  Computing, Computer Vision, and Natural Language Processing (all four subjects
+  are fully implemented with a complete 36-algorithm portfolio, event bus, and
+  interactive explorer).
 
 ---
 

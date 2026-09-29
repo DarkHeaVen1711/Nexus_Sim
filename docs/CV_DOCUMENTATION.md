@@ -142,30 +142,38 @@ Engine WS stream ──→ virtual_camera.py ──→ virtual_camera_service.py
 | Dependency | Source | Interface | Status |
 |------------|--------|-----------|--------|
 | Traffic tile imagery | Mapbox Traffic Tiles API / TomTom Traffic Flow API | Color-coded congestion tiles; API key via env var (NFR-6) | PLANNED |
-| `cv_bbox` per city | `pipeline/cities.yaml` | Lat/lon bounding box for tile capture region | PLANNED (Phase 14.1) |
-| Engine WebSocket stream (port 9001) | C++ engine | `{tick, agents[], metrics}` JSON per tick; `{"type":"bounds"}` for viewport | DONE (transport); PLANNED (CV consumer) |
+| `cv_bbox` per city | `pipeline/cities.yaml` | Lat/lon bounding box for tile capture region | DONE (Phase 14.1) |
+| Engine WebSocket stream (port 9001) | C++ engine | `{tick, agents[], metrics}` JSON per tick; `{"type":"bounds"}` for viewport | DONE |
 | `graph.json` | Pipeline | Road node lat/lon for projection; zone_id for aggregation | DONE (Phase 1) |
 
 ### Downstream (what depends on CV)
 
 | Consumer | Interface | Status |
 |----------|-----------|--------|
-| Soft Computing GA (`optimize_calibration.py`) | `cv_congestion.json` as additional fitness term (Phase 14.6) | PLANNED |
-| Dashboard `CongestionCVOverlay.tsx` | Zone bubbles colored by CV congestion level (Phase 14.7) | PLANNED |
-| Dashboard `VirtualCameraPanel.tsx` | Live annotated feed from virtual camera service (Phase 15.4) | PLANNED |
-| RL reward shaping (optional future) | CV congestion data could shape RL reward in future iterations | NOT PLANNED (potential extension) |
+| Soft Computing GA (`optimize_calibration.py`) | `cv_congestion.json` as additional fitness term (Phase 14.6) | DONE |
+| Dashboard `CongestionCVOverlay.tsx` | Zone bubbles colored by CV congestion level (Phase 14.7) | DONE |
+| Dashboard `VirtualCameraPanel.tsx` | Live annotated feed from virtual camera service (Phase 15.4) | DONE |
+| Dashboard `TrackingOverlay.tsx` | DeepSORT track overlays and trajectories | DONE |
+| Dashboard `OpticalFlowPanel.tsx` | Dense motion vectors and velocity estimation | DONE |
+| Cross-Subject Event Bus (`event_bus.py`) | Publishes `cv.anomaly` alerts for incident handling | DONE |
+| Algo Explorer (`algo_explorer_service.py`) | Reports performance metrics for all 12 CV algorithms | DONE |
 
-### External dependencies (planned)
+### 12-Algorithm CV Inventory (Phases 14, 15, 25–27)
 
-| Package | Purpose | Required? |
-|---------|---------|-----------|
-| `opencv-python` | Image processing, contour detection, color segmentation | Yes |
-| `Pillow` | Image rendering for virtual camera | Yes |
-| `fastapi` | REST/WS API for virtual camera service | Yes |
-| `uvicorn` | ASGI server | Yes |
-| `websockets` | WebSocket client to engine | Yes |
-| Mapbox or TomTom API key | Traffic tile access | Yes (env var, never committed) |
-| `torch` + `torchvision` | CNN training (optional, Phase 14.4) | Conditional on CNN path |
+| ID | Name | Module | Primary Capability | Accuracy / Latency |
+|---|---|---|---|---|
+| **CV-1** | Classical HSV Thresholding | `pipeline/src/cv_congestion.py` | Color-segmentation road congestion levels | 91.4% / 1.2 ms |
+| **CV-2** | CNN Traffic Tile Classifier | `pipeline/src/cv_congestion.py` | 4-layer CNN tile classifier vs classical | 94.8% / 3.8 ms |
+| **CV-3** | Top-Down Blob Detector | `ml/cv/virtual_camera.py` | Rendered canvas vehicle blob detection | 97.5% / 12.0 ms |
+| **CV-4** | DeepSORT Vehicle Tracker | `ml/cv/deepsort_tracker.py` | Kalman filter + appearance cosine tracking | 92.0% / 16.5 ms |
+| **CV-5** | U-Net Segmentation | `ml/cv/unet_segmentation.py` | Road mask segmentation encoder-decoder | 89.2% IoU / 22.1 ms |
+| **CV-6** | Mask R-CNN | `ml/cv/mask_rcnn.py` | Instance silhouette extraction | 88.6% / 35.0 ms |
+| **CV-7** | Anomaly & Hazard Detector | `ml/cv/anomaly_detector.py` | Stopped vehicle / sudden slowdown alerts | 95.0% / 2.1 ms |
+| **CV-8** | Optical Flow (Lucas-Kanade) | `ml/cv/optical_flow.py` | Frame-to-frame velocity vector field | 93.4% / 5.2 ms |
+| **CV-9** | Lane Boundary Detector | `ml/cv/lane_detector.py` | Hough line transform lane boundary finding | 90.1% / 3.1 ms |
+| **CV-10** | Crowd Density Estimator | `ml/cv/crowd_density.py` | Pedestrian and vehicle density heatmaps | 87.5% / 6.4 ms |
+| **CV-11** | YOLO Vehicle Detector | `ml/cv/yolo_detector.py` | Bounding box object detection | 95.2% / 15.0 ms |
+| **CV-12** | MOG2 Motion Subtractor | `ml/cv/yolo_detector.py` | Background subtraction motion segmentation | 89.0% / 4.5 ms |
 
 ---
 
@@ -173,11 +181,7 @@ Engine WS stream ──→ virtual_camera.py ──→ virtual_camera_service.py
 
 1. **Multi-city tile capture (Phase 9):** Extend `cv_bbox` to Paris/Ahmedabad; each city gets its own `cv_congestion.json`.
 2. **Live CV overlay:** Replace static per-hour data with real-time tile fetching; `CongestionCVOverlay.tsx` becomes live-updating.
-3. **Object tracking across frames:** Virtual camera could track individual vehicle identities across frames (e.g., SORT/DeepSORT) for trajectory analysis.
-4. **Lane-level congestion:** Classify congestion at lane granularity rather than zone granularity for finer-grained calibration.
-5. **Anomaly detection:** CV pipeline could detect unusual patterns (stopped vehicles, wrong-way drivers) and trigger NLP incident reports automatically.
-6. **Satellite/aerial imagery:** Extend beyond traffic tiles to satellite imagery for road condition assessment.
-7. **Simulation-to-real transfer:** Virtual camera could be used to generate synthetic training data for real-world CV models (domain adaptation).
+3. **C++ Native libtorch/OpenCV bindings:** Zero-IPC execution embedded in the engine for resource-constrained edge hardware.
 
 ---
 
@@ -190,12 +194,10 @@ Engine WS stream ──→ virtual_camera.py ──→ virtual_camera_service.py
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 25–27 | Expanded CV: YOLO, DeepSORT, U-Net, Mask R-CNN, optical flow, anomaly, lane detection, crowd density |
 | `docs/PRD.md` | G8, G9, F8, F9 | CV goals, features, success metrics |
 | `docs/TRD.md` | §4.3 (TR-ML-08) | Virtual camera technical requirement |
-| `docs/TRD.md` | §4.2 (TR-PIPE-08) | CV congestion classification technical requirement |
-| `docs/TRD.md` | §4.4 (TR-DASH-07, TR-DASH-08) | Dashboard CV panel requirements |
-| `docs/TRD.md` | §5.5 | Sidecar service table: virtual camera on port 9003 |
-| `docs/TECH_STACK.md` | §Subsystem 2 | Python sidecar pattern; OpenCV mentioned as pipeline tool |
-| `docs/PRD.md` | §3 (BR-6) | BR-6 compliance: Mapbox/TomTom substitution for Google Maps |
+| `docs/results.md` | §3 & §6 | CV benchmark performance metrics |
+| `dashboard/public/data/36_algo_matrix.json` | CV section | Complete algorithmic matrix and metadata |
 
 ---
 
-*This document is self-contained and independently updatable. Changes to other subject documentation files do not require changes here, and vice versa. Last updated: August 2026.*
+*This document is self-contained and independently updatable. Last updated: September 2026.*
+

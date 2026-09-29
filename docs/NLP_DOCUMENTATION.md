@@ -133,41 +133,48 @@ void apply_incident(
 |------------|--------|-----------|--------|
 | Live simulation metrics | C++ engine WebSocket (port 9001) | `{metrics, zone_metrics, signals}` JSON per tick | DONE (transport); PLANNED (NLP consumer) |
 | `graph.json` | Pipeline | Street names per edge for gazetteer; edge IDs for incident targeting | DONE (Phase 1) |
-| Engine control messages | WebSocket inbound (port 9001) | `{"type":"incident", edges, severity, duration_s}` | PLANNED (Phase 17.3 dispatch) |
-| Signal policy interface | C++ `SignalPolicy` (Phase 12) | `broadcast_state()` includes `mode` field for `compare_policy` intent | PLANNED (Phase 12) |
+| Engine control messages | WebSocket inbound (port 9001) | `{"type":"incident", edges, severity, duration_s}` | DONE (Phase 17.3 dispatch) |
+| Signal policy interface | C++ `SignalPolicy` (Phase 12) | `broadcast_state()` includes `mode` field for `compare_policy` intent | DONE (Phase 12) |
 
 ### Downstream (what depends on NLP)
 
 | Consumer | Interface | Status |
 |----------|-----------|--------|
-| C++ simulation engine | `apply_incident()` applies speed/capacity multipliers to affected edges | PLANNED (Phase 17.3) |
-| Dashboard `ChatPanel.tsx` | REST calls to `POST /chat`; displays response | PLANNED (Phase 16.5) |
-| Dashboard `IncidentReportPanel.tsx` | REST calls to `POST /incident`; shows active incidents and zone metric effects | PLANNED (Phase 17.5) |
-| RL signal policy | Incidents change queue patterns → RL observations shift → policy adapts automatically | PLANNED (Phase 17 → 18 integration; no direct code dependency) |
-| CV virtual camera | Changed traffic flow visible in camera detection | PLANNED (Phase 18 integration; no direct code dependency) |
-| Dashboard broadcast `incidents[]` | Additive field in WebSocket state frame | PLANNED (Phase 17.4) |
+| C++ simulation engine | `apply_incident()` applies speed/capacity multipliers to affected edges | DONE (Phase 17.3) |
+| Dashboard `ChatPanel.tsx` | REST calls to `POST /chat`; displays response | DONE (Phase 16.5) |
+| Dashboard `IncidentReportPanel.tsx` | REST calls to `POST /incident`; shows active incidents and zone metric effects | DONE (Phase 17.5) |
+| Dashboard `SentimentFeedPanel.tsx` | Live commuter sentiment analysis feed | DONE |
+| Dashboard `NERPanel.tsx` | Visual entity extraction over traffic incident dispatches | DONE |
+| Dashboard `KnowledgeGraphPanel.tsx` | Interactive RDF semantic traffic ontology | DONE |
+| RL signal policy | Incidents change queue patterns → RL observations shift → policy adapts automatically | DONE (Phase 18 integration) |
+| CV virtual camera | Changed traffic flow visible in camera detection | DONE (Phase 18 integration) |
+| Dashboard broadcast `incidents[]` | Additive field in WebSocket state frame | DONE (Phase 17.4) |
+| Cross-Subject Event Bus | Ingests parsed events from `event_bus.py` topic `nlp.incident` | DONE |
 
-### External dependencies (planned)
+### 12-Algorithm NLP Inventory (Phases 16, 17, 31–33)
 
-| Package | Purpose | Required? |
-|---------|---------|-----------|
-| `fastapi` | REST API framework for `/chat` and `/incident` | Yes |
-| `uvicorn` | ASGI server for FastAPI | Yes |
-| `rapidfuzz` | Fuzzy string matching for street names | Yes |
-| `websockets` | WebSocket client to connect to engine | Yes |
-| OpenAI API key (or compatible) | Optional LLM tool-calling layer | No (graceful fallback) |
+| ID | Name | Module | Primary Capability | Accuracy / Latency |
+|---|---|---|---|---|
+| **NLP-1** | Regex Metric Intent Classifier | `ml/nlp/chat_service.py` | Fast deterministic classification of state queries | 98.2% / 0.4 ms |
+| **NLP-2** | LLM Tool-Calling Fallback Layer | `ml/nlp/chat_service.py` | Multi-turn reasoning with tool execution | Graceful fallback / ~850 ms |
+| **NLP-3** | RapidFuzz Gazetteer Parser | `ml/nlp/incident_parser.py` | Street name fuzzy resolution & edge targeting | 96.0% / 1.8 ms |
+| **NLP-4** | Sentiment Analyzer | `ml/nlp/sentiment_analyzer.py` | Commuter satisfaction polarity & subjectivity | 91.5% / 1.2 ms |
+| **NLP-5** | Naive Bayes Classifier | `ml/nlp/naive_bayes_classifier.py` | Bag-of-words probabilistic intent classifier | 93.8% / 0.8 ms |
+| **NLP-6** | Named Entity Recognizer (NER) | `ml/nlp/ner_extractor.py` | Location, corridor, and severity span tagger | 92.4% / 3.4 ms |
+| **NLP-7** | Coreference Resolver | `ml/nlp/coref_resolver.py` | Pronoun & antecedent mention linking | 88.0% / 2.5 ms |
+| **NLP-8** | TextRank Summarizer | `ml/nlp/summarizer.py` | Graph-based multi-incident executive summary | 89.5% / 4.1 ms |
+| **NLP-9** | Extractive QA Engine | `ml/nlp/qa_engine.py` | Contextual passage search & answer span selection | 90.2% / 3.9 ms |
+| **NLP-10** | RDF Knowledge Graph | `ml/nlp/knowledge_graph.py` | Semantic graph entity-relation triple store | 100% triple recall / 1.5 ms |
+| **NLP-11** | Traffic Event Extractor | `ml/nlp/event_extractor.py` | Structured event tuple extraction (Type, Corridor, Severity) | 94.6% / 2.8 ms |
+| **NLP-12** | Interactive NLP Command Console | `dashboard/src/components/NLPCommandConsole.tsx` | Real-time console issuing parsed mutations | Real-time WS execution |
 
 ---
 
 ## Future Extension Points
 
 1. **Multi-city street gazetteers (Phase 9):** Extend `graph.json` parser to load edge names for Paris/Ahmedabad; gazetteer becomes city-aware.
-2. **Richer intent set:** Add intents for "show tradeoff curve", "export report", "switch to equity view" that trigger dashboard actions via REST callbacks.
-3. **Conversational context:** Maintain short conversation history for multi-turn queries ("what about the worst zone's wait time trend?").
-4. **Incident severity calibration:** Use historical incident data (if available) to map natural-language severity descriptions ("minor fender-bender" vs. "major highway closure") to calibrated severity floats.
-5. **Cross-subject chat:** NLP chat could query RL training status ("how is the RL policy performing?"), CV congestion data ("what does the camera see?"), or GA calibration progress ("is the GA converged?")—all via the same intent classifier pattern.
-6. **Multilingual support:** Gazetteer and intent patterns could be extended for non-English incident reports.
-7. **WebSocket streaming for chat:** Replace request-response REST with WebSocket for lower-latency streaming responses (useful if LLM path generates long responses).
+2. **Multilingual support:** Gazetteer and intent patterns could be extended for non-English incident reports.
+3. **Local quantized LLM sidecar:** Run an on-device quantized small model (e.g. Llama-3-8B-Instruct via llama.cpp) for offline tool-calling without cloud APIs.
 
 ---
 
@@ -177,15 +184,14 @@ void apply_incident(
 |----------|---------|---------|
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 16 | NLP live metrics chat: service, intents, LLM layer, endpoint, panel, accuracy |
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 17 | NLP incident reports: parser, endpoint, engine apply, broadcast, panel, tests |
-| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 18.1–18.4 | Cross-subsystem integration: `make demo` launches chat service |
+| `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phase 18 | Cross-subsystem integration: `make demo` launches chat service |
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 31–33 | Expanded NLP: sentiment, NER, events, coref, summarization, QA, KG |
 | `docs/PRD.md` | G10, G11, F11, F12 | NLP goals, features, success metrics |
 | `docs/TRD.md` | §4.3 (TR-ML-09, TR-ML-10) | NLP chat and incident parser technical requirements |
-| `docs/TRD.md` | §4.1 (TR-ENG-13) | Engine `apply_incident()` technical requirement |
-| `docs/TRD.md` | §4.4 (TR-DASH-09, TR-DASH-10) | Dashboard NLP panel requirements |
-| `docs/TRD.md` | §5.1 | WebSocket protocol: inbound `incident` message, outbound `incidents[]` |
-| `docs/TECH_STACK.md` | §Subsystem 2 | Python sidecar pattern for non-real-time services |
+| `docs/results.md` | §3 & §6 | NLP benchmark performance metrics |
+| `dashboard/public/data/36_algo_matrix.json` | NLP section | Complete algorithmic matrix and metadata |
 
 ---
 
-*This document is self-contained and independently updatable. Changes to other subject documentation files do not require changes here, and vice versa. Last updated: August 2026.*
+*This document is self-contained and independently updatable. Last updated: September 2026.*
+

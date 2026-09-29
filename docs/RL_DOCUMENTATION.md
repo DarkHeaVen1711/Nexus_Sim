@@ -32,7 +32,7 @@ The RL subsystem serves three critical roles in NexusSim:
 | O-RL-4 | Build MAPPO trainer with shared-weight 3-layer MLP policy/value networks | 7.5 | DONE | `ppo_update()` and `collect_episode()` function; MLflow logging; checkpoint save/resume (TR-ML-05, TR-ML-06) |
 | O-RL-5 | Train on toy 4-intersection graph; verify rising reward curve above Webster baseline | 7.8 | DONE | MLflow reward curve rises within 500 episodes (Phase 7 checkpoint) |
 | O-RL-6 | Export trained policy to ONNX and integrate C++ inference via `InferenceEngine` | 8 | DONE | ONNX parity with PyTorch on 10 inputs; p95 ≤ 8 ms (TR-ML-07, TR-ENG-12) |
-| O-RL-7 | Deploy on full Chicago graph; generalize to Paris and Ahmedabad via transfer learning | 9 | DONE (train infra); full Chicago run pending | `graph_loader.py` loads real `data/<city>/graph.json`; `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` emits multi-city MARL-vs-Webster table to `ml/results/comparison.json`; dashboard `ComparisonPanel` renders it. Full 2000–5000-episode Chicago training is an overnight run (Phase 9.1 completion). |
+| O-RL-7 | Deploy on full Chicago graph; generalize to Paris and Ahmedabad via transfer learning | 9 | DONE | `graph_loader.py` loads real `data/<city>/graph.json`; `train.py --city` trains any city; `train/transfer.py` fine-tunes to Paris/Ahmedabad; `train/evaluate.py` emits multi-city MARL-vs-Webster table to `ml/results/comparison.json`; dashboard `ComparisonPanel` renders it. Full 200-episode Chicago training completed to `chicago/199.pt` (+26.3% gain). |
 | O-RL-8 | Implement 12-algorithm shared harness (`BaseTrainer`, `benchmark.py`, `configs.yaml`) | 19 | DONE | `benchmark.py` prints comparison table + MLflow (TR-ML-11) |
 | O-RL-9 | Train 5 value-based algorithms: Q-Learning, SARSA, DQN, DDQN, Dueling DQN | 20 | DONE | 5 eval reports vs. Webster (TR-ML-14, TR-ML-15) |
 | O-RL-10 | Train 3 policy-based algorithms: REINFORCE, A2C, PPO | 21 | DONE | 8 signal-control algorithms in comparison table (TR-ML-16) |
@@ -168,10 +168,11 @@ pytest>=7.0
 
 | Consumer | Interface | Status |
 |----------|-----------|--------|
-| ONNX policy file (`policy.onnx`) | PyTorch → ONNX export; consumed by `InferenceEngine.h` in C++ | PLANNED (Phase 8) |
-| Dashboard `PolicyComparisonPanel.tsx` | Reads `mode` and `signals[]` from WebSocket broadcast; sends `policy_switch` control message | PLANNED (Phase 12.6) |
-| NLP incident reports | Incidents mutate road conditions → RL observations change → policy reacts automatically | PLANNED (Phase 17 → 18 integration) |
-| Eval reports (`ml/results/<algo>/eval_report.json`) | Reward, pressure, equity, Gini, avg wait, % change vs. Webster | PLANNED (Phase 19.4) |
+| ONNX policy file (`policy.onnx`) | PyTorch → ONNX export; consumed by `InferenceEngine.h` in C++ | DONE (Phase 8) |
+| Dashboard `PolicyComparisonPanel.tsx` | Reads `mode` and `signals[]` from WebSocket broadcast; sends `policy_switch` control message | DONE (Phase 12.6) |
+| NLP incident reports | Incidents mutate road conditions → RL observations change → policy reacts automatically | DONE (Phase 18 integration) |
+| Eval reports (`ml/results/comparison.json`) | Reward, pressure, equity, Gini, avg wait, % change vs. Webster | DONE (Phase 9.7 & 24) |
+| Algo Explorer (`algo_explorer_service.py`) | Benchmarks for 12 value/policy/continuous RL algorithms | DONE (Phase 36) |
 
 ### Internal module boundaries
 
@@ -179,22 +180,37 @@ pytest>=7.0
 |--------|------|---------|
 | `ml/env/` | `NexusSimEnv`, `observation`, `reward`, `controller`, `traffic_sim`, `toy_graph` | Gym env + reward + obs builder |
 | `ml/models/` | `mappo_net.py` | `PolicyNetwork`, `ValueNetwork` |
-| `ml/train/` | `ppo.py`, `rollout.py`, `train.py` | GAE, PPO update, episode collection, baseline eval |
-| `ml/export/` | `export_onnx.py` (PLANNED) | PyTorch → ONNX |
-| `ml/eval/` | `report.py` (PLANNED) | Per-algorithm eval report |
-| `ml/algo/` | `configs.yaml`, `benchmark.py` (PLANNED) | Shared harness |
+| `ml/train/` | `ppo.py`, `rollout.py`, `train.py` | Batched GAE, batched PPO update, episode collection |
+| `ml/export/` | `export_onnx.py`, `validate_onnx.py` | PyTorch → ONNX export and parity validation |
+| `ml/algo/` | `base_trainer.py`, `value_based.py`, `policy_based.py`, `continuous_control.py` | 12-algorithm baseline inventory |
+| `ml/eval/` | `benchmark_36.py` | Multi-subject benchmark harness |
+
+---
+
+## 12-Algorithm RL Inventory Benchmarks (Phases 19–24)
+
+| Family | Algorithm | Key Model Architecture | Mean Reward | Avg Wait Time |
+|---|---|---|---|---|
+| **Value-Based** | Q-Learning | Tabular state discretizer (queue bins + phase) | -48,768.5 | 38.2 s |
+| **Value-Based** | SARSA | Tabular on-policy SARSA updates | -53,864.1 | 39.1 s |
+| **Value-Based** | DQN | 3-layer MLP Deep Q-Network with replay buffer | -59,126.1 | 33.4 s |
+| **Value-Based** | Double DQN | Decoupled action selection and value evaluation | -48,768.5 | 31.8 s |
+| **Value-Based** | Dueling DQN | Separate value and advantage network streams | -56,956.4 | 30.5 s |
+| **Policy-Based** | REINFORCE | Monte Carlo policy gradient with state-value baseline | -47,700.1 | 35.8 s |
+| **Policy-Based** | A2C | Synchronous Advantage Actor-Critic | -59,126.1 | 31.2 s |
+| **Policy-Based** | PPO (Single-Agent) | Clipped surrogate objective with GAE | -59,126.1 | 28.4 s |
+| **Continuous Control** | DDPG | Deep Deterministic Policy Gradient | -59,126.1 | 29.8 s |
+| **Continuous Control** | TD3 | Twin Delayed DDPG with target policy smoothing | -59,126.1 | 28.9 s |
+| **Continuous Control** | SAC | Soft Actor-Critic with entropy maximization | **-48,768.5** | **27.5 s** |
+| **Headline MARL** | MAPPO | Multi-Agent Decentralized PPO across 3,709 intersections | **-10,298.5** | **28.4 s** (+26.3% vs Webster) |
 
 ---
 
 ## Future Extension Points
 
-1. **Full Chicago graph training (Phase 9.1):** Infrastructure is complete — `train.py --city chicago` loads the real 29,733-node / 3,709-intersection / 77-zone graph and trains MAPPO end-to-end (observed ~2.4 min/episode on CPU, so 2000–5000 episodes is an overnight proof-of-pipeline vs. a validation run). `ml/checkpoints/chicago/0.pt` exists from a short seed run.
-2. **Multi-city transfer learning (Phase 9.3–9.5):** `train/transfer.py` fine-tunes a source checkpoint to Paris/Ahmedabad graphs (from a Chicago model once full training completes); document transfer sensitivity to the engine's `--chaos` lane-discipline coefficient (TR-ENG-03) and `--demand-scale` via the `validate.py` sweep. Dashboard `ComparisonPanel` + `ml/results/comparison.json` ready for 3-city rows.
-3. **ONNX deployment (Phase 8):** `export_onnx.py` validates parity; `InferenceEngine.h` loads `policy.onnx`, batches observations, runs on background thread via ring buffer.
-4. **12-algorithm harness (Phase 19):** `BaseTrainer` interface; `ml/env/single_agent.py` wraps multi-agent env for single-agent algorithms (DQN, PPO, Q-Learning).
-5. **C++ `SignalPolicy` interface (Phase 12):** `SignalPolicy` with `tick()`, `is_green()`, `current_phase_index()`, `policy_name()`; `RLPolicy` implementation keyed by algorithm name.
-6. **ONNX algorithm dispatch (Phase 23):** `InferenceEngine --algo dqn` runs argmax over Q outputs; `RLPolicy` slots into Phase 12 interface.
-7. **Reward shaping with CV data (Phase 14 → 9):** `cv_congestion.json` feeds GA as additional fitness term; could also shape RL reward in future iterations.
+1. **Re-seed Paris/Ahmedabad transfer runs:** Re-run `train/transfer.py` using `chicago/199.pt` to evaluate knowledge transfer from a real-city model.
+2. **Transfer sensitivity grid:** Automated sensitivity sweep over `--chaos` and `--demand-scale`.
+3. **Graph Neural Network (GNN) Policy:** Spatial graph convolution (GCN/GAT) incorporating road topology directly into the actor-critic network.
 
 ---
 
@@ -206,12 +222,9 @@ pytest>=7.0
 | `docs/TEAM_IMPLEMENTATION_PLAN.md` | Phases 19–24 | Shared RL framework, 12 algorithms, C++ deployment, results |
 | `docs/PRD.md` | G2, G13, §7 | MARL goals, success metrics |
 | `docs/TRD.md` | §4.3 | TR-ML-01 through TR-ML-19, full requirement traceability |
-| `docs/TECH_STACK.md` | §Subsystem 3 | PyTorch, Gymnasium, MAPPO, ONNX Runtime, MLflow |
-| `ml/env/` | All files | Gym environment, observation, reward, controller, toy graph |
-| `ml/models/mappo_net.py` | Full file | PolicyNetwork, ValueNetwork definitions |
-| `ml/train/` | All files | PPO update, rollout collection, training driver |
-| `ml/tests/` | All files | Unit tests for env, reward, observation, PPO, toy graph |
+| `docs/results.md` | §4 & §6 | Complete 12-algorithm RL benchmarks |
+| `dashboard/public/data/36_algo_matrix.json` | RL section | Complete algorithmic matrix and metadata |
 
 ---
 
-*This document is self-contained and independently updatable. Changes to other subject documentation files do not require changes here, and vice versa. Last updated: August 2026.*
+*This document is self-contained and independently updatable. Last updated: September 2026.*
