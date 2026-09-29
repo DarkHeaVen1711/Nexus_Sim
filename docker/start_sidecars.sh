@@ -15,6 +15,9 @@ python -m pipeline.src.event_bus &
 # 4. Algo Explorer Service (port 9006)
 python -m sidecars.algo_explorer_service &
 
-echo "All 4 sidecars spawned. Waiting for background processes..."
+# 5. Unified Backend API Gateway (port 8000)
+python -m gateway.server &
+
+echo "All backend microservices and Gateway (port 8000) spawned. Waiting for background processes..."
 wait -n
 exit $?

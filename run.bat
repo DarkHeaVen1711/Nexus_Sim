@@ -83,7 +83,8 @@ if not exist "node_modules" (
 )
 start "" cmd /c "npm run dev"
 cd ..
-echo Dashboard: http://localhost:5173
+echo Dashboard: http://localhost:3000
+echo Backend:   http://localhost:8000
 exit /b 0
 
 :build
@@ -126,6 +127,13 @@ start "" cmd /c "npm run dev"
 %SystemRoot%\System32\timeout.exe /t 3 /nobreak >nul
 cd ..
 
+where python >nul 2>nul
+if %errorlevel% equ 0 (
+    echo Starting unified backend gateway (port 8000)...
+    start "" cmd /c "python -m gateway.server"
+    %SystemRoot%\System32\timeout.exe /t 2 /nobreak >nul
+)
+
 echo.
 echo [4/4] Running simulation...
 echo City: %CITY%
@@ -138,8 +146,8 @@ if "%OD_PATH%"=="" (
 )
 echo Duration: %DURATION% min
 echo.
-echo Dashboard: http://localhost:5173
-echo WebSocket: ws://localhost:9001
+echo Dashboard:       http://localhost:3000
+echo Backend Gateway: http://localhost:8000 (WebSocket: ws://localhost:8000/ws)
 echo.
 if "%FAST%"=="1" (
     echo Mode: headless -- the engine exits when the simulation finishes.
