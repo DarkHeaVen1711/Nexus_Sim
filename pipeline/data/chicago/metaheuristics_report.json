@@ -1,0 +1,340 @@
+{
+  "city": "chicago",
+  "results": {
+    "PSO": {
+      "algorithm": "PSO",
+      "best_params": {
+        "speed_factor": 0.5747649211825391,
+        "route_spread": 0.2157844792880162,
+        "chaos": 0.081007434528227,
+        "demand_scale": 0.00043024822364492673
+      },
+      "best_fitness": 87.26186045116803,
+      "convergence": [
+        {
+          "iteration": 1,
+          "best_fitness": 81.955,
+          "mean_fitness": 71.954
+        },
+        {
+          "iteration": 2,
+          "best_fitness": 84.121,
+          "mean_fitness": 79.367
+        },
+        {
+          "iteration": 3,
+          "best_fitness": 84.121,
+          "mean_fitness": 77.937
+        },
+        {
+          "iteration": 4,
+          "best_fitness": 84.121,
+          "mean_fitness": 80.031
+        },
+        {
+          "iteration": 5,
+          "best_fitness": 86.124,
+          "mean_fitness": 80.774
+        },
+        {
+          "iteration": 6,
+          "best_fitness": 86.395,
+          "mean_fitness": 80.961
+        },
+        {
+          "iteration": 7,
+          "best_fitness": 86.395,
+          "mean_fitness": 82.825
+        },
+        {
+          "iteration": 8,
+          "best_fitness": 86.395,
+          "mean_fitness": 81.336
+        },
+        {
+          "iteration": 9,
+          "best_fitness": 86.395,
+          "mean_fitness": 83.883
+        },
+        {
+          "iteration": 10,
+          "best_fitness": 86.395,
+          "mean_fitness": 82.904
+        },
+        {
+          "iteration": 11,
+          "best_fitness": 86.802,
+          "mean_fitness": 84.337
+        },
+        {
+          "iteration": 12,
+          "best_fitness": 86.802,
+          "mean_fitness": 84.532
+        },
+        {
+          "iteration": 13,
+          "best_fitness": 86.802,
+          "mean_fitness": 84.887
+        },
+        {
+          "iteration": 14,
+          "best_fitness": 86.802,
+          "mean_fitness": 85.192
+        },
+        {
+          "iteration": 15,
+          "best_fitness": 87.262,
+          "mean_fitness": 85.127
+        }
+      ],
+      "elapsed_s": 0.137
+    },
+    "SA": {
+      "algorithm": "SimulatedAnnealing",
+      "best_params": {
+        "speed_factor": 0.5709639613714951,
+        "route_spread": 0.3263204218567009,
+        "chaos": 0.07896935696354261,
+        "demand_scale": 0.00047864899147130466
+      },
+      "best_fitness": 82.10209991257092,
+      "convergence": [
+        {
+          "iteration": 1,
+          "temperature": 100.0,
+          "best_fitness": 68.153,
+          "mean_fitness": 65.164
+        },
+        {
+          "iteration": 2,
+          "temperature": 92.0,
+          "best_fitness": 68.889,
+          "mean_fitness": 65.279
+        },
+        {
+          "iteration": 3,
+          "temperature": 84.64,
+          "best_fitness": 74.904,
+          "mean_fitness": 72.309
+        },
+        {
+          "iteration": 4,
+          "temperature": 77.87,
+          "best_fitness": 75.675,
+          "mean_fitness": 73.012
+        },
+        {
+          "iteration": 5,
+          "temperature": 71.64,
+          "best_fitness": 75.675,
+          "mean_fitness": 70.579
+        },
+        {
+          "iteration": 6,
+          "temperature": 65.91,
+          "best_fitness": 75.675,
+          "mean_fitness": 69.504
+        },
+        {
+          "iteration": 7,
+          "temperature": 60.64,
+          "best_fitness": 75.675,
+          "mean_fitness": 70.301
+        },
+        {
+          "iteration": 8,
+          "temperature": 55.78,
+          "best_fitness": 75.675,
+          "mean_fitness": 65.881
+        },
+        {
+          "iteration": 9,
+          "temperature": 51.32,
+          "best_fitness": 75.675,
+          "mean_fitness": 65.398
+        },
+        {
+          "iteration": 10,
+          "temperature": 47.22,
+          "best_fitness": 75.675,
+          "mean_fitness": 68.051
+        },
+        {
+          "iteration": 11,
+          "temperature": 43.44,
+          "best_fitness": 75.675,
+          "mean_fitness": 69.033
+        },
+        {
+          "iteration": 12,
+          "temperature": 39.96,
+          "best_fitness": 75.675,
+          "mean_fitness": 68.588
+        },
+        {
+          "iteration": 13,
+          "temperature": 36.77,
+          "best_fitness": 75.675,
+          "mean_fitness": 72.294
+        },
+        {
+          "iteration": 14,
+          "temperature": 33.83,
+          "best_fitness": 75.675,
+          "mean_fitness": 72.773
+        },
+        {
+          "iteration": 15,
+          "temperature": 31.12,
+          "best_fitness": 77.309,
+          "mean_fitness": 74.835
+        },
+        {
+          "iteration": 16,
+          "temperature": 28.63,
+          "best_fitness": 82.102,
+          "mean_fitness": 78.902
+        },
+        {
+          "iteration": 17,
+          "temperature": 26.34,
+          "best_fitness": 82.102,
+          "mean_fitness": 77.378
+        },
+        {
+          "iteration": 18,
+          "temperature": 24.23,
+          "best_fitness": 82.102,
+          "mean_fitness": 74.029
+        },
+        {
+          "iteration": 19,
+          "temperature": 22.29,
+          "best_fitness": 82.102,
+          "mean_fitness": 76.007
+        },
+        {
+          "iteration": 20,
+          "temperature": 20.51,
+          "best_fitness": 82.102,
+          "mean_fitness": 76.146
+        }
+      ],
+      "elapsed_s": 0.011
+    },
+    "ES": {
+      "algorithm": "EvolutionStrategy",
+      "best_params": {
+        "speed_factor": 0.5658902996581197,
+        "route_spread": 0.20131689958841112,
+        "chaos": 0.07971897076813399,
+        "demand_scale": 0.00045626981999884333
+      },
+      "best_fitness": 86.03670143472714,
+      "convergence": [
+        {
+          "iteration": 1,
+          "sigma": 0.19,
+          "best_fitness": 82.683,
+          "mean_fitness": 69.179
+        },
+        {
+          "iteration": 2,
+          "sigma": 0.1995,
+          "best_fitness": 82.683,
+          "mean_fitness": 75.655
+        },
+        {
+          "iteration": 3,
+          "sigma": 0.1895,
+          "best_fitness": 84.179,
+          "mean_fitness": 76.778
+        },
+        {
+          "iteration": 4,
+          "sigma": 0.199,
+          "best_fitness": 85.568,
+          "mean_fitness": 79.157
+        },
+        {
+          "iteration": 5,
+          "sigma": 0.209,
+          "best_fitness": 85.752,
+          "mean_fitness": 79.895
+        },
+        {
+          "iteration": 6,
+          "sigma": 0.1985,
+          "best_fitness": 85.752,
+          "mean_fitness": 77.571
+        },
+        {
+          "iteration": 7,
+          "sigma": 0.2084,
+          "best_fitness": 85.752,
+          "mean_fitness": 79.078
+        },
+        {
+          "iteration": 8,
+          "sigma": 0.198,
+          "best_fitness": 85.752,
+          "mean_fitness": 76.53
+        },
+        {
+          "iteration": 9,
+          "sigma": 0.2079,
+          "best_fitness": 85.752,
+          "mean_fitness": 78.86
+        },
+        {
+          "iteration": 10,
+          "sigma": 0.2183,
+          "best_fitness": 86.037,
+          "mean_fitness": 78.986
+        },
+        {
+          "iteration": 11,
+          "sigma": 0.2292,
+          "best_fitness": 86.037,
+          "mean_fitness": 77.96
+        },
+        {
+          "iteration": 12,
+          "sigma": 0.2178,
+          "best_fitness": 86.037,
+          "mean_fitness": 78.286
+        },
+        {
+          "iteration": 13,
+          "sigma": 0.2286,
+          "best_fitness": 86.037,
+          "mean_fitness": 77.689
+        },
+        {
+          "iteration": 14,
+          "sigma": 0.2401,
+          "best_fitness": 86.037,
+          "mean_fitness": 77.87
+        },
+        {
+          "iteration": 15,
+          "sigma": 0.2281,
+          "best_fitness": 86.037,
+          "mean_fitness": 76.116
+        }
+      ],
+      "elapsed_s": 0.006
+    },
+    "GA": {
+      "algorithm": "GA",
+      "best_params": {
+        "speed_factor": 0.58,
+        "route_spread": 0.22,
+        "chaos": 0.08,
+        "demand_scale": 0.000412
+      },
+      "best_fitness": 84.6,
+      "elapsed_s": 12.4
+    }
+  }
+}

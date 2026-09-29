@@ -106,6 +106,36 @@ def incident_endpoint(req: IncidentRequest):
     }
 
 
+class FeedbackRequest(BaseModel):
+    text: str
+    city: str = "chicago"
+
+
+@app.post("/feedback")
+def feedback_endpoint(req: FeedbackRequest):
+    """Phase 31: Analyzes citizen sentiment and incident classification."""
+    try:
+        from sentiment_analyzer import TrafficSentimentAnalyzer
+        from naive_bayes_classifier import NaiveBayesIncidentClassifier
+    except ImportError:
+        from ml.nlp.sentiment_analyzer import TrafficSentimentAnalyzer
+        from ml.nlp.naive_bayes_classifier import NaiveBayesIncidentClassifier
+
+    sentiment_analyzer = TrafficSentimentAnalyzer()
+    classifier = NaiveBayesIncidentClassifier()
+
+    sentiment = sentiment_analyzer.analyze_text(req.text)
+    category = classifier.predict(req.text)
+
+    return {
+        "status": "processed",
+        "text": req.text,
+        "city": req.city,
+        "sentiment": sentiment,
+        "category": category,
+    }
+
+
 def main():
     print("Starting NLP Chat & Incident Sidecar Service on port 9004...")
     uvicorn.run(app, host="0.0.0.0", port=9004, log_level="info")
