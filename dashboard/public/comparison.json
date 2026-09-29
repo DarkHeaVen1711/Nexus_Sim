@@ -3,51 +3,51 @@
     "city": "toy",
     "intersections": 4,
     "webster": {
-      "episode_reward": -11269.822470439607,
+      "episode_reward": -11269.822470439613,
       "mean_pressure": -57.20375,
-      "equity": -55.49447470439603,
-      "gini": 0.10567214066872063
+      "equity": -55.49447470439614,
+      "gini": 0.105672140668721
     },
     "marl": {
-      "episode_reward": -6857.848910077444,
-      "mean_pressure": -34.99662499999999,
-      "equity": -33.58186410077444,
-      "gini": 0.15071844646476523
+      "episode_reward": -5370.253476110847,
+      "mean_pressure": -27.466875,
+      "equity": -26.235659761108472,
+      "gini": 0.18445627153280225
     },
-    "improvement_pct": 39.14856309347048
+    "improvement_pct": 52.348375582695716
   },
   {
     "city": "piedmont",
     "intersections": 4,
     "webster": {
-      "episode_reward": -26606.200000000004,
+      "episode_reward": -26606.199999999997,
       "mean_pressure": -133.675,
-      "equity": -132.38699999999986,
-      "gini": 0.19153261199254087
+      "equity": -132.38699999999997,
+      "gini": 0.1915326119925402
     },
     "marl": {
-      "episode_reward": -26190.702500000007,
-      "mean_pressure": -131.6361875,
-      "equity": -130.2708375,
-      "gini": 0.14198754449613654
+      "episode_reward": -30560.612499999996,
+      "mean_pressure": -153.6125,
+      "equity": -151.99362499999998,
+      "gini": 0.1666741011310813
     },
-    "improvement_pct": 1.5616566815253496
+    "improvement_pct": -14.862748156444736
   },
   {
-    "city": "chicago_subset",
-    "intersections": 144,
+    "city": "chicago",
+    "intersections": 3709,
     "webster": {
-      "episode_reward": -124461.35090148314,
-      "mean_pressure": -49.4218055555554,
-      "equity": -1195.1917034592777,
-      "gini": 0.44900833987664573
+      "episode_reward": -13973.973629885402,
+      "mean_pressure": -4.759613103262341,
+      "equity": -134.98012319559174,
+      "gini": 0.28596464987824843
     },
     "marl": {
-      "episode_reward": -127671.62035882664,
-      "mean_pressure": -51.814777777777785,
-      "equity": -1224.9014258104883,
-      "gini": 0.5244078324209844
+      "episode_reward": -10298.495312875833,
+      "mean_pressure": -3.57047789161499,
+      "equity": -99.4144752371432,
+      "gini": 0.33104661530475765
     },
-    "improvement_pct": -2.5793303978233175
+    "improvement_pct": 26.302313245740045
   }
 ]
