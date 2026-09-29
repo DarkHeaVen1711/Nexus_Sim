@@ -1,0 +1,821 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}</style><style>:root{color-scheme:light dark;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}@media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])){--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}}:root[data-theme="dark"]{color-scheme:dark;--md-bg:#0d0d0d;--md-text:rgba(255,255,255,.85);--md-muted:rgba(255,255,255,.6);--md-fill:rgba(255,255,255,.06);--md-fill-strong:rgba(255,255,255,.09);--md-rule:rgba(255,255,255,.14);--md-rule-strong:rgba(255,255,255,.22);--md-link:hsl(210 100% 72%)}:root[data-theme="light"]{color-scheme:light}@media print{:root,:root[data-theme="dark"]{color-scheme:light;--md-bg:#fff;--md-text:rgba(0,0,0,.8);--md-muted:rgba(0,0,0,.6);--md-fill:rgba(0,0,0,.04);--md-fill-strong:rgba(0,0,0,.06);--md-rule:rgba(0,0,0,.1);--md-rule-strong:rgba(0,0,0,.16);--md-link:hsl(210 100% 45%)}}body{background:var(--md-bg);color:var(--md-text);max-width:720px;margin:0 auto;padding:32px;display:flex;flex-direction:column;gap:10px;font:14px/1.55 -apple-system,BlinkMacSystemFont,'SF Pro','Segoe UI',sans-serif;overflow-wrap:break-word}body>:first-child{margin-top:0}h1,h2,h3,h4,h5,h6{margin:6px 0 0;line-height:1.25;font-weight:600;text-wrap:balance}h1{font-size:1.35em}h2{font-size:1.15em;color:var(--md-muted)}h3,h4,h5,h6{font-size:1em}p,ul,ol,blockquote,table,pre,hr{margin:0}strong{font-weight:600}a{color:var(--md-link);text-decoration:none}a:hover{text-decoration:underline}ul,ol{display:flex;flex-direction:column;gap:6px;padding-left:22px}ul{list-style:disc}ol{list-style:decimal}:is(li,td,th)>*+:is(p,ul,ol,blockquote){margin-top:6px}blockquote{display:flex;flex-direction:column;gap:10px;border-left:2px solid var(--md-rule);padding-left:10px;color:var(--md-muted)}:not(pre)>code{background:var(--md-fill);padding:1px 3px;border-radius:4px;font:.92em 'SF Mono',ui-monospace,Menlo,Consolas,monospace}a>code{background:none;color:inherit}pre{background:var(--md-fill);padding:10px 12px;border-radius:6px;overflow-x:auto;font:12px/1.5 'SF Mono',ui-monospace,Menlo,Consolas,monospace;margin-block:4px}pre code{background:none;padding:0;font:inherit}table{width:100%;border-collapse:separate;border-spacing:2px;font:inherit}th,td{padding:6px 8px;border-radius:3px;text-align:left;vertical-align:top}th{background:var(--md-fill-strong);font-weight:600}td{background:var(--md-fill)}:is(th,td) :not(pre)>code{background:transparent}hr{border:0;border-top:1px solid var(--md-rule-strong);margin-block:10px}img{max-width:100%;height:auto;border-radius:4px}</style>
+</head><body>
+<h1>Nexus_Sim → &quot;Nexus Twin&quot;: Master Plan + Repo Audit</h1>
+<p><em>Basis: the attached repo dump (README, PROGRESS_REPORT, docs, engine, pipeline, ml, dashboard source). I could not run the code or see the live GitHub state, so every finding is labelled:</em></p>
+<ul>
+<li><strong>[V]</strong> = verified by reading the code in the dump</li>
+<li><strong>[?]</strong> = strong signal, but needs a quick check on your side (a command is given)</li>
+</ul>
+<hr>
+<h1>Part 1. Repo audit</h1>
+<h2>1.1 What is genuinely good (keep it)</h2>
+<ul>
+<li>The sidecar architecture (C++ engine + Python services + event bus) is clean and gives you real integration seams.</li>
+<li>The SoA agent layout, quadtree, thread-pool tick, SPSC-ring ONNX inference path and the latency histogram are solid engineering.</li>
+<li>The signal-policy abstraction (Webster / fuzzy / Type-2 / RL) is exactly the right shape for a &quot;compare policies&quot; platform.</li>
+<li>Test coverage exists across engine, pipeline and ML.</li>
+</ul>
+<p>The problems below are mostly <strong>not</strong> architecture problems. They are <em>modelling-validity, sampling and claims-integrity</em> problems, and they matter because the next stage (I*, OSM upload, blended AI) will inherit them.</p>
+<h2>1.2 Critical: the simulation does not model what the docs say it models</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Finding</th>
+<th>Evidence</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>E1</strong> [V]</td>
+<td><strong>Oncoming and crossing vehicles become &quot;leaders.&quot;</strong> <code>find_leader</code> accepts any active agent that is ahead along my heading (<code>proj &gt; 0.5</code>) and within 5 m sideways. It never checks edge, direction, or route. Both directions of a road use the same centreline (no lateral offset), so an oncoming car on the reverse edge qualifies as a leader. IDM then brakes for it.</td>
+<td><code>Simulation.h::find_leader</code>, <code>compute_world</code></td>
+<td>Restrict leaders to same directed edge (or next edge on own path); use lateral offset per direction; compute <strong>net gap</strong> (centre distance − leader length), not centre-to-centre.</td>
+</tr>
+<tr>
+<td><strong>E2</strong> [V]</td>
+<td><strong><code>lane</code> and <code>chaos</code> have no effect on traffic dynamics.</strong> <code>lane</code> is never used by <code>compute_world</code>, <code>find_leader</code> or the broadcast. <code>lane_discipline</code> only feeds a lane-change probability that changes the unused <code>lane</code> field. <code>chaos</code> does not alter any IDM parameter. So the GA &quot;chaos&quot; gene, the <code>--chaos</code> flag, the Ahmedabad <code>chaos: 0.4</code> setting and the chaos sensitivity sweep cannot move any engine metric.</td>
+<td><code>IDM.h</code>, <code>Simulation.h::maybe_lane_change</code></td>
+<td>Make lateral position physical (this <em>is</em> I*-Drive, Part 5). Until then, remove chaos from calibration chromosomes and stop presenting it as a result.</td>
+</tr>
+<tr>
+<td><strong>E3</strong> [V]</td>
+<td><strong>Wrong modal split from a sampling bug.</strong> <code>spawn_agents</code> and <code>respawn_arrived</code> call <code>select_agent_type_for_road(get_num_lanes(start, end), ...)</code> where <code>start</code>/<code>end</code> are two <em>random nodes</em>. <code>get_num_lanes</code> looks for an edge start→end, almost never finds one, and returns the default <code>1</code>. The type sampler then takes the &quot;narrow residential&quot; branch: ~45% pedestrians, 30% two-wheelers, 15% autos, 10% cars, in <strong>every</strong> city, Chicago included. Pedestrians are routed over the road graph with IDM and counted in <code>avg_speed</code>.</td>
+<td><code>Simulation.h</code>, <code>IDM.h::select_agent_type_for_road</code></td>
+<td>Per-city modal split in <code>cities.yaml</code> (or per zone × hour). Sample type independently of the OD pair. Move pedestrians to a separate layer or exclude them from vehicle metrics.</td>
+</tr>
+<tr>
+<td><strong>E4</strong> [V]</td>
+<td><strong>OD-driven spawning is 100% cars, lane 0.</strong> <code>spawn_od_agent</code> hard-codes <code>AgentType::Car</code>. In OD mode (Chicago and any city with an OD file) no buses, autos or two-wheelers ever appear.</td>
+<td><code>Simulation.h::spawn_od_agent</code></td>
+<td>Same modal-split sampler as E3.</td>
+</tr>
+<tr>
+<td><strong>E5</strong> [V]</td>
+<td><strong>Unbounded agent growth in OD mode.</strong> Every OD spawn calls <code>add_agent</code>. Arrived agents are never recycled, and failed-route agents are added as <code>Arrived</code>. <code>tick()</code>, <code>collect_wait_counts()</code>, <code>compute_zone_metrics()</code> and <code>broadcast_state()</code> all loop over every agent ever created. Cost per tick grows with wall-clock time.</td>
+<td><code>Simulation.h::spawn_od_agent</code>, all whole-array loops</td>
+<td>Free-list slot reuse or periodic compaction; keep an active-index list.</td>
+</tr>
+<tr>
+<td><strong>E6</strong> [V]</td>
+<td><strong>Startup is O(V×E).</strong> <code>init_signals</code> scans <em>all edges twice per node</em>. On Chicago (29,733 nodes × 54,210 edges × 2) that is roughly 3×10⁹ comparisons before the first tick.</td>
+<td><code>Simulation.h::init_signals</code></td>
+<td>Build a reverse adjacency once (O(E)).</td>
+</tr>
+<tr>
+<td><strong>E7</strong> [V]</td>
+<td><strong>Signal phases and the Webster baseline are not physically grounded.</strong> Incoming edges are sorted by angle and split in half, which puts <em>perpendicular</em> approaches in the same phase and separates <em>opposing</em> ones. Phase volumes are constants (<code>200 + 30 × degree</code>), not measured flow. Nodes with degree ≥ 7 get signals even without a <code>traffic_signals</code> tag. The &quot;RL vs Webster&quot; comparison therefore uses a baseline fed made-up volumes.</td>
+<td><code>Simulation.h::init_signals</code></td>
+<td>Pair opposing approaches (angle mod 180°); derive volumes from a warm-up run or OD; add stronger baselines (max-pressure, actuated, SOTL).</td>
+</tr>
+<tr>
+<td><strong>E8</strong> [V]</td>
+<td><strong><code>edge_key</code> overflows and collides.</strong> <code>(u * 0x9e3779b9) ^ v</code> on <code>int64_t</code>. With OSM node ids around 10¹⁰ the multiply exceeds int64 (undefined behaviour), and the XOR key is not collision-free, so one edge can be blocked, tolled or bus-laned by accident.</td>
+<td><code>Pathfinder.h::RoutingPolicy::edge_key</code></td>
+<td>Remap node ids to dense <code>0..N-1</code> at load; key edges by edge index or <code>pair&lt;int,int&gt;</code>. This also lets A* use flat arrays instead of <code>unordered_map</code>.</td>
+</tr>
+<tr>
+<td><strong>E9</strong> [V]</td>
+<td><strong>Poor RNG sampling in lane change.</strong> <code>maybe_lane_change</code> constructs <code>std::mt19937 rng(id + tick_count_)</code> <em>per agent per tick</em>. That is 20,000 × 624-word state initialisations per tick, and the seeds are consecutive integers, so the first draws across neighbouring agents are correlated.</td>
+<td><code>Simulation.h::maybe_lane_change</code></td>
+<td>Per-agent PCG32/xoroshiro state in the SoA, or a splitmix64 hash of <code>(seed, id, tick)</code>.</td>
+</tr>
+<tr>
+<td><strong>E10</strong> [V]</td>
+<td><strong>Stochastic routing draws fresh noise on every edge relaxation.</strong> In <code>compute_path_stochastic</code>, <code>noise(rng)</code> is called each time an edge is relaxed, so the same edge gets different costs inside one search. Lognormal noise with median 1 can also make an edge cheaper than its Euclidean length, which makes the A* heuristic inadmissible. Route diversity is real, but the cost model behind it is inconsistent.</td>
+<td><code>Pathfinder.h</code></td>
+<td>Fixed per-agent, per-edge perturbation (hash of <code>agent_id, edge_id</code>), or a per-agent perceived-cost multiplier (this becomes I*-Route).</td>
+</tr>
+<tr>
+<td><strong>E11</strong> [V]</td>
+<td><strong>Wait-time and equity metrics are narrower than their names.</strong> <code>wait_time</code> accrues only when an agent is stopped within 5 m of a <em>red signal</em>. Queueing behind vehicles, unsignalised delay and incident delay are not counted. Gini is computed over per-zone means of <em>currently active</em> agents only (survivorship bias), and zones in <code>fetch_graphs.py</code> are latitude bands, so &quot;equity&quot; measures north–south stripes.</td>
+<td><code>Simulation.h::compute_zone_metrics</code>, <code>fetch_graphs.py</code></td>
+<td>Total delay = journey time − free-flow time, per agent, including finished agents; zones from admin boundaries or a real partition; Gini over agents or population-weighted zones.</td>
+</tr>
+<tr>
+<td><strong>E12</strong> [V]</td>
+<td><strong>Broadcast payload includes each agent's full <code>path</code> every frame.</strong> A FlatBuffers schema (<code>agent_delta.fbs</code>) exists but the live path is hand-built JSON. Bandwidth and string building scale with <code>agents × path length × FPS</code>.</td>
+<td><code>Simulation.h::broadcast_state</code></td>
+<td>Send paths once (or on selection), then only deltas; use the existing FlatBuffers schema.</td>
+</tr>
+<tr>
+<td><strong>E13</strong> [V]</td>
+<td><strong>Silent fallback to a synthetic grid.</strong> <code>fetch_graphs.py</code> generates a 12×12 grid if Overpass fails or returns &lt; 10 elements, and writes it as <code>graph.json</code> with nothing marking it synthetic. Also: <code>oneway</code> handles only <code>&quot;yes&quot;</code>, not <code>-1</code>, <code>true</code>, <code>1</code>, or roundabouts; the highway regex omits <code>unclassified</code>, <code>service</code> and <code>living_street</code>, which matter a lot for Indian cities; <code>lanes=&quot;2;3&quot;</code> silently becomes 1. Paris and Ahmedabad graphs are small (90 and 75 nodes) for their bounding boxes.</td>
+<td><code>pipeline/fetch_graphs.py</code></td>
+<td>Add <code>provenance</code> (<code>osm</code> / <code>synthetic</code> / <code>subset</code>), fail loudly, fix tag parsing. [?] Check <code>data/*/graph.json</code> provenance.</td>
+</tr>
+</tbody>
+</table>
+<h2>1.3 Critical: the RL results do not measure what the README says they measure</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Finding</th>
+<th>Evidence</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>R1</strong> [V]</td>
+<td><strong>RL trains and is evaluated on a Python surrogate, not the engine.</strong> <code>ml/env/traffic_sim.py</code> is a &quot;pure Python micro-simulator … no live C++ call&quot; (Poisson arrivals, saturation-flow discharge). Your own RL doc says the wait-time metric isn't measured and calls the Python metrics &quot;surrogate metrics only.&quot; The headline <strong>+26.3%</strong> is a surrogate-reward improvement. It is not a wait-time or throughput improvement in the C++ engine.</td>
+<td><code>docs/RL_DOCUMENTATION.md</code></td>
+<td>Engine-in-the-loop environment (headless engine as a Gym env). Report engine wait time, throughput, Gini.</td>
+</tr>
+<tr>
+<td><strong>R2</strong> [?]</td>
+<td><strong>Observation mismatch between training and deployment.</strong> Training observations are normalised to [0,1] (<code>queue / max_queue</code>, normalised phase time, hour/24). The C++ <code>append_observation</code> emits <em>raw</em> queue counts, timer seconds (≤ 120), hour 0–24, and signed pressure. I found no normalisation in <code>Simulation.h</code>, <code>InferenceEngine.cpp</code> or the export script, but <code>ml/env/</code> was not in the dump so I couldn't see whether the ONNX graph normalises internally.</td>
+<td><code>Simulation.h::append_observation</code>, RL doc</td>
+<td>Write a parity test: same state → Python obs vs C++ obs → assert equal.</td>
+</tr>
+<tr>
+<td><strong>R3</strong> [?]</td>
+<td><strong><code>ml/env/</code> is missing from the repo dump</strong> even though tests do <code>from env import NexusSimEnv</code>. A common cause is a <code>.gitignore</code> rule for <code>env/</code> (a virtualenv pattern). A fresh clone would fail those tests.</td>
+<td>tree listing vs test imports</td>
+<td><code>git ls-files ml/env</code> and <code>git check-ignore -v ml/env</code>.</td>
+</tr>
+<tr>
+<td><strong>R4</strong> [V]</td>
+<td><strong>The algorithm is IPPO with parameter sharing, not MAPPO.</strong> The value net takes each agent's <em>local</em> observation; MAPPO uses a centralised critic over global state.</td>
+<td><code>mappo_net.py</code>, <code>ppo.py</code></td>
+<td>Either rename, or add a real centralised/graph critic (recommended, see Pillar 1).</td>
+</tr>
+<tr>
+<td><strong>R5</strong> [V]</td>
+<td><strong>Time-limit truncation is treated as termination</strong> (<code>done = truncated</code>), so GAE bootstraps zero at the horizon. This biases value targets. <code>ppo_update</code> returns only the last mini-batch loss. The RL doc snippet shows a double-sampling bug in <code>sample_action</code> that the real code doesn't have (doc drift).</td>
+<td><code>rollout.py</code>, <code>ppo.py</code></td>
+<td>Bootstrap from V(s_T) on truncation; return mean losses; fix doc.</td>
+</tr>
+<tr>
+<td><strong>R6</strong> [V]</td>
+<td><strong>Benchmark numbers are not benchmarks.</strong> <code>benchmark_36.py</code> claims to &quot;execute and audit all 36 algorithms&quot; but only reads <code>ALGORITHM_CATALOG</code> (hard-coded latency/accuracy strings) and writes them to JSON. The README's per-algorithm metrics come from that catalog. Several are also inconsistent (CV-8 is 93.4% in the README, 96.1% in the catalog; CV IDs 9–12 name different algorithms in each). The doc/code say <strong>36</strong> algorithms; the README says <strong>48</strong>.</td>
+<td><code>ml/eval/benchmark_36.py</code>, <code>algo_explorer_service.py</code>, README</td>
+<td>A real harness: each algorithm runs on shared data, writes raw logs, and the tables are generated from logs.</td>
+</tr>
+<tr>
+<td><strong>R7</strong> [V]</td>
+<td><strong>RL-benchmark rows are suspiciously identical:</strong> RL-2 and RL-5 both report −48,768.5; RL-4, RL-8 and RL-9 all report −59,126.1. Distinct algorithms don't produce bit-identical rewards unless they collapse to the same trivial policy (e.g. always EXTEND) or the values were copied.</td>
+<td>README RL table</td>
+<td>Inspect the policies' action histograms; rerun with seeds.</td>
+</tr>
+<tr>
+<td><strong>R8</strong> [V]</td>
+<td><strong>The sensitivity sweep doesn't sweep.</strong> <code>demand_scale</code> is never passed to the environment (the label is decorative). <code>chaos</code> is implemented as a random action flip, not the engine's chaos. Each cell is 2 episodes (<code>episodes=2</code>), and one environment instance is reused. The <code>STABLE</code> threshold (−75,000) is arbitrary.</td>
+<td><code>sensitivity_sweep.py</code></td>
+<td>Make demand scale a real env parameter; ≥ 30 seeded episodes per cell; confidence intervals.</td>
+</tr>
+<tr>
+<td><strong>R9</strong> [V]</td>
+<td><strong>Some results are inconsistent or unflattering and presented neutrally.</strong> Chicago Gini <em>worsens</em> under RL (0.286 → 0.331) while the README highlights equity. Piedmont is 41 intersections in the README but 4 in <code>comparison.json</code>, and −14.9% vs Webster. PROGRESS_REPORT says ~35% on the toy grid; README says 52.3%. Paris/Ahmedabad transfer is slightly worse than Webster.</td>
+<td><code>comparison.json</code>, README, PROGRESS_REPORT</td>
+<td>Report all of it in one generated table with CIs. Negative results are publishable and give you a real story (&quot;RL wins on X, loses on Y, here's why&quot;).</td>
+</tr>
+</tbody>
+</table>
+<h2>1.4 Critical: soft computing, CV and NLP claims</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Finding</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S1</strong> [V]</td>
+<td><strong>NSGA-II runs on a closed-form toy function, not the simulator.</strong> <code>f1_wait = 25 + 15(1−α) + 5·chaos</code>; <code>f2_gini = 0.20 + 0.25(1−β) + 0.05(1−sf)</code>. The two objectives depend on <em>disjoint</em> variables (α,chaos vs β,sf), so a single point (α, β, sf all maximal) dominates everything. The Pareto front is one point, not a trade-off. The code also has no crowding distance, no crossover, and only ever fills from the first front. It is a mutation-only non-dominated filter, not NSGA-II.</td>
+<td>Evaluate objectives through the engine (with a surrogate to cut cost), use real NSGA-II (or pymoo), and pick objectives that genuinely conflict.</td>
+</tr>
+<tr>
+<td><strong>S2</strong> [V]</td>
+<td><strong>Global <code>np.random</code> everywhere</strong> in ANFIS, ABC, GP, ACS and NSGA-II. No injected RNG, so results are irreproducible and seeds can't be paired for A/B.</td>
+<td>Inject <code>numpy.random.Generator</code> everywhere.</td>
+</tr>
+<tr>
+<td><strong>S3</strong> [V]</td>
+<td><strong>Virtual-camera &quot;accuracy&quot; is count agreement:</strong> <code>100 − error_pct</code> on detected count vs ground-truth count. False positives cancel false negatives, so this is not detection accuracy.</td>
+<td>Report precision/recall/F1 (IoU-matched), MOTA/IDF1 for tracking.</td>
+</tr>
+<tr>
+<td><strong>S4</strong> [V]</td>
+<td><strong>ACS exists only in Python</strong> (<code>ml/sc/ant_colony.py</code>). Its docstring says SC-5 while the table says SC-6, and I found no pheromone weights in the engine's <code>Pathfinder</code>. The &quot;−18.4% detour latency&quot; is therefore not an engine result. NSGA-II is labelled SC-10 in code, SC-12 in the table.</td>
+<td>Integrate into the engine (Pillar 3) or relabel as offline.</td>
+</tr>
+<tr>
+<td><strong>S5</strong> [?]</td>
+<td><strong>NLP accuracies (98.2%, 96.0%, …) have no evaluation set in the dump.</strong> I found no labelled test data for NLP-1…12.</td>
+<td>Build the gold sets (Pillar 4).</td>
+</tr>
+</tbody>
+</table>
+<h2>1.5 Dead, duplicate and misplaced code</h2>
+<ul>
+<li><code>spawn_agents</code>: <code>type_dist</code> is declared and never used [V].</li>
+<li><code>Pathfinder::compute_path</code> and <code>compute_path_stochastic</code> are ~50 lines of copy-paste. <code>spawn_agents</code> and <code>respawn_arrived</code> are near duplicates too (which is why E3 exists in two places) [V].</li>
+<li>Two graph pipelines: <code>fetch_graphs.py</code> (raw Overpass + synthetic grid) vs <code>download.py</code>/<code>clean.py</code>/<code>export.py</code> (osmnx). Pick one [V].</li>
+<li><code>engine/src/agent/NLPQueryParser.h</code> re-implements Python NLP regexes in C++, so intent logic lives in two places [V].</li>
+<li>Duplicated data artefacts: <code>36_algo_matrix.json</code> (ml/results + dashboard/public), <code>metaheuristics_report.json</code> (3 copies), <code>validation_report.json</code> (data/ + dashboard/public). Generate into one place and copy at build time [V].</li>
+<li><code>ponytail/</code> and <code>.agents/skills.json</code> are dev tooling, not product. Move them out of the repo root or <code>.gitignore</code> them [V].</li>
+<li><code>lookup_edge_len</code> silently returns <code>100.0</code> for a missing edge; <code>get_num_lanes</code> is a linear scan called on hot paths. Store an edge index per agent [V].</li>
+</ul>
+<h2>1.6 Sampling audit summary (what to fix so results are trustworthy)</h2>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Problem</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent spawn (<code>spawn_agents</code>)</td>
+<td>Uniform random nodes, fixed seed 42, everyone at position 0 of an edge; type sampler bug (E3)</td>
+<td>Demand-weighted OD, per-run seed, stagger insertion along the edge</td>
+</tr>
+<tr>
+<td>Lane change RNG</td>
+<td>Per-tick reseeding with consecutive integers (E9)</td>
+<td>Per-agent stream</td>
+</tr>
+<tr>
+<td>Route noise</td>
+<td>Redrawn per relaxation (E10)</td>
+<td>Per-agent fixed perturbation</td>
+</tr>
+<tr>
+<td>RL eval</td>
+<td>2–10 episodes, single seed family, surrogate</td>
+<td>≥ 30 seeds, engine env, paired comparison with common random numbers</td>
+</tr>
+<tr>
+<td>Sensitivity sweep</td>
+<td>2 episodes per cell, unused parameter (R8)</td>
+<td>Sobol/Latin-hypercube design, ≥ 30 reps, CIs</td>
+</tr>
+<tr>
+<td>GA/PSO/SA/ES calibration</td>
+<td>Global RNG, no reported variance across runs</td>
+<td>Multiple independent runs; report mean ± CI; separate calibration and validation splits</td>
+</tr>
+<tr>
+<td>Equity</td>
+<td>Survivorship bias, latitude bands (E11)</td>
+<td>Agent-level total delay, real zones</td>
+</tr>
+</tbody>
+</table>
+<h2>1.7 Fix order for Stage 0</h2>
+<ol>
+<li><strong>Truth-in-metrics first:</strong> E11, R1's evaluation harness, R6/R7/R8/R9 regeneration-from-logs. Nothing below is credible without this.</li>
+<li><strong>Physics validity:</strong> E1, E3, E4, E5, E6, E8, E9.</li>
+<li><strong>Baselines:</strong> E7 plus max-pressure and actuated baselines.</li>
+<li><strong>Data honesty:</strong> E13 provenance; R3 repo check.</li>
+<li><strong>RL validity:</strong> R2 parity test, R4/R5.</li>
+<li><strong>SC/CV/NLP evaluation:</strong> S1–S5.</li>
+</ol>
+<hr>
+<h1>Part 2. The unifying idea</h1>
+<h2>2.1 One project, four directions</h2>
+<p><strong>Nexus Twin:</strong> a city-agnostic, closed-loop digital twin for <em>mixed, weakly lane-disciplined traffic</em> (the Indian case, and the general case), that <strong>perceives → understands → adapts → acts → explains</strong>.</p>
+<p>Each pillar owns one verb, and none can be removed without breaking the loop:</p>
+<table>
+<thead>
+<tr>
+<th>Pillar</th>
+<th>Verb</th>
+<th>Owns</th>
+<th>Cannot be removed because…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CV</strong></td>
+<td><em>Perceive</em></td>
+<td>The twin's senses. Turns pixels (virtual cameras now, real footage later) into state estimates with uncertainty, and into behaviour parameters.</td>
+<td>Without it, RL has only ground truth, which is unrealistic, and SC has nothing to calibrate against.</td>
+</tr>
+<tr>
+<td><strong>NLP</strong></td>
+<td><em>Understand and explain</em></td>
+<td>The twin's language. Turns human text (multilingual) into structured scenarios, incidents and objectives, and turns decisions into explanations.</td>
+<td>Without it, objectives and incident reports can't enter the loop, and decisions are opaque.</td>
+</tr>
+<tr>
+<td><strong>SC</strong></td>
+<td><em>Adapt and govern</em></td>
+<td>The twin's uncertainty handling. Fuzzy reasoning, calibration, multi-objective trade-offs, safe arbitration, swarm routing.</td>
+<td>Without it, the system can't calibrate to a new city, can't handle vagueness, and RL has no safety net.</td>
+</tr>
+<tr>
+<td><strong>RL</strong></td>
+<td><em>Act</em></td>
+<td>The twin's control. Signal control and learned vehicle behaviour.</td>
+<td>Without it, the loop only observes.</td>
+</tr>
+</tbody>
+</table>
+<h2>2.2 The spine: a shared Belief State</h2>
+<p>The pillars talk through one typed <strong>Belief State</strong>, not through point-to-point hacks. Your existing event bus (port 9005) becomes its transport.</p>
+<pre class="mermaid">flowchart LR
+  subgraph World
+    E[C++ Engine\n+ I* behaviour]
+  end
+  E -- rendered frames --&gt; CV
+  T[Human text\nEN / Hinglish / Gujarati] --&gt; NLP
+  CV -- detections, flow, anomalies,\nbehaviour params + uncertainty --&gt; B((Belief State))
+  NLP -- incidents, objectives,\nconstraints --&gt; B
+  B --&gt; SC
+  SC -- calibrated params, arbiter,\nPareto set, fuzzy severity --&gt; B
+  B --&gt; RL
+  RL -- signal + vehicle actions --&gt; E
+  RL -- decision log --&gt; NLP
+  NLP -- explanations, questions --&gt; U[User / Dashboard]
+  NLP -. &#34;look at Ashram Rd&#34; .-&gt; CV
+</pre>
+<p><strong>Belief State v1 (the contract every pillar reads and writes):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Written by</th>
+<th>Read by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>edge_state[e]</code>: speed, density, queue, σ, source mask (<code>cv</code> / <code>sim</code> / <code>text</code>)</td>
+<td>CV, engine</td>
+<td>RL, SC, NLP</td>
+</tr>
+<tr>
+<td><code>incidents[]</code>: edges, type, fuzzy severity, confidence, evidence list, TTL</td>
+<td>CV + NLP fused by SC</td>
+<td>RL, engine, NLP</td>
+</tr>
+<tr>
+<td><code>behaviour_profile[city, zone]</code>: aggression μ/σ, lateral-gap distribution, honk rate, braking-hazard λ, modal split</td>
+<td>CV (estimated), SC (calibrated)</td>
+<td>Engine (I*), RL (domain randomisation)</td>
+</tr>
+<tr>
+<td><code>objective</code>: weights (wait, Gini, emissions, safety) + hard constraints + provenance</td>
+<td>NLP (from text), SC (Pareto choice)</td>
+<td>RL (reward/constraints)</td>
+</tr>
+<tr>
+<td><code>decision_log[]</code>: actor, obs hash, action, top features, NL explanation</td>
+<td>RL / fuzzy / Webster, NLP</td>
+<td>Dashboard, evaluation</td>
+</tr>
+</tbody>
+</table>
+<h2>2.3 The substrate every pillar stands on</h2>
+<p>Two pieces of infrastructure make it a single system rather than four:</p>
+<ol>
+<li><strong>City Onboarding Pipeline</strong> (your OSM importer, generalised). <em>Upload OSM → Graph v2 → CV road-attribute inference → SC calibration → NLP gazetteer → RL warm-start.</em> Every pillar has a step in it, and &quot;time to a working twin for an unseen city&quot; becomes a headline metric.</li>
+<li><strong>I*</strong> (Indian-behaviour model). It is the behavioural &quot;physics&quot; that CV <em>measures</em>, SC <em>calibrates</em>, NLP <em>describes</em> and RL <em>must cope with</em>. It is the place where all four pillars touch the same object.</li>
+</ol>
+<hr>
+<h1>Part 3. Four pillar-projects (each publishable alone)</h1>
+<p>Each has a research question, scope, milestones, standalone deliverable, metrics, and its hooks into the others.</p>
+<h2>Pillar 1: RL. <em>&quot;Learning control for mixed traffic under partial observability and behavioural shift&quot;</em></h2>
+<p><strong>Research question:</strong> Can a city-size-agnostic learned controller beat strong classical baselines in heavy-tailed, non-lane-based traffic when it sees only camera-derived, noisy observations?</p>
+<p><strong>Scope</strong></p>
+<ul>
+<li><strong>1A. Engine-in-the-loop environment.</strong> Expose the C++ engine as a vectorised, deterministic, headless Gym/PettingZoo env (pybind11 or shared-memory/ZeroMQ). Retire the Python surrogate for headline results. This fixes R1/R2 and is the prerequisite for everything else.</li>
+<li><strong>1B. Real MAPPO / GNN-MAPPO.</strong> Centralised critic; a graph-attention encoder over the road graph so one policy handles <em>any</em> topology and phase count (drops the fixed &quot;4 approaches, 2 phases&quot; limit). This is what makes &quot;upload any city&quot; real for RL.</li>
+<li><strong>1C. Constrained RL for equity.</strong> Treat Gini/max-zone-delay as a constraint (Lagrangian/CMDP) instead of a weighted reward term; report the constraint-satisfaction curve.</li>
+<li><strong>1D. Robustness.</strong> Domain randomisation over I* behaviour profiles and sensor noise; evaluate zero-shot on held-out cities and held-out behaviour profiles.</li>
+<li><strong>1E. Vehicle-level policies (stretch).</strong> SAC/TD3 (currently &quot;showcase&quot;) learn micro-behaviour by imitation of CV-extracted trajectories, then RL-refine; DDPG/TD3/SAC finally earn a deployed role.</li>
+<li><strong>Baselines:</strong> Webster (with real volumes), max-pressure, actuated/SOTL, fuzzy, Type-2 fuzzy, and the current IPPO as an ablation.</li>
+</ul>
+<p><strong>Standalone deliverable:</strong> &quot;GNN-MAPPO for signal control in mixed traffic&quot;: engine-based results, zero-shot transfer table, equity-constrained variant.</p>
+<p><strong>Metrics:</strong> mean delay, throughput, p95 delay, Gini (agent-level), stops per vehicle, zero-shot delay vs Webster/max-pressure on held-out cities, decision latency (keep &lt; 1 ms p95).</p>
+<p><strong>Cross-pillar hooks:</strong> consumes <code>edge_state</code> (CV) and <code>objective</code> (NLP); its arbiter and warm-start come from SC; emits <code>decision_log</code> for NLP.</p>
+<h2>Pillar 2: CV. <em>&quot;Vision-based state estimation and behaviour identification in unstructured traffic&quot;</em></h2>
+<p><strong>Research question:</strong> From overhead/roadside video of non-lane-based traffic, can we recover (a) per-approach traffic state and (b) driver-behaviour parameters accurately enough to drive a controller and calibrate a simulator?</p>
+<p><strong>Scope</strong></p>
+<ul>
+<li><strong>2A. Honest detection/tracking stack.</strong> Extend the virtual camera to render two-wheelers, autos, buses and pedestrians with realistic occlusion, night/rain/glare augmentation and camera-placement randomisation. Report IoU-matched precision/recall/F1 and MOTA/IDF1 for CV-3/4/11. Add a small <strong>real</strong> validation clip set (public Indian-traffic datasets or your own footage).</li>
+<li><strong>2B. Traffic-state estimator.</strong> A network that maps frames (+ optical flow) to per-approach queue, density and speed <em>with uncertainty</em> (deep ensemble or MC-dropout). This is the object RL consumes in the camera-only regime.</li>
+<li><strong>2C. Behaviour identification.</strong> From tracked trajectories, extract headway, lateral-gap distribution, filtering rate, hard-braking rate; fit I* parameters. This is the CV→SC calibration channel.</li>
+<li><strong>2D. Road-attribute inference for OSM onboarding.</strong> From tiles/satellite imagery and OSM tags, estimate lanes, effective width and one-way status where tags are missing (fixes E13's <code>lanes</code> default). Use U-Net (CV-5) and Hough (lane detector).</li>
+<li><strong>2E. Anomaly/blockage detection</strong> with calibrated false-alarm rates (CV-7/9), producing <code>incidents[]</code> candidates for fusion.</li>
+<li><strong>Attention interface:</strong> accepts &quot;look at region X&quot; from NLP to change ROI/priority (active perception).</li>
+</ul>
+<p><strong>Standalone deliverable:</strong> &quot;Camera-grounded traffic state and behaviour estimation for non-lane-based traffic&quot;, with a synthetic benchmark and a small real validation set.</p>
+<p><strong>Metrics:</strong> detection <a href="mailto:mAP@0.5">mAP@0.5</a> (synthetic and real), MOTA/IDF1, state-estimation MAE (queue length, speed), calibration error (ECE) of uncertainty, behaviour-parameter recovery error (relative error vs known I* ground truth), road-attribute accuracy.</p>
+<p><strong>Cross-pillar hooks:</strong> feeds <code>edge_state</code> and <code>incidents</code> (with σ), supplies <code>behaviour_profile</code> estimates to SC, receives ROI requests from NLP.</p>
+<h2>Pillar 3: Soft Computing. <em>&quot;Uncertainty-aware calibration, arbitration and multi-objective governance of a traffic twin&quot;</em></h2>
+<p><strong>Research question:</strong> How do you calibrate and <em>govern</em> a heterogeneous-traffic simulator and its learned controllers under vagueness, noisy sensing and conflicting objectives, cheaply and safely?</p>
+<p><strong>Scope</strong></p>
+<ul>
+<li><strong>3A. Surrogate-assisted multi-objective calibration.</strong> CMA-ES/NSGA-II over <code>[speed_factor, route_spread, modal split, I\* parameters, demand scale]</code> against real data where it exists (Chicago) and <em>stylised facts</em> where it doesn't (headway distribution, capacity drop, two-wheeler percolation, speed-flow curve). An ANFIS or GP surrogate cuts engine evaluations; use Sobol/Latin-hypercube sampling for the initial design.</li>
+<li><strong>3B. Fuzzy driver model.</strong> A Type-2 fuzzy &quot;aggression&quot; inference (inputs: gap, relative speed, vehicle type, time pressure → aggression, honk propensity, gap-acceptance) <em>inside</em> I*-Drive, so fuzziness is in the physics, not just the signals.</li>
+<li><strong>3C. Fuzzy arbiter / safety shield.</strong> Watches RL confidence (entropy), CV uncertainty and incident severity, and blends or falls back between MAPPO, fuzzy and max-pressure. Directly addresses the cities where RL currently loses to Webster.</li>
+<li><strong>3D. Swarm routing in the engine.</strong> Port ACS/ABC into C++ as a decaying per-edge pheromone/congestion field that I*-Route reads; also rendered as a CV-style heat layer.</li>
+<li><strong>3E. Interpretability.</strong> Rough-set feature reduction on observations; ANFIS/GP distil the RL policy into readable rules that NLP verbalises.</li>
+<li><strong>3F. Real NSGA-II Pareto governance</strong> (fixes S1): engine-evaluated objectives (delay, Gini, emissions, safety proxy) whose front is presented to the user, with NLP-chosen preference (Pillar 4).</li>
+</ul>
+<p><strong>Standalone deliverable:</strong> &quot;Surrogate-assisted multi-objective calibration and fuzzy arbitration for mixed-traffic digital twins.&quot;</p>
+<p><strong>Metrics:</strong> calibration error vs held-out data/stylised facts, evaluations-to-target (efficiency vs plain CMA-ES), hypervolume of the Pareto front, arbiter regret vs the best fixed policy, fallback correctness under injected faults.</p>
+<p><strong>Cross-pillar hooks:</strong> takes CV behaviour estimates and uncertainty; outputs calibrated <code>behaviour_profile</code>, fused <code>incidents.severity</code>, the arbiter, RL warm-starts and Pareto sets.</p>
+<h2>Pillar 4: NLP. <em>&quot;Language as the control and explanation interface for a traffic digital twin&quot;</em></h2>
+<p><strong>Research question:</strong> Can free-form, multilingual (English/Hindi/Gujarati/Hinglish) text be grounded reliably into executable simulation scenarios and objectives, and can control decisions be explained faithfully in language?</p>
+<p><strong>Scope</strong></p>
+<ul>
+<li><strong>4A. Scenario DSL + semantic parser.</strong> A validated JSON schema for closures, incidents, events, policy toggles, objectives and constraints. Parse text → DSL with confidence, schema validation, and <strong>clarifying questions</strong> on ambiguity. Regex/Naive-Bayes as fast paths; an LLM/seq2seq parser for the long tail; both scored on the same gold set.</li>
+<li><strong>4B. Multilingual, code-mixed grounding.</strong> Transliteration-tolerant gazetteer built <em>automatically from the imported OSM graph</em> (street names in Latin/Devanagari/Gujarati script, fuzzy matching). Ahmedabad is your natural test bed.</li>
+<li><strong>4C. Evidence fusion inputs.</strong> Extract incident events (type, place, time, severity cue) from text, and emit them as evidence for SC's fusion with CV.</li>
+<li><strong>4D. Explanation generation.</strong> Turn <code>decision_log</code> entries and distilled rules (from 3E) into faithful explanations (&quot;held green on Ashram Rd because the northbound queue exceeded the fuzzy 'long' threshold&quot;). Faithfulness is <em>tested</em>, not asserted (perturb the cited feature and check the decision changes).</li>
+<li><strong>4E. Objective elicitation.</strong> &quot;Protect school zones 8–9 am, avoid gridlock&quot; → weights and constraints → NSGA-II preference → RL constraint.</li>
+<li><strong>4F. Knowledge graph</strong> of city entities/events with temporal queries; QA over it.</li>
+<li><strong>4G. Gold datasets.</strong> Build and release a small annotated set (scenario commands, incident reports, explanation-quality ratings) so the NLP accuracy numbers become real (fixes S5).</li>
+</ul>
+<p><strong>Standalone deliverable:</strong> &quot;Grounded multilingual scenario authoring and faithful explanation for traffic digital twins&quot;, plus a dataset.</p>
+<p><strong>Metrics:</strong> command→DSL exact-match and execution-match accuracy, slot-level F1 (place/time/type), geocoding accuracy on transliterated names, clarification precision, explanation faithfulness score, human-rated usefulness.</p>
+<p><strong>Cross-pillar hooks:</strong> writes <code>incidents</code> evidence and <code>objective</code>, issues ROI requests to CV, reads <code>decision_log</code> from RL and rules from SC.</p>
+<hr>
+<h1>Part 4. Proof that it is <em>one</em> system: ablation matrix and flagship scenarios</h1>
+<p><strong>The rule:</strong> every pillar must have a measurable effect on the others. If removing a pillar changes nothing, that pillar isn't blended.</p>
+<h2>4.1 Flagship scenarios</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Scenario</th>
+<th>What flows through the loop</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>S-A</strong></td>
+<td><em>Monsoon waterlogging in Ahmedabad.</em> Citizens report in Gujarati/Hinglish; a camera sees a stalled blob.</td>
+<td>NLP grounds the place → CV confirms/denies → SC fuses into fuzzy severity → engine blocks/slows edges → RL re-times signals, I*-Route reroutes → NLP explains and asks a clarifying question if evidence conflicts.</td>
+</tr>
+<tr>
+<td><strong>S-B</strong></td>
+<td><em>Unseen-city onboarding.</em> Upload an OSM extract for a city not in the repo.</td>
+<td>Importer → CV road attributes → SC calibration → NLP gazetteer → RL zero-shot/warm-start → dashboard shows a confidence badge. Metric: <strong>time-to-twin</strong>.</td>
+</tr>
+<tr>
+<td><strong>S-C</strong></td>
+<td><em>Sensor dropout.</em> 30% of cameras fail during peak.</td>
+<td>Belief state widens σ → SC arbiter shifts weight to fuzzy/max-pressure → RL is monitored → no catastrophic delay spike.</td>
+</tr>
+<tr>
+<td><strong>S-D</strong></td>
+<td><em>Language-conditioned governance.</em> &quot;Prioritise buses and keep the north zones from starving.&quot;</td>
+<td>NLP → objective → NSGA-II picks a Pareto point → RL constrained policy → NLP reports the trade-off achieved.</td>
+</tr>
+<tr>
+<td><strong>S-E</strong></td>
+<td><em>Behavioural shift.</em> Heavy-tailed braking / aggression turned up mid-run.</td>
+<td>CV detects shift in trajectories → SC re-calibrates → RL (domain-randomised) holds up → measure recovery time.</td>
+</tr>
+</tbody>
+</table>
+<h2>4.2 Ablation matrix (what each removal must break)</h2>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Expected degradation</th>
+<th>Measured by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full system</td>
+<td>reference</td>
+<td>all</td>
+</tr>
+<tr>
+<td>− CV (RL sees ground truth)</td>
+<td><em>Improves</em> score but fails S-C and S-E realism: shows the price of perception</td>
+<td>delay under noise/dropout</td>
+</tr>
+<tr>
+<td>− CV (RL blind / no incidents)</td>
+<td>Slower incident response, worse S-A</td>
+<td>incident detection latency, delay</td>
+</tr>
+<tr>
+<td>− NLP</td>
+<td>Can't enter S-A text evidence or S-D objectives; explanations vanish</td>
+<td>scenario success rate, explanation coverage</td>
+</tr>
+<tr>
+<td>− SC arbiter</td>
+<td>Larger delay spikes under S-C/S-E on cities where RL is weak</td>
+<td>worst-case delay, regret</td>
+</tr>
+<tr>
+<td>− SC calibration</td>
+<td>Wrong behaviour profile → RL trained/evaluated on mismatched physics</td>
+<td>sim-to-&quot;real&quot; error, transfer gap</td>
+</tr>
+<tr>
+<td>− RL (fuzzy/max-pressure only)</td>
+<td>Loses on Chicago-scale cities</td>
+<td>delay, throughput</td>
+</tr>
+<tr>
+<td>− I* (chaos scalar only)</td>
+<td>Loses stylised facts; CV behaviour estimator has nothing to recover</td>
+<td>stylised-fact error</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h1>Part 5. OSM importer and I* (updated after the audit)</h1>
+<h2>5.1 OSM importer: concrete spec</h2>
+<ul>
+<li><strong>Input:</strong> <code>.osm</code> / <code>.osm.pbf</code> / GeoJSON upload, or bbox/place name (Overpass, rate-limited).</li>
+<li><strong>Stages (each a logged, sandboxed background job):</strong> parse (streaming parser, size and bbox caps) → filter road classes (<strong>include</strong> <code>unclassified</code>, <code>service</code>, <code>living_street</code>, <code>*_link</code>) → correct <code>oneway</code> (<code>yes/true/1/-1</code>, roundabouts, motorways) → parse <code>lanes</code>, <code>maxspeed</code>, <code>width</code>, <code>name</code>, <code>highway</code>, <code>surface</code> → largest strongly connected component → dense id remap → zones (admin boundary, else k-means/grid) → signals/crossings → OD proxy from building footprints → <strong>Graph v2</strong> with <code>provenance</code> and a validation report.</li>
+<li><strong>Graph v2 edge:</strong> <code>{u, v, length_m, lanes, width_m, speed_kmh, road_class, name, oneway, geometry}</code>. The engine then needs an edge index per agent, per-edge speed limits and per-class behaviour.</li>
+<li><strong>Engine side:</strong> either a per-session engine process (own port) or a <code>load_graph</code> control message with hot reload. Add a graph-size guard tied to the agent budget.</li>
+<li><strong>Honest labelling:</strong> uploaded cities carry <code>demand: modelled, not measured</code> and an RL confidence badge; no MAPE claims.</li>
+<li><strong>Compliance:</strong> ODbL attribution; be polite to Overpass (file upload avoids it).</li>
+</ul>
+<h2>5.2 Pathfinding inventory (what exists today)</h2>
+<table>
+<thead>
+<tr>
+<th>Algorithm</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A* (Euclidean heuristic, distance cost, tolls/blocks/bus-only)</td>
+<td>Deployed in engine</td>
+</tr>
+<tr>
+<td>Stochastic A* (lognormal edge noise)</td>
+<td>Deployed; has the consistency problem in E10</td>
+</tr>
+<tr>
+<td>Ant Colony System</td>
+<td>Python only, not in engine (S4)</td>
+</tr>
+<tr>
+<td>Dijkstra / time-dependent / en-route rerouting</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>So the engine is A*-only, and I* is a real addition.</p>
+<h2>5.3 I*: two layers, one name</h2>
+<ul>
+<li><strong>I*-Route (strategic):</strong> A* over <em>perceived</em> cost, not distance. Cost = f(free-flow time by road class, live congestion from the pheromone field, signal-delay aversion, familiarity bias to arterial roads, vehicle-type shortcut permissions). Weighted heuristic on purpose (satisficing), fixed per-agent perturbation (replaces E10's noise). Two-wheelers and autos may use narrow lanes; buses may not.</li>
+<li><strong>I*-Drive (tactical):</strong> modified IDM + lateral dynamics:
+<ul>
+<li>continuous <code>lateral_offset</code> in the SoA and physical lateral position in <code>compute_world</code> (this is what finally gives <code>chaos</code>/<code>lane_discipline</code> an effect, fixing E2, and it also fixes E1's direction/lateral confusion);</li>
+<li>filtering through gaps by narrow vehicles (reuse the quadtree lateral query);</li>
+<li>Type-2 fuzzy aggression → gap acceptance, following distance and horn propensity (Pillar 3B);</li>
+<li>honk events with a mild yield effect and a per-edge honk-density metric;</li>
+<li>Poisson-triggered, heavy-tailed hard braking (creates shockwaves, an ideal stress test for RL).</li>
+</ul>
+</li>
+<li><strong>Per-city behaviour profile</strong> in <code>cities.yaml</code> (generalising <code>chaos</code>), with CV-estimated and SC-calibrated parameters.</li>
+<li><strong>Validation is by stylised facts</strong> (no measured Ahmedabad OD exists): headway distribution, lateral-gap distribution, capacity vs lane-discipline, two-wheeler percolation, speed–flow curve.</li>
+<li><strong>Performance guardrails:</strong> O(k) neighbour work per agent, per-agent RNG, and a 20k-agent, 60 FPS regression test in CI before I*-Drive is allowed on by default (flag it initially).</li>
+</ul>
+<hr>
+<h1>Part 6. Evaluation and sampling protocol (applies to every result)</h1>
+<ol>
+<li><strong>Seeds and pairing:</strong> ≥ 30 seeds per configuration; <em>common random numbers</em> across compared policies (same demand and behaviour draws) so A/B differences are paired.</li>
+<li><strong>Warm-up and horizon:</strong> discard the first 300–600 s of sim time; run ≥ 1 h of sim time for delay metrics.</li>
+<li><strong>Design of experiments:</strong> Sobol/Latin-hypercube for parameter sweeps; never a hand-picked grid of 4.</li>
+<li><strong>Splits:</strong> calibrate on one time window / OD subset, validate on another; hold out at least one whole city for transfer claims; never tune on evaluation seeds.</li>
+<li><strong>Statistics:</strong> bootstrap 95% CIs, effect sizes, and multiple-comparison correction for the algorithm tables.</li>
+<li><strong>Reproducibility:</strong> every reported number is generated by a script from raw logs; each run records git SHA, config hash, seed set.</li>
+<li><strong>Metrics v2:</strong> total delay per agent (journey time − free-flow time, including finished agents), throughput, p95 delay, stops, agent-level Gini plus per-zone max delay, emissions, and a safety proxy (hard-brake and time-to-collision counts).</li>
+<li><strong>Baselines:</strong> Webster with real volumes, max-pressure, actuated, fuzzy, Type-2 fuzzy, IPPO (current), GNN-MAPPO (new).</li>
+<li><strong>CI gates:</strong> parity tests (train vs deploy observation), determinism test, 20k-agent FPS budget, and a &quot;no untracked numbers in README&quot; check.</li>
+</ol>
+<hr>
+<h1>Part 7. Roadmap</h1>
+<p><em>Assumes the 4-person team implied by the repo docs (Dev A engine, B ML, C CV, D NLP) and ~24 weeks. Adjust to your calendar; the gates matter more than the dates.</em></p>
+<h2>Stage 0: Truth and foundations (weeks 1–3)</h2>
+<table>
+<thead>
+<tr>
+<th>Work</th>
+<th>Owner</th>
+<th>Gate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fix E1, E3–E6, E8–E9; new metrics v2 (E11)</td>
+<td>Engine</td>
+<td>Engine regression tests pass; oncoming-leader test added</td>
+</tr>
+<tr>
+<td>Baselines: max-pressure, actuated, Webster with real volumes (E7)</td>
+<td>RL</td>
+<td>Baseline table regenerated from logs</td>
+</tr>
+<tr>
+<td>Honest benchmark harness replaces <code>benchmark_36.py</code> (R6/R7/R8/R9)</td>
+<td>ML</td>
+<td>Every README number is script-generated</td>
+</tr>
+<tr>
+<td>R2 parity test, R3 <code>.gitignore</code> check, R5 fixes</td>
+<td>RL</td>
+<td>Parity test green in CI</td>
+</tr>
+<tr>
+<td>Graph provenance + tag-parsing fixes (E13)</td>
+<td>Pipeline</td>
+<td>All shipped graphs labelled</td>
+</tr>
+<tr>
+<td>Dead-code and duplicate cleanup (§1.5), doc drift fixes</td>
+<td>All</td>
+<td>Repo tree clean</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gate 0:</strong> <em>all published results reproducible from raw logs with seeds and CIs; a corrected README.</em></p>
+<h2>Stage 1: Substrate (weeks 3–8)</h2>
+<ul>
+<li>Graph v2 + dense ids + edge index in engine.</li>
+<li>Headless <strong>engine Gym env</strong> (Pillar 1A).</li>
+<li><strong>OSM importer</strong> end to end (upload → validate → twin) with dashboard UI.</li>
+<li>Belief State schema v1 + event-bus topics + the Scenario DSL v1.</li>
+<li><strong>I*-Route v1</strong> (perceived cost, per-agent perturbation) with A/B vs A*.</li>
+</ul>
+<p><strong>Gate 1:</strong> <em>an imported unseen city runs 20k agents with zero unreachable-agent failures, and the RL env trains on engine metrics.</em></p>
+<h2>Stage 2: Pillars in parallel (weeks 6–16)</h2>
+<table>
+<thead>
+<tr>
+<th>Pillar</th>
+<th>Milestones</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>RL</strong></td>
+<td>M1: IPPO retrained on engine env (reproduces or corrects +26%). M2: centralised critic, then GNN encoder. M3: equity-constrained variant. M4: robustness under domain randomisation.</td>
+</tr>
+<tr>
+<td><strong>CV</strong></td>
+<td>M1: honest metrics on synthetic set (P/R/F1, MOTA). M2: state estimator with uncertainty. M3: behaviour-parameter identification. M4: road-attribute inference for OSM onboarding; real clip validation.</td>
+</tr>
+<tr>
+<td><strong>SC</strong></td>
+<td>M1: real engine-evaluated NSGA-II + seeded optimisers. M2: surrogate-assisted calibration. M3: fuzzy aggression model into I*-Drive. M4: arbiter/shield. M5: pheromone field in the engine.</td>
+</tr>
+<tr>
+<td><strong>NLP</strong></td>
+<td>M1: gold datasets (commands, reports). M2: DSL parser with clarification. M3: multilingual/code-mixed gazetteer from OSM. M4: explanation generator + faithfulness test.</td>
+</tr>
+<tr>
+<td><strong>I*-Drive</strong> (Engine, coordinated with SC/CV)</td>
+<td>Behind a flag: lateral offset → filtering → fuzzy aggression → honk → hard braking; FPS regression gate.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gate 2:</strong> <em>each pillar meets its own standalone metric targets (§Part 3) and could be written up on its own.</em></p>
+<h2>Stage 3: Blending (weeks 14–20)</h2>
+<ul>
+<li>Wire the full Belief-State loop.</li>
+<li>Camera-only RL (CV → RL) with the SC arbiter.</li>
+<li>Language-conditioned objectives (NLP → SC → RL).</li>
+<li>CV-calibrated I* profiles for Chicago, Paris, Ahmedabad.</li>
+<li>Implement flagship scenarios S-A … S-E.</li>
+</ul>
+<p><strong>Gate 3:</strong> <em>ablation matrix (§4.2) run; each pillar's removal shows a statistically significant degradation on at least one scenario.</em></p>
+<h2>Stage 4: Evaluation and packaging (weeks 20–24)</h2>
+<ul>
+<li>Full experiment campaign per Part 6.</li>
+<li>Docs rewrite, dashboard &quot;Explain / Onboard / Scenario&quot; flows.</li>
+<li>Demo video of S-A and S-B.</li>
+<li>One integrated paper plus four pillar write-ups (or one paper with four contribution sections).</li>
+</ul>
+<hr>
+<h1>Part 8. Risks and decisions for you</h1>
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage 0 may <em>lower</em> headline numbers (e.g. the +26.3% may shrink or disappear on the engine).</td>
+<td>Treat it as a research finding. Honest negative/positive results with CIs are stronger than a surrogate win.</td>
+</tr>
+<tr>
+<td>I*-Drive can break the 60 FPS / 20k-agent budget.</td>
+<td>Flag-gated; per-agent O(k) logic; CI perf gate.</td>
+</tr>
+<tr>
+<td>Real Indian traffic footage/data may be hard to get.</td>
+<td>Start with synthetic + stylised facts; add a small real clip set for validation only.</td>
+</tr>
+<tr>
+<td>Scope: four standalone-sized projects.</td>
+<td>Ownership per pillar, shared substrate, strict Stage gates; cut stretch items (1E, real-footage validation) first.</td>
+</tr>
+<tr>
+<td>LLM dependence in NLP.</td>
+<td>Keep the regex/NB fast path; the LLM is a fallback scored on the same gold set.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decisions I need from you</strong></p>
+<ol>
+<li>Is your priority a <em>research paper</em> (rigour, ablations, negative results) or a <em>product demo</em> (upload-any-city, live scenarios)? The plan supports both, but the order of Stage 2 work changes.</li>
+<li>Can you get any real Indian traffic video or trajectory data, even a few minutes? It decides how much of Pillar 2C/3A is real vs stylised.</li>
+<li>Is the team size four? If it is smaller, I would drop Pillar 1E and the Hindi/Gujarati parsing first.</li>
+</ol>
+
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+</body></html>
