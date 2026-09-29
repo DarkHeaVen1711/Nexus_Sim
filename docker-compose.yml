@@ -6,23 +6,32 @@ services:
       context: .
       dockerfile: docker/Dockerfile.engine
     container_name: nexussim-engine
-    ports:
-      - "9001:9001"
+    expose:
+      - "9001"
     volumes:
       - ./data:/app/data:ro
     restart: unless-stopped
     command: ["--city", "chicago", "--duration", "60", "--port", "9001"]
 
-  sidecars:
+  backend:
     build:
       context: .
       dockerfile: docker/Dockerfile.sidecars
-    container_name: nexussim-sidecars
+    container_name: nexussim-backend
     ports:
-      - "9003:9003"  # Virtual Camera service
-      - "9004:9004"  # NLP Chat & Incident service
-      - "9005:9005"  # Cross-subject Event Bus
-      - "9006:9006"  # Algo Explorer catalog service
+      - "8000:8000"  # Unified Backend Gateway Port
+    expose:
+      - "9003"
+      - "9004"
+      - "9005"
+      - "9006"
+    environment:
+      - ENGINE_WS_URL=ws://engine:9001
+      - CAMERA_HTTP_URL=http://localhost:9003
+      - NLP_HTTP_URL=http://localhost:9004
+      - EVENT_BUS_HTTP_URL=http://localhost:9005
+      - EVENT_BUS_WS_URL=ws://localhost:9005/ws/events
+      - ALGO_HTTP_URL=http://localhost:9006
     depends_on:
       - engine
     restart: unless-stopped
@@ -36,7 +45,7 @@ services:
       - "3000:3000"
     depends_on:
       - engine
-      - sidecars
+      - backend
     restart: unless-stopped
 
 networks:
