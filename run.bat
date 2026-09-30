@@ -90,7 +90,7 @@ exit /b 0
 :build
 if "%REBUILD%"=="0" if exist "engine\build\engine.exe" (
     echo [build] engine.exe found - skipping configure/build
-    echo         (pass --rebuild to force a clean rebuild)
+    echo         ^(pass --rebuild to force a clean rebuild^)
     goto run_engine
 )
 
@@ -124,14 +124,14 @@ if not exist "node_modules" (
     call npm install
 )
 start "" cmd /c "npm run dev"
-%SystemRoot%\System32\timeout.exe /t 3 /nobreak >nul
+ping -n 4 127.0.0.1 >nul
 cd ..
 
 where python >nul 2>nul
-if %errorlevel% equ 0 (
-    echo Starting unified backend gateway (port 8000)...
+if !errorlevel! equ 0 (
+    echo Starting unified backend gateway ^(port 8000^)...
     start "" cmd /c "python -m gateway.server"
-    %SystemRoot%\System32\timeout.exe /t 2 /nobreak >nul
+    ping -n 3 127.0.0.1 >nul
 )
 
 echo.
@@ -147,13 +147,13 @@ if "%OD_PATH%"=="" (
 echo Duration: %DURATION% min
 echo.
 echo Dashboard:       http://localhost:3000
-echo Backend Gateway: http://localhost:8000 (WebSocket: ws://localhost:8000/ws)
+echo Backend Gateway: http://localhost:8000 ^(WebSocket: ws://localhost:8000/ws^)
 echo.
 if "%FAST%"=="1" (
     echo Mode: headless -- the engine exits when the simulation finishes.
 ) else (
 echo  NOTE: The engine idles until you pick a city on the dashboard. Selecting
-echo  a city starts that simulation (agents respawn so traffic stays live),
+echo  a city starts that simulation ^(agents respawn so traffic stays live^),
 echo  and you can switch cities anytime. --duration only applies in --fast mode.
 echo  Press Ctrl+C to stop the engine.
 )
