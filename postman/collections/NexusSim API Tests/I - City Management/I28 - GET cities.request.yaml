@@ -1,0 +1,28 @@
+$kind: http-request
+name: 'I28 - GET /api/cities'
+order: 3000
+method: GET
+url: '{{gateway}}/api/cities'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('I28 - Status 200', () => { pm.response.to.have.status(200); });
+      pm.test('I28 - Returns array', () => {
+        pm.expect(pm.response.json()).to.be.an('array');
+      });
+      pm.test('I28 - Has configured cities', () => {
+        const ids = pm.response.json().map(c => c.city_id);
+        pm.expect(ids).to.include('chicago');
+        pm.expect(ids).to.include('paris');
+        pm.expect(ids).to.include('ahmedabad');
+        pm.expect(ids).to.include('piedmont');
+      });
+      pm.test('I28 - Each city has required fields', () => {
+        pm.response.json().forEach(city => {
+          pm.expect(city).to.have.property('city_id');
+          pm.expect(city).to.have.property('city_name');
+          pm.expect(city).to.have.property('source');
+          pm.expect(city).to.have.property('status');
+        });
+      });

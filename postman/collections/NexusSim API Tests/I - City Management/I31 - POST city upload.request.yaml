@@ -1,0 +1,36 @@
+$kind: http-request
+name: 'I31 - POST /api/cities/upload (minimal OSM)'
+order: 3300
+method: POST
+url: '{{gateway}}/api/cities/upload'
+headers:
+  - key: Content-Type
+    value: multipart/form-data
+body:
+  type: formdata
+  formdata:
+    - key: city_id
+      value: postman-test-city
+      type: text
+    - key: city_name
+      value: Postman Test City
+      type: text
+    - key: file
+      value: {}
+      type: file
+      src: "{{postman_test_osm_file}}"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('I31 - Status 200', () => { pm.response.to.have.status(200); });
+      pm.test('I31 - Returns city_id', () => {
+        pm.expect(pm.response.json().city_id).to.eql('postman-test-city');
+      });
+      pm.test('I31 - Status ready', () => {
+        pm.expect(pm.response.json().status).to.eql('ready');
+      });
+      pm.test('I31 - Has node and edge counts', () => {
+        pm.expect(pm.response.json().node_count).to.be.above(0);
+        pm.expect(pm.response.json().edge_count).to.be.above(0);
+      });

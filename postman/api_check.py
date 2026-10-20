@@ -346,6 +346,76 @@ def engine_direct_ws():
         ws_close(s)
 
 
+# --------------------------------------------------------------- city management
+def gw_list_cities():
+    r = requests.get(base_for("gateway") + "/api/cities", timeout=8)
+    r.raise_for_status()
+    data = r.json()
+    ids = {c["city_id"] for c in data}
+    for expected in ["chicago", "paris", "ahmedabad", "piedmont"]:
+        if expected not in ids:
+            raise RuntimeError(f"expected city {expected} missing from list")
+    return f"200, cities={len(data)}, ids={sorted(ids)}"
+
+
+def gw_get_city():
+    r = requests.get(base_for("gateway") + "/api/cities/chicago", timeout=8)
+    r.raise_for_status()
+    d = r.json()
+    if d["city_id"] != "chicago":
+        raise RuntimeError(f"unexpected city_id: {d['city_id']}")
+    return '200, city=chicago'
+
+
+def gw_get_city_not_found():
+    r = requests.get(base_for("gateway") + "/api/cities/nonexistent-city-xyz", timeout=8)
+    if r.status_code != 404:
+        raise RuntimeError(f"expected 404, got {r.status_code}")
+    return f"{r.status_code}, not found"
+
+
+def gw_upload_city():
+    import io
+
+    osm_content = """<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="api-check">
+  <node id="1" lat="19.0760" lon="72.8777"/>
+  <node id="2" lat="19.0770" lon="72.8787"/>
+  <node id="3" lat="19.0765" lon="72.8795"/>
+  <way id="10">
+    <nd ref="1"/>
+    <nd ref="2"/>
+    <tag k="highway" v="residential"/>
+  </way>
+  <way id="11">
+    <nd ref="2"/>
+    <nd ref="3"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>
+"""
+    city_id = "api-check-city"
+    # Clean up any prior test city
+    import os as _os
+    test_city_dir = os.path.join("data", city_id)
+    if _os.path.exists(test_city_dir):
+        import shutil as _shutil
+        _shutil.rmtree(test_city_dir, ignore_errors=True)
+
+    files = {"file": ("test-city.osm", io.BytesIO(osm_content.encode()), "application/xml")}
+    data = {"city_id": city_id, "city_name": "API Check City"}
+    r = requests.post(base_for("gateway") + "/api/cities/upload", files=files, data=data, timeout=30)
+    r.raise_for_status()
+    result = r.json()
+    if result["city_id"] != city_id:
+        raise RuntimeError(f"unexpected city_id: {result['city_id']}")
+    if result["status"] != "ready":
+        raise RuntimeError(f"unexpected status: {result['status']}")
+    if result["node_count"] < 1:
+        raise RuntimeError("expected at least 1 node")
+    return f"200, city={city_id}, nodes={result['node_count']}, edges={result['edge_count']}"
+
+
 if __name__ == "__main__":
     print("=== Gateway (:8000) ===")
     check("GW GET /", gw_root)
@@ -357,6 +427,12 @@ if __name__ == "__main__":
     check("GW GET /api/events", gw_events_rest)
     check("GW WS /ws (engine proxy)", gw_ws_engine)
     check("GW WS /ws/events (event bus proxy)", gw_ws_events)
+
+    print("=== City Management ===")
+    check("GW GET /api/cities", gw_list_cities)
+    check("GW GET /api/cities/chicago", gw_get_city)
+    check("GW GET /api/cities/nonexistent", gw_get_city_not_found)
+    check("GW POST /api/cities/upload", gw_upload_city)
 
     print("=== Sidecars (direct) ===")
     check("CAM :9003 /health", sc_camera_health)

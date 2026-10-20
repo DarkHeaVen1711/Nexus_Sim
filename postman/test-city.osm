@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6" generator="postman-test">
+  <node id="1" lat="19.0760" lon="72.8777"/>
+  <node id="2" lat="19.0770" lon="72.8787"/>
+  <node id="3" lat="19.0765" lon="72.8795"/>
+  <way id="10">
+    <nd ref="1"/>
+    <nd ref="2"/>
+    <tag k="highway" v="residential"/>
+  </way>
+  <way id="11">
+    <nd ref="2"/>
+    <nd ref="3"/>
+    <tag k="highway" v="residential"/>
+  </way>
+</osm>
