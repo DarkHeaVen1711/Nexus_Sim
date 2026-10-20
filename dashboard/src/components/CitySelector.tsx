@@ -1,6 +1,7 @@
 import React from 'react';
 import { CITIES, type CityOption } from '../constants';
 import { ComparisonPanel } from './ComparisonPanel';
+import { ENDPOINTS } from '../config/api';
 
 interface CitySelectorProps {
   cities?: CityOption[];
@@ -11,6 +12,7 @@ interface CitySelectorProps {
   viewMode: 'efficiency' | 'equity';
   onViewModeChange: (mode: 'efficiency' | 'equity') => void;
   onSelect: (city: string) => void;
+  onUpload?: () => void;
 }
 
 const MENU_STYLE: React.CSSProperties = {
@@ -62,7 +64,7 @@ const cityButtonStyle = (active: boolean): React.CSSProperties => ({
 const viewBtn = (active: boolean): React.CSSProperties => ({
   flex: '1 1 0',
   padding: '6px 0',
-  border: active ? '1px solid #3b82f6' : '1px solid #374151',
+  border: active ? '1px solid #374151' : '1px solid #374151',
   borderRadius: '6px',
   cursor: 'pointer',
   fontSize: '12px',
@@ -73,6 +75,21 @@ const viewBtn = (active: boolean): React.CSSProperties => ({
   transition: 'all 0.2s',
 });
 
+const uploadBtnStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px 10px',
+  marginBottom: '8px',
+  border: '1px dashed #6b7280',
+  borderRadius: '6px',
+  cursor: 'pointer',
+  fontSize: '12px',
+  fontWeight: 500,
+  fontFamily: 'system-ui, sans-serif',
+  backgroundColor: 'transparent',
+  color: '#9ca3af',
+  transition: 'all 0.2s',
+};
+
 export const CitySelector: React.FC<CitySelectorProps> = ({
   cities = CITIES,
   activeCity,
@@ -82,11 +99,37 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
   viewMode,
   onViewModeChange,
   onSelect,
+  onUpload,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [apiCities, setApiCities] = React.useState<CityOption[]>([]);
+  const [apiLoaded, setApiLoaded] = React.useState(false);
   const runningCity = activeCity ?? null;
 
+  // Fetch dynamic cities from the gateway API on mount
+  React.useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await fetch(ENDPOINTS.HEALTH.replace('/api/health', '/api/cities'));
+        if (res.ok) {
+          const data: Array<{ city_id: string; city_name: string }> = await res.json();
+          setApiCities(
+            data.map((c) => ({ id: c.city_id, label: c.city_name }))
+          );
+        }
+      } catch {
+        // Fall back to hardcoded CITIES if API is unavailable
+      } finally {
+        setApiLoaded(true);
+      }
+    };
+    fetchCities();
+  }, []);
+
   const toggle = () => setOpen(o => !o);
+
+  // Prefer API cities when loaded, else fall back to hardcoded or provided cities
+  const displayCities = apiLoaded ? apiCities : cities ?? CITIES;
 
   return (
     <>
@@ -143,7 +186,7 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
           </div>
 
           <div style={SECTION_STYLE}>City</div>
-          {cities.map((c) => {
+          {displayCities.map((c) => {
             const isActive = runningCity === c.id;
             return (
               <button
@@ -157,6 +200,17 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
               </button>
             );
           })}
+
+          {onUpload && (
+            <button
+              onClick={onUpload}
+              disabled={disabled}
+              style={uploadBtnStyle}
+              title="Upload OSM file to add a new city"
+            >
+              + Upload City (OSM)
+            </button>
+          )}
 
           <div style={{ margin: '10px 0', height: '1px', backgroundColor: 'rgba(107, 114, 128, 0.2)' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '1px' }}>
