@@ -70,6 +70,11 @@ cmake_config.txt
 # Generated API verification results
 postman/results/
 
+# Test artifacts from dynamic city upload tests
+data/*-city/
+data/*-upload/
+gateway_startup.log
+
 # Documents & Presentations
 *.pdf
 *.pptx
