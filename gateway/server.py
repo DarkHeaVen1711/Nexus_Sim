@@ -12,12 +12,19 @@ from __future__ import annotations
 
 import asyncio
 import os
+import shutil
 import sys
-from typing import Any, Dict
+import yaml
+from typing import Any, Dict, List, Optional
+
+# Ensure the repo root is on sys.path so uvicorn can import "gateway.server"
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import httpx
 import uvicorn
-from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 import ssl
@@ -53,6 +60,110 @@ EVENT_BUS_WS_URL = os.environ.get("EVENT_BUS_WS_URL", "wss://127.0.0.1:9005/ws")
 ALGO_HTTP_URL = os.environ.get("ALGO_HTTP_URL", "https://127.0.0.1:9006")
 
 GATEWAY_PORT = int(os.environ.get("GATEWAY_PORT", "8000"))
+
+# ---------------------------------------------------------------------------
+# City Registry (dynamic city onboarding)
+# ---------------------------------------------------------------------------
+
+# Root of the repo (gateway/ is at <repo>/gateway, so data/ is <repo>/data/)
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.path.join(REPO_ROOT, "data")
+CITIES_YAML = os.path.join(REPO_ROOT, "pipeline", "cities.yaml")
+
+# Ensure data dir exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+
+def _load_cities_yaml() -> Dict[str, Any]:
+    """Load cities.yaml if it exists."""
+    if os.path.exists(CITIES_YAML):
+        with open(CITIES_YAML, "r") as f:
+            return yaml.safe_load(f) or {}
+    return {}
+
+
+def _save_cities_yaml(config: Dict[str, Any]) -> None:
+    """Persist cities.yaml with a new city entry."""
+    with open(CITIES_YAML, "w") as f:
+        yaml.safe_dump(config, f, sort_keys=False)
+
+
+def _city_entry_from_yaml(city_id: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "city_id": city_id,
+        "city_name": city_id.replace("-", " ").title(),
+        "source": "config",
+        "chaos": cfg.get("chaos", 0.1),
+        "cv_bbox": cfg.get("cv_bbox"),
+        "od_source": (cfg.get("od_source") or {}).get("type", "unknown"),
+        "status": "ready",
+    }
+
+
+def _city_entry_from_data_dir(city_id: str) -> Optional[Dict[str, Any]]:
+    """Build a city entry by scanning the data directory for graph.json."""
+    city_dir = os.path.join(DATA_DIR, city_id)
+    graph_json = os.path.join(city_dir, "graph.json")
+    if not os.path.isdir(city_dir) or not os.path.exists(graph_json):
+        return None
+
+    # Try to load metadata from graph.json if available
+    node_count = 0
+    edge_count = 0
+    try:
+        import json
+        with open(graph_json, "r") as f:
+            graph = json.load(f)
+        node_count = len(graph.get("nodes", []))
+        edge_count = len(graph.get("edges", []))
+    except Exception:
+        pass
+
+    # Check if it's also in cities.yaml
+    yaml_config = _load_cities_yaml()
+    yaml_entry = yaml_config.get(city_id, {})
+
+    return {
+        "city_id": city_id,
+        "city_name": city_id.replace("-", " ").title(),
+        "source": "upload",
+        "chaos": yaml_entry.get("chaos", 0.1),
+        "cv_bbox": yaml_entry.get("cv_bbox"),
+        "od_source": (yaml_entry.get("od_source") or {}).get("type", "uniform"),
+        "status": "ready",
+        "node_count": node_count,
+        "edge_count": edge_count,
+    }
+
+
+def list_cities() -> List[Dict[str, Any]]:
+    """List all known cities: from cities.yaml and from data/ directories."""
+    cities: Dict[str, Dict[str, Any]] = {}
+
+    # Start with cities.yaml entries
+    yaml_config = _load_cities_yaml()
+    for city_id, cfg in yaml_config.items():
+        cities[city_id] = _city_entry_from_yaml(city_id, cfg)
+
+    # Add / override with data/ directory entries (uploads)
+    if os.path.isdir(DATA_DIR):
+        for entry in os.listdir(DATA_DIR):
+            city_dir = os.path.join(DATA_DIR, entry)
+            if not os.path.isdir(city_dir):
+                continue
+            entry_data = _city_entry_from_data_dir(entry)
+            if entry_data:
+                cities[entry] = entry_data
+
+    return sorted(cities.values(), key=lambda c: c["city_id"])
+
+
+def get_city(city_id: str) -> Optional[Dict[str, Any]]:
+    """Get a single city by id."""
+    for c in list_cities():
+        if c["city_id"] == city_id:
+            return c
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -91,6 +202,116 @@ async def gateway_health() -> Dict[str, Any]:
         "gateway": "NexusSim Unified Backend",
         "port": GATEWAY_PORT,
         "services": services,
+    }
+
+
+# ---------------------------------------------------------------------------
+# City Management Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/cities", response_model=List[Dict[str, Any]])
+async def list_cities_endpoint() -> List[Dict[str, Any]]:
+    """List all cities available for simulation (configured + uploaded)."""
+    return list_cities()
+
+
+@app.get("/api/cities/{city_id}", response_model=Dict[str, Any])
+async def get_city_endpoint(city_id: str) -> Dict[str, Any]:
+    """Get details for a specific city."""
+    city = get_city(city_id)
+    if city is None:
+        raise HTTPException(status_code=404, detail=f"City '{city_id}' not found")
+    return city
+
+
+@app.post("/api/cities/upload", response_model=Dict[str, Any])
+async def upload_city(
+    file: UploadFile = File(...),
+    city_id: Optional[str] = Form(None),
+    city_name: Optional[str] = Form(None),
+) -> Dict[str, Any]:
+    """Upload an OSM file (.osm, .osm.pbf, .graphml) and run the import pipeline.
+
+    The file is saved to data/<city_id>/raw.<ext>, then clean.py and export.py
+    are invoked to produce data/<city_id>/graph.json for the engine.
+    """
+    import tempfile
+
+    # Validate extension
+    filename = file.filename or "upload"
+    ext = os.path.splitext(filename)[1].lower()
+    if ext not in {".osm", ".pbf", ".graphml"}:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file extension '{ext}'. Expected .osm, .osm.pbf, or .graphml",
+        )
+
+    # Determine city_id
+    if city_id is None:
+        # Derive from filename
+        import re as _re
+        city_id = _re.sub(r"[^a-z0-9]+", "-", filename.lower()).strip("-") or "city"
+
+    # Validate city_id doesn't contain path traversal
+    if ".." in city_id or "/" in city_id or "\\" in city_id:
+        raise HTTPException(status_code=400, detail="Invalid city_id")
+
+    # Save uploaded file to a temp location first
+    city_dir = os.path.join(DATA_DIR, city_id)
+    os.makedirs(city_dir, exist_ok=True)
+
+    # Save uploaded file
+    raw_filename = f"raw{ext}"
+    saved_path = os.path.join(city_dir, raw_filename)
+    try:
+        with open(saved_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    finally:
+        file.file.close()
+
+    # Run the import pipeline
+    try:
+        # Add pipeline/src to path for import_osm
+        sys.path.insert(0, os.path.join(REPO_ROOT, "pipeline", "src"))
+        from import_osm import import_osm  # type: ignore
+
+        result = import_osm(
+            source_path=saved_path,
+            city_id=city_id,
+            city_name=city_name,
+            out_dir=city_dir,
+        )
+    except Exception as e:
+        # Clean up on failure
+        import shutil as _shutil
+        if os.path.exists(city_dir):
+            _shutil.rmtree(city_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
+
+    # Update cities.yaml with the new city entry
+    try:
+        yaml_config = _load_cities_yaml()
+        yaml_config[city_id] = {
+            "query": f"{city_name or city_id} (user upload)",
+            "chaos": 0.1,
+            "cv_bbox": result.get("bbox"),
+            "od_source": {"type": "uniform"},
+            "note": f"User-uploaded OSM: {filename}",
+        }
+        _save_cities_yaml(yaml_config)
+    except Exception:
+        # Non-fatal: the city still works from data/ scan
+        pass
+
+    return {
+        "city_id": result["city_id"],
+        "city_name": result["city_name"],
+        "status": result["status"],
+        "node_count": result["node_count"],
+        "edge_count": result["edge_count"],
+        "bbox": result["bbox"],
+        "center": result["center"],
+        "message": f"City '{city_id}' imported successfully",
     }
 
 
