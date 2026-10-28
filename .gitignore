@@ -84,3 +84,8 @@ systems-performance-enterprise-and-the-cloud-by-brendan-gregg*.md
 run_output.txt
 logs/
 
+# Untracked working files to exclude
+Minor_project/
+fig03_01_system_architecture.tex
+fig03_04_mappo_inference_loop.tex
+
