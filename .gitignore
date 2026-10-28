@@ -31,6 +31,8 @@ pipeline/cache/
 *.onnx
 # ...except the tiny committed test fixture for the engine's InferenceEngine
 !engine/tests/fixtures/*.onnx
+# Deployed AI signal policy — required by the engine with --policy ml/policy.onnx
+!ml/policy.onnx
 journey_times.csv
 engine/journey_times.csv
 
