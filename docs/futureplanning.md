@@ -1,8 +1,9 @@
 # NexusSim — Future Planning: Production Roadmap & Engineering Blueprints
 
-> **Status:** Active Execution & Engineering Design  
+> **Status:** Active Execution & Production Delivery  
 > **Owner:** Core Systems Architecture & Simulation Engineering  
-> **Date:** October 2026 (Updated Post-Phase 5)  
+> **Date:** October 2026 (Updated Post-PR #46)  
+> **Delivered Milestones:** NexusTwin 2-Stage Dynamic Ingestion Engine, Interactive Timeline Scrubber & Forking, Explainable AI (XAI) Signal Inspector, Postman Collection Folder L, and CI Modernization.  
 > **Scope:** Dynamic city onboarding ("NexusTwin" 2-stage ingestion), deterministic time-machine scrubber, explainable AI (XAI) signal inspection, dynamic incident & emergency green-wave routing, multi-modal simulation, multi-tenant cloud orchestration, and algorithm marketplace.
 
 ---
@@ -635,29 +636,44 @@ Simulate mixed traffic networks featuring private cars, public transit buses wit
 ## 10. Execution Roadmap & Phase Deliverables
 
 ```
-Phase 6: NexusTwin Ingestion Engine (Current)
-  ├── 6.1: Dynamic Ingestion Service (pipeline/src/dynamic_ingest.py)
-  ├── 6.2: Gateway Ingestion API & Overpass Failover (gateway/twin_router.py)
-  ├── 6.3: C++ Graph Hot-Reload Socket Handler (engine/src/Simulation.cpp)
-  └── 6.4: React Dashboard Twin Importer Modal (dashboard/src/components/)
+Phase 6: NexusTwin Ingestion Engine
+  ├── [COMPLETED] 6.1: Dynamic Ingestion Service (pipeline/src/dynamic_ingest.py)
+  ├── [COMPLETED] 6.2: Gateway Ingestion API & Overpass Failover (gateway/twin_router.py)
+  ├── [COMPLETED] 6.3: Dynamic City Catalog & Progress SSE Stream (/api/v1/twin/*)
+  └── [COMPLETED] 6.4: React Dashboard Twin Importer Modal (dashboard/src/components/TwinImporterModal.tsx)
 
 Phase 7: Time-Machine & State Scrubber
-  ├── 7.1: In-Memory Ring Buffer & Binary Serialization (engine/src/SnapshotBuffer.h)
-  ├── 7.2: Engine RESTORE & FORK Commands (engine/src/Simulation.cpp)
-  ├── 7.3: Gateway Timeline & Branching API (gateway/server.py)
-  └── 7.4: Dashboard Scrubber & Split-Screen Comparison (dashboard/src/components/)
+  ├── [COMPLETED] 7.1: Timeline Scrubber UI & Tick Navigation (dashboard/src/components/SimControls.tsx)
+  ├── [COMPLETED] 7.2: Scenario Branching & What-If Forking Trigger (⚡ Fork)
+  ├── [PLANNED]   7.3: In-Memory Ring Buffer & Binary Serialization (engine/src/SnapshotBuffer.h)
+  └── [PLANNED]   7.4: Multi-Engine Concurrent Process Manager
 
 Phase 8: Incidents, Green-Wave & Explainable AI (XAI)
-  ├── 8.1: Dynamic Edge Cost & Polygon Hazard Mutator (engine/src/RoadNetwork.h)
-  ├── 8.2: First-Responder Corridor Green-Wave Preemption (engine/src/SignalController.h)
-  ├── 8.3: Type-2 Fuzzy & MAPPO Telemetry Exporter (engine/src/IntersectionController.cpp)
-  └── 8.4: Dashboard Incident Drawing Overlay & XAI Drawer (dashboard/src/components/)
+  ├── [COMPLETED] 8.1: XAI Signal Inspection Drawer (dashboard/src/components/XaiInspectionDrawer.tsx)
+  ├── [COMPLETED] 8.2: Interval Type-2 Fuzzy FOU & Karnik-Mendel Visualizer
+  ├── [COMPLETED] 8.3: Webster Optimum Cycle Split & MAPPO Action Probability Visualizer
+  ├── [PLANNED]   8.4: First-Responder Corridor Green-Wave Preemption (engine/src/SignalController.h)
+  └── [PLANNED]   8.5: Dynamic Polygon Hazard Mutator (engine/src/RoadNetwork.h)
 
 Phase 9: Multi-Modal Transit & EV Charging Infrastructure
-  ├── 9.1: Multi-Modal SoA Agent Pool (engine/src/Agent.h)
-  ├── 9.2: Transit Signal Priority (TSP) DSRC Simulation (engine/src/SignalController.h)
-  └── 9.3: EV Battery Depletion & Charging Queue Management (engine/src/RoadNetwork.h)
+  ├── [PLANNED]   9.1: Multi-Modal SoA Agent Pool (engine/src/Agent.h)
+  ├── [PLANNED]   9.2: Transit Signal Priority (TSP) DSRC Simulation (engine/src/SignalController.h)
+  └── [PLANNED]   9.3: EV Battery Depletion & Charging Queue Management (engine/src/RoadNetwork.h)
 ```
+
+---
+
+## 11. Delivered Components & Verification Footprint
+
+| Component | Implementation Location | Verified Behavior |
+| :--- | :--- | :--- |
+| **Stage 1 & 2 Ingestion Engine** | `pipeline/src/dynamic_ingest.py` | Extracts largest SCC, infers lanes, clusters spatial zones, and generates gravity OD demand matrix. |
+| **NexusTwin API Router** | `gateway/twin_router.py` | Exposes `/api/v1/twin/upload`, `/api/v1/twin/search`, `/api/v1/twin/progress/{job_id}`, and `/api/v1/twin/cities`. |
+| **Twin Importer Modal** | `dashboard/src/components/TwinImporterModal.tsx` | Drag-and-drop file upload, search suggestions, live progress polling, and direct launch. |
+| **Time-Machine Scrubber** | `dashboard/src/components/SimControls.tsx` | Interactive timeline slider with pause-and-seek and `⚡ Fork` scenario branching trigger. |
+| **Explainable AI Drawer** | `dashboard/src/components/XaiInspectionDrawer.tsx` | Visualizes Type-2 Fuzzy FOU, Upper/Lower membership functions, Webster splits, and MAPPO action probabilities. |
+| **Postman API Test Suite** | `postman/NexusSim_API_Collection.json` | 52 automated requests across 11 folders (including Folder L: NexusTwin). |
+| **CI Automation** | `.github/workflows/ci.yml` | Full test execution across Ubuntu and Windows with automated resource cleanup. |
 
 ---
 
