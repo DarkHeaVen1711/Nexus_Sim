@@ -12,6 +12,7 @@ during training (TR-5), matching the plan's "wraps simulation state snapshot".
 
 from __future__ import annotations
 
+import collections
 import numpy as np
 
 from .controller import IntersectionController
@@ -50,6 +51,15 @@ class TrafficSim:
         # ">= 15% wait reduction" metric.
         self.total_wait_seconds = 0.0
 
+        # Per-vehicle tracking for exact wait times and corridor travel times
+        self.vehicle_queues = {
+            i: [collections.deque() for _ in range(4)] for i in self.intersections
+        }
+        self.travelling_vehicles = []
+        self.completed_wait_times = []
+        self.completed_corridor_times = []
+        self.discharge_acc = {i: [0.0] * 4 for i in self.intersections}
+
     def _rate(self, intersection: int, approach: int, hour: float) -> float:
         base = self.graph["base_rate"][intersection][approach]
         return base * time_of_day_factor(hour)
@@ -71,6 +81,9 @@ class TrafficSim:
                 arrivals = self.rng.poisson(rate * self.dt)
                 if arrivals > 0:
                     self.queues[i][a] += int(arrivals)
+                    for _ in range(int(arrivals)):
+                        # [spawn_time, wait_time]
+                        self.vehicle_queues[i][a].append([self.sim_time, 0.0])
 
     def _step_discharge(self) -> None:
         saturation = 0.5  # vehicles/second discharged through a green approach
@@ -83,6 +96,27 @@ class TrafficSim:
                 if discharge <= 0:
                     continue
                 self.queues[i][a] -= discharge
+
+                # Per-vehicle discharge accounting
+                self.discharge_acc[i][a] += discharge
+                n_disc = int(self.discharge_acc[i][a])
+                if n_disc > 0:
+                    self.discharge_acc[i][a] -= n_disc
+                    n_disc = min(len(self.vehicle_queues[i][a]), n_disc)
+                    for _ in range(n_disc):
+                        veh = self.vehicle_queues[i][a].popleft()
+                        downstream = self.graph["neighbors"][i][
+                            self.graph["approach_names"][a]
+                        ]
+                        if downstream is None:
+                            self.completed_wait_times.append(veh[1])
+                            self.completed_corridor_times.append(self.sim_time - veh[0])
+                        else:
+                            travel = self.graph["link_travel_s"][(i, downstream)]
+                            self.travelling_vehicles.append(
+                                (self.sim_time + travel, downstream, a, veh)
+                            )
+
                 downstream = self.graph["neighbors"][i][
                     self.graph["approach_names"][a]
                 ]
@@ -98,12 +132,21 @@ class TrafficSim:
         for _, downstream, approach in arrived:
             self.queues[downstream][approach] += 1
 
+        arrived_v = [t for t in self.travelling_vehicles if t[0] <= self.sim_time]
+        self.travelling_vehicles = [
+            t for t in self.travelling_vehicles if t[0] > self.sim_time
+        ]
+        for _, downstream, approach, veh in arrived_v:
+            self.vehicle_queues[downstream][approach].append(veh)
+
     def _step_wait(self) -> None:
         interval_wait = 0.0
         for i in self.intersections:
             for a in range(4):
                 self.wait_acc[i][a] += self.queues[i][a] * self.dt
                 interval_wait += self.queues[i][a] * self.dt
+                for veh in self.vehicle_queues[i][a]:
+                    veh[1] += self.dt
         self.total_wait_seconds += interval_wait
 
     def _snapshot_interval_metrics(self) -> dict:
@@ -115,10 +158,23 @@ class TrafficSim:
             zone_wait[i] = float(sum(per_approach))
             avg_queue[i] = zone_wait[i]
             self.wait_acc[i] = [0.0] * 4
+
+        mean_veh_wait = (
+            float(np.mean(self.completed_wait_times))
+            if len(self.completed_wait_times) > 0
+            else (self.total_wait_seconds / max(1.0, self.completed))
+        )
+        mean_corridor = (
+            float(np.mean(self.completed_corridor_times))
+            if len(self.completed_corridor_times) > 0
+            else 0.0
+        )
         return {
             "avg_queue": avg_queue,
             "zone_wait": zone_wait,
-            "avg_wait_seconds": self.total_wait_seconds / max(1, self.completed),
+            "avg_wait_seconds": mean_veh_wait,
+            "mean_wait": mean_veh_wait,
+            "mean_corridor": mean_corridor,
         }
 
     def step(self, actions: dict) -> dict:
@@ -189,7 +245,7 @@ def _demo() -> None:
     for _ in range(20):
         actions = {i: 0 for i in graph["intersections"]}
         m = sim.step(actions)
-    print("zone_wait:", m["zone_wait"], "queues:", m["queues"])
+    print("zone_wait:", m["zone_wait"], "queues:", m["queues"], "mean_wait:", m["mean_wait"], "mean_corridor:", m["mean_corridor"])
 
 
 if __name__ == "__main__":

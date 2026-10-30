@@ -124,6 +124,8 @@ class NexusSimEnv(gym.Env):
             "zone_wait": zone_waits,
             "completed": metrics["completed"],
             "avg_wait": metrics.get("avg_wait_seconds", 0.0),
+            "mean_wait": metrics.get("mean_wait", metrics.get("avg_wait_seconds", 0.0)),
+            "mean_corridor": metrics.get("mean_corridor", 0.0),
         }
         if self.render_mode == "ascii":
             self._render()
@@ -155,6 +157,8 @@ class NexusSimEnv(gym.Env):
             "zone_wait": zone_waits,
             "completed": metrics["completed"],
             "avg_wait": metrics.get("avg_wait_seconds", 0.0),
+            "mean_wait": metrics.get("mean_wait", metrics.get("avg_wait_seconds", 0.0)),
+            "mean_corridor": metrics.get("mean_corridor", 0.0),
         }
         return obs, rewards, False, truncated, info
 

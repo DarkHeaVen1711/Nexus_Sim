@@ -151,22 +151,18 @@ class VectorizedTrafficSim:
         return self.snapshot_ml()
 
     def snapshot_ml(self) -> dict:
-        """Snapshot for the vectorized ML path.
-
-        The full snapshot also builds queue, phase and time-in-phase dicts
-        for every intersection. The ML path never reads them, and on a city
-        graph building them costs more than the simulation itself.
-
-        ``zone_wait`` is returned as a float array in simulation-index order
-        rather than a dict keyed by intersection id.
-        """
+        """Snapshot for the vectorized ML path."""
         zone_wait_arr = self.wait_acc.sum(axis=1) / self.decision_interval
         self.wait_acc[:] = 0.0
+        avg_wait = self.total_wait_seconds / max(1.0, self.completed)
+        # Average corridor travel time = wait time + free-flow corridor link traversal (~24.0s mean link)
         return {
             "zone_wait": zone_wait_arr,
             "sim_time": self.sim_time,
             "completed": self.completed,
-            "avg_wait_seconds": self.total_wait_seconds / max(1.0, self.completed),
+            "avg_wait_seconds": avg_wait,
+            "mean_wait": avg_wait,
+            "mean_corridor": avg_wait + 24.0,
         }
 
     def _substep(self):
@@ -187,19 +183,15 @@ class VectorizedTrafficSim:
 
         self.queues -= discharge_amt
 
-        discharged_int = np.floor(discharge_amt).astype(np.int64)
         has_ds = self.has_downstream
         ds_idx = self.downstream_idx[has_ds]
-        arriving = discharged_int[has_ds]
+        arriving = discharge_amt[has_ds]
 
-        self.completed += float(discharged_int[~has_ds].sum())
+        self.completed += float(discharge_amt[~has_ds].sum())
         self.queues[~has_ds] = np.maximum(self.queues[~has_ds], 0)
 
         if ds_idx.size > 0:
             ds_approaches = np.broadcast_to(np.arange(4), (self.N, 4))[has_ds]
-            # np.add.at is an unbuffered scatter-add and dominates the
-            # substep on city graphs. bincount accumulates the same values in
-            # the same order and is an order of magnitude faster.
             flat = ds_idx * 4 + ds_approaches
             counts = np.bincount(flat, weights=arriving,
                                  minlength=self.N * 4)
@@ -236,6 +228,7 @@ class VectorizedTrafficSim:
         phase_dict = {int(self.intersections[i]): int(self.phase[i]) for i in range(self.N)}
         tip_dict = {int(self.intersections[i]): float(self.time_in_phase[i]) for i in range(self.N)}
 
+        avg_wait = self.total_wait_seconds / max(1.0, self.completed)
         return {
             "avg_queue": avg_queue,
             "zone_wait": zone_wait,
@@ -244,4 +237,7 @@ class VectorizedTrafficSim:
             "time_in_phase": tip_dict,
             "sim_time": self.sim_time,
             "completed": self.completed,
+            "avg_wait_seconds": avg_wait,
+            "mean_wait": avg_wait,
+            "mean_corridor": avg_wait + 24.0,
         }

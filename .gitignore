@@ -91,3 +91,18 @@ Minor_project/
 fig03_01_system_architecture.tex
 fig03_04_mappo_inference_loop.tex
 
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+cert_page_preview.png
+
+CV_Mini_Project/
+*.docx
+docs/JOURNAL_PAPER_DATA.md
+JOURNAL_PAPER_DATA.md
