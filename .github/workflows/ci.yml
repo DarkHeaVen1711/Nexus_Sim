@@ -224,7 +224,7 @@ jobs:
           cache: 'pip'
 
       - name: Install Gateway Dependencies
-        run: pip install pytest httpx fastapi uvicorn python-multipart python-jose[cryptography] websockets networkx requests
+        run: pip install pyyaml osmnx pytest httpx fastapi uvicorn python-multipart python-jose[cryptography] websockets networkx requests
 
       - name: Gateway TestClient Suite (offline, no live server required)
         run: python -m pytest gateway/ -v
@@ -256,7 +256,7 @@ jobs:
       - name: Install API Check Dependencies
         run: |
           cd ml && pip install -r requirements.txt
-          pip install requests websocket-client fastapi uvicorn python-multipart python-jose[cryptography] opencv-python-headless networkx pytest
+          pip install requests websocket-client fastapi uvicorn python-multipart python-jose[cryptography] opencv-python-headless networkx pytest pyyaml osmnx
 
       - name: Install Node.js for dashboard preview
         uses: actions/setup-node@v4
