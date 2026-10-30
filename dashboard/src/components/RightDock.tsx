@@ -6,6 +6,7 @@ import { ChatPanel } from './ChatPanel';
 import { IncidentReportPanel } from './IncidentReportPanel';
 import { AlgoExplorerPanel } from './AlgoExplorer/AlgoExplorerPanel';
 import { EmissionsPanel } from './EmissionsPanel';
+import { XaiInspectionDrawer } from './XaiInspectionDrawer';
 import type { IntersectionSignalState, SignalMode } from '../hooks/useWebSocket';
 
 interface ZoneMetric {
@@ -34,10 +35,11 @@ interface RightDockProps {
   onToggleCollapse: () => void;
 }
 
-type TabType = 'metrics' | 'vision' | 'chat' | 'algos' | 'emissions' | 'all';
+type TabType = 'metrics' | 'xai' | 'vision' | 'chat' | 'algos' | 'emissions' | 'all';
 
 const TABS: { id: TabType; label: string; icon: string }[] = [
   { id: 'metrics', label: 'Metrics', icon: '📊' },
+  { id: 'xai', label: 'XAI', icon: '🧠' },
   { id: 'vision', label: 'Vision', icon: '👁️' },
   { id: 'chat', label: 'Chat', icon: '💬' },
   { id: 'algos', label: 'Algos', icon: '🧪' },
@@ -60,6 +62,7 @@ export const RightDock: React.FC<RightDockProps> = ({
   onToggleCollapse,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('metrics');
+  const [selectedIntersectionId, setSelectedIntersectionId] = useState<number | null>(null);
 
   if (!metrics && !simActive) {
     return null;
@@ -79,22 +82,19 @@ export const RightDock: React.FC<RightDockProps> = ({
           alignItems: 'center',
           gap: '8px',
           padding: '8px 14px',
-          backgroundColor: 'rgba(17, 24, 39, 0.95)',
-          backdropFilter: 'blur(8px)',
           border: '1px solid #374151',
           borderRadius: '8px',
-          color: '#e5e7eb',
           cursor: 'pointer',
-          fontSize: '13px',
+          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          color: '#e5e7eb',
+          fontFamily: 'system-ui, sans-serif',
+          fontSize: '12px',
           fontWeight: 600,
-          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)',
-          transition: 'all 0.2s',
-          whiteSpace: 'nowrap',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
         }}
       >
         <span>📊</span>
         <span>Analytics Dock</span>
-        <span style={{ fontSize: '12px', color: '#60a5fa', fontWeight: 'bold' }}>+</span>
       </button>
     );
   }
@@ -105,34 +105,32 @@ export const RightDock: React.FC<RightDockProps> = ({
         position: 'absolute',
         top: '20px',
         right: '20px',
-        bottom: '80px',
-        width: '340px',
-        maxHeight: 'calc(100vh - 100px)',
+        bottom: '20px',
+        width: '380px',
         zIndex: 1000,
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        backdropFilter: 'blur(12px)',
-        color: '#ffffff',
-        borderRadius: '12px',
-        boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)',
-        border: '1px solid #374151',
         display: 'flex',
         flexDirection: 'column',
+        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid #374151',
+        borderRadius: '12px',
         overflow: 'hidden',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
         fontFamily: 'system-ui, sans-serif',
       }}
     >
-      {/* Header with Navigation Tabs and Minimize Button */}
+      {/* Top Bar: Tabs & Collapse Button */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 10px',
-          borderBottom: '1px solid rgba(55, 65, 81, 0.7)',
+          borderBottom: '1px solid rgba(55, 65, 81, 0.8)',
           backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          padding: '0 4px',
         }}
       >
-        <div style={{ display: 'flex', gap: '4px', flex: 1, overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: '2px', overflowX: 'auto', padding: '4px 0' }}>
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -143,15 +141,16 @@ export const RightDock: React.FC<RightDockProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  padding: '5px 8px',
-                  borderRadius: '6px',
-                  border: isActive ? '1px solid #3b82f6' : '1px solid transparent',
-                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                  color: isActive ? '#ffffff' : '#9ca3af',
+                  padding: '6px 8px',
+                  border: 'none',
+                  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                  borderRadius: '4px 4px 0 0',
+                  cursor: 'pointer',
                   fontSize: '11px',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease-in-out',
+                  backgroundColor: isActive ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                  color: isActive ? '#60a5fa' : '#9ca3af',
+                  transition: 'all 0.15s',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -162,40 +161,17 @@ export const RightDock: React.FC<RightDockProps> = ({
           })}
         </div>
 
-        {simTick !== null && (
-          <span
-            title="Engine simulation tick"
-            style={{
-              marginLeft: '4px',
-              fontSize: '10px',
-              fontWeight: 700,
-              color: '#93c5fd',
-              backgroundColor: 'rgba(59, 130, 246, 0.15)',
-              border: '1px solid rgba(59, 130, 246, 0.35)',
-              borderRadius: '9999px',
-              padding: '2px 8px',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            tick {simTick}
-          </span>
-        )}
-
         <button
           onClick={onToggleCollapse}
-          title="Minimize Dock"
-          aria-label="Minimize Dock"
+          aria-label="Collapse Dock"
+          title="Collapse Analytics Dock"
           style={{
-            marginLeft: '4px',
-            backgroundColor: 'transparent',
+            background: 'transparent',
             border: 'none',
             color: '#9ca3af',
-            cursor: 'pointer',
-            padding: '4px 6px',
-            borderRadius: '4px',
             fontSize: '14px',
-            fontWeight: 'bold',
-            lineHeight: 1,
+            cursor: 'pointer',
+            padding: '4px 8px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -228,6 +204,47 @@ export const RightDock: React.FC<RightDockProps> = ({
             onSwitchPolicy={onSwitchPolicy}
             embedded={true}
           />
+        )}
+
+        {activeTab === 'xai' && (
+          <div>
+            {signals.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '11px', color: '#9ca3af' }}>Select Junction:</span>
+                <select
+                  value={selectedIntersectionId ?? (signals[0]?.id ?? 0)}
+                  onChange={(e) => setSelectedIntersectionId(Number(e.target.value))}
+                  style={{
+                    backgroundColor: '#1f2937',
+                    border: '1px solid #374151',
+                    borderRadius: '6px',
+                    color: '#e5e7eb',
+                    fontSize: '11px',
+                    padding: '3px 6px',
+                  }}
+                >
+                  {signals.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      Intersection #{s.id}
+                    </option>
+                  ))}
+                </select>
+                {simTick !== null && (
+                  <span style={{ fontSize: '10px', color: '#6b7280', marginLeft: 'auto' }}>
+                    Tick {simTick.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )}
+            <XaiInspectionDrawer
+              isOpen={true}
+              onClose={() => setActiveTab('metrics')}
+              selectedIntersectionId={selectedIntersectionId ?? (signals.length > 0 ? signals[0].id : null)}
+              signals={signals}
+              currentMode={signalMode}
+              onSwitchPolicy={onSwitchPolicy}
+            />
+          </div>
         )}
 
         {activeTab === 'vision' && (

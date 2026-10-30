@@ -2,6 +2,7 @@ import React from 'react';
 import { CITIES, type CityOption } from '../constants';
 import { ComparisonPanel } from './ComparisonPanel';
 import { ENDPOINTS } from '../config/api';
+import { TwinImporterModal } from './TwinImporterModal';
 
 interface CitySelectorProps {
   cities?: CityOption[];
@@ -104,27 +105,29 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
   const [open, setOpen] = React.useState(false);
   const [apiCities, setApiCities] = React.useState<CityOption[]>([]);
   const [apiLoaded, setApiLoaded] = React.useState(false);
+  const [twinModalOpen, setTwinModalOpen] = React.useState(false);
   const runningCity = activeCity ?? null;
 
   // Fetch dynamic cities from the gateway API on mount
-  React.useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const res = await fetch(ENDPOINTS.HEALTH.replace('/api/health', '/api/cities'));
-        if (res.ok) {
-          const data: Array<{ city_id: string; city_name: string }> = await res.json();
-          setApiCities(
-            data.map((c) => ({ id: c.city_id, label: c.city_name }))
-          );
-        }
-      } catch {
-        // Fall back to hardcoded CITIES if API is unavailable
-      } finally {
-        setApiLoaded(true);
+  const fetchCities = React.useCallback(async () => {
+    try {
+      const res = await fetch(ENDPOINTS.HEALTH.replace('/api/health', '/api/cities'));
+      if (res.ok) {
+        const data: Array<{ city_id: string; city_name: string }> = await res.json();
+        setApiCities(
+          data.map((c) => ({ id: c.city_id, label: c.city_name }))
+        );
       }
-    };
-    fetchCities();
+    } catch {
+      // Fall back to hardcoded CITIES if API is unavailable
+    } finally {
+      setApiLoaded(true);
+    }
   }, []);
+
+  React.useEffect(() => {
+    fetchCities();
+  }, [fetchCities]);
 
   const toggle = () => setOpen(o => !o);
 
@@ -201,6 +204,23 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
             );
           })}
 
+          {/* NexusTwin Digital Twin Importer Button */}
+          <button
+            onClick={() => setTwinModalOpen(true)}
+            disabled={disabled}
+            style={{
+              ...uploadBtnStyle,
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%)',
+              border: '1px solid #3b82f6',
+              color: '#60a5fa',
+              fontWeight: 600,
+              marginTop: '6px',
+            }}
+            title="Auto-synthesize digital twin from search or upload OSM"
+          >
+            🌐 NexusTwin Importer (Search / Drop)
+          </button>
+
           {onUpload && (
             <button
               onClick={onUpload}
@@ -222,6 +242,16 @@ export const CitySelector: React.FC<CitySelectorProps> = ({
           <ComparisonPanel />
         </div>
       )}
+
+      {/* NexusTwin Digital Twin Importer Modal */}
+      <TwinImporterModal
+        isOpen={twinModalOpen}
+        onClose={() => setTwinModalOpen(false)}
+        onCitySelected={(newCityId) => {
+          fetchCities();
+          onSelect(newCityId);
+        }}
+      />
     </>
   );
 };

@@ -64,6 +64,7 @@ from gateway.auth import (  # type: ignore
 from import_osm import import_osm  # type: ignore
 
 # Import platform services (algorithm registry, rate limiting, emissions, ingestion)
+from gateway.twin_router import router as twin_router
 from gateway.platform_services import (  # type: ignore
     RegisteredAlgorithm,
     algorithm_registry,
@@ -87,6 +88,8 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend dashboard (port 3000)
+app.include_router(twin_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

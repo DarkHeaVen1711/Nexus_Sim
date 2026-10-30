@@ -16,6 +16,9 @@ export const BACKEND_HTTP = isBrowser ? '' : `https://localhost:${BACKEND_PORT}`
 export const BACKEND_WS = isBrowser ? `${wsProto}//${host}` : `wss://localhost:${BACKEND_PORT}`;
 
 export const ENDPOINTS = {
+  /** Gateway base HTTP URL */
+  GATEWAY_URL: BACKEND_HTTP,
+
   /** C++ Simulation Engine WebSocket stream (via Gateway) */
   ENGINE_WS: `${BACKEND_WS}/ws`,
 
@@ -42,5 +45,10 @@ export const ENDPOINTS = {
 
   /** Public emissions estimate (pure computation) */
   EMISSIONS_ESTIMATE: `${BACKEND_HTTP}/api/emissions/estimate`,
-};
 
+  /** NexusTwin Ingestion Endpoints */
+  TWIN_SEARCH: `${BACKEND_HTTP}/api/v1/twin/search`,
+  TWIN_UPLOAD: `${BACKEND_HTTP}/api/v1/twin/upload`,
+  TWIN_PROGRESS: `${BACKEND_HTTP}/api/v1/twin/progress`,
+  TWIN_CITIES: `${BACKEND_HTTP}/api/v1/twin/cities`,
+};

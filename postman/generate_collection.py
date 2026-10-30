@@ -366,13 +366,54 @@ def build_collection() -> dict:
         ]),
     ]))
 
+    # ---- L. NexusTwin Digital Twin ---------------------------------------
+    items.append(folder("L - NexusTwin Digital Twin (:8000)", [
+        req("L51 GET /api/v1/twin/cities", "GET", "{{gw}}/api/v1/twin/cities", tests=[
+            status_test(200, "L51"),
+            "pm.test('L51 - array response', () => { pm.expect(pm.response.json()).to.be.an('array'); });",
+        ]),
+        req("L52 POST /api/v1/twin/search empty query -> 400", "POST", "{{gw}}/api/v1/twin/search", [ct_json()],
+            json_body({"query": "   "}), [
+            status_test(400, "L52"),
+            "pm.test('L52 - validation error detail', () => { pm.expect(pm.response.json().detail).to.include('empty'); });",
+        ]),
+        req("L53 POST /api/v1/twin/search valid query", "POST", "{{gw}}/api/v1/twin/search", [ct_json()],
+            json_body({"query": "Shantigram, Ahmedabad", "workspace_id": "ws_default"}), [
+            status_test(200, "L53"),
+            "pm.test('L53 - status queued', () => { pm.expect(pm.response.json().status).to.eql('queued'); });",
+            "pm.test('L53 - has job_id', () => { pm.expect(pm.response.json()).to.have.property('job_id'); });",
+            "pm.collectionVariables.set('twin_job_id', pm.response.json().job_id);",
+        ]),
+        req("L54 GET /api/v1/twin/progress/:job_id", "GET", "{{gw}}/api/v1/twin/progress/{{twin_job_id}}", tests=[
+            "pm.test('L54 - Status 200 or 404', () => { pm.expect(pm.response.code).to.be.oneOf([200, 404]); });",
+            "if (pm.response.code === 200) {",
+            "  pm.test('L54 - progress has stage & pct', () => {",
+            "    const d = pm.response.json();",
+            "    pm.expect(d).to.have.property('stage');",
+            "    pm.expect(d).to.have.property('progress_pct');",
+            "  });",
+            "}",
+        ]),
+        req("L55 GET /api/v1/twin/progress/nonexistent -> 404", "GET", "{{gw}}/api/v1/twin/progress/nonexistent_twin_job", tests=[
+            status_test(404, "L55"),
+        ]),
+        req("L56 DELETE /api/v1/twin/cities/invalid..path -> 400", "DELETE", "{{gw}}/api/v1/twin/cities/..invalid", tests=[
+            status_test(400, "L56"),
+            "pm.test('L56 - invalid path detail', () => { pm.expect(pm.response.json().detail).to.include('Invalid'); });",
+        ]),
+        req("L57 DELETE /api/v1/twin/cities/nonexistent -> 404", "DELETE", "{{gw}}/api/v1/twin/cities/nonexistent-twin-city", tests=[
+            status_test(404, "L57"),
+            "pm.test('L57 - city not found detail', () => { pm.expect(pm.response.json().detail).to.include('not found'); });",
+        ]),
+    ]))
+
     return {
         "info": {
             "name": "NexusSim API",
             "description": (
                 "Full-stack API collection for NexusSim. Import into Postman (File > Import) "
                 "and run top to bottom. Covers A-H (original), I (city management), "
-                "J (auth & simulation), K (platform services). All services must be running "
+                "J (auth & simulation), K (platform services), L (NexusTwin dynamic digital twin). All services must be running "
                 "(run.bat). Gateway serves HTTPS with a local self-signed cert."
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
@@ -389,6 +430,7 @@ def build_collection() -> dict:
             {"key": "test_sim_id", "value": ""},
             {"key": "test_scenario_id", "value": ""},
             {"key": "registered_algo_id", "value": ""},
+            {"key": "twin_job_id", "value": ""},
         ],
         "item": items,
     }
