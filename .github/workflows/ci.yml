@@ -159,7 +159,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
-            libglib2.0-0 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
+            libglib2.0-0 libsm6 libxext6 libxrender-dev libgl1 \
             libgomp1
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
@@ -224,10 +224,10 @@ jobs:
           cache: 'pip'
 
       - name: Install Gateway Dependencies
-        run: pip install fastapi uvicorn python-multipart python-jose[cryptography] websockets
+        run: pip install pytest httpx fastapi uvicorn python-multipart python-jose[cryptography] websockets networkx requests
 
       - name: Gateway TestClient Suite (offline, no live server required)
-        run: python -m pytest gateway/test_gateway.py -v
+        run: python -m pytest gateway/ -v
 
   # ------------------------------------------- postman / api_check verification
   api-verification:
@@ -243,7 +243,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
-            libglib2.0-0 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
+            libglib2.0-0 libsm6 libxext6 libxrender-dev libgl1 \
             libgomp1
 
       - name: Set up Python ${{ env.PYTHON_VERSION }}
@@ -256,7 +256,7 @@ jobs:
       - name: Install API Check Dependencies
         run: |
           cd ml && pip install -r requirements.txt
-          pip install requests websocket-client fastapi uvicorn python-multipart python-jose[cryptography] opencv-python-headless
+          pip install requests websocket-client fastapi uvicorn python-multipart python-jose[cryptography] opencv-python-headless networkx pytest
 
       - name: Install Node.js for dashboard preview
         uses: actions/setup-node@v4

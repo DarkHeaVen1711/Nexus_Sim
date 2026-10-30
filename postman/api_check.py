@@ -522,6 +522,46 @@ def gw_scenario_compare():
     return "404, not found (acceptable)"
 
 
+# --------------------------------------------------------------- NexusTwin checks
+def gw_twin_cities():
+    r = requests.get(base_for("gateway") + "/api/v1/twin/cities", timeout=8)
+    r.raise_for_status()
+    d = r.json()
+    if not isinstance(d, list):
+        raise RuntimeError(f"expected list of cities, got: {type(d)}")
+    return f"200, twin_cities={len(d)}"
+
+
+def gw_twin_search_empty():
+    r = requests.post(base_for("gateway") + "/api/v1/twin/search", json={"query": "   "}, timeout=8)
+    if r.status_code != 400:
+        raise RuntimeError(f"expected 400 for empty search, got {r.status_code}")
+    return "400, rejected empty query"
+
+
+def gw_twin_upload_test():
+    test_osm = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test-city.osm")
+    if not os.path.exists(test_osm):
+        return "skipped, test-city.osm not found"
+    with open(test_osm, "rb") as f:
+        files = {"file": ("test-city.osm", f, "application/xml")}
+        data = {"city_name": "Test Mini City", "workspace_id": "ws_default"}
+        r = requests.post(base_for("gateway") + "/api/v1/twin/upload", files=files, data=data, timeout=10)
+    r.raise_for_status()
+    d = r.json()
+    job_id = d.get("job_id")
+    if not job_id:
+        raise RuntimeError(f"missing job_id in upload response: {d}")
+    return f"200, queued job_id={job_id}"
+
+
+def gw_twin_progress_nonexistent():
+    r = requests.get(base_for("gateway") + "/api/v1/twin/progress/nonexistent_job_12345", timeout=8)
+    if r.status_code != 404:
+        raise RuntimeError(f"expected 404 for nonexistent job, got {r.status_code}")
+    return "404, nonexistent job handled"
+
+
 # --------------------------------------------------------------- sidecar checks
 def sc_camera_health():
     r = requests.get(base_for("camera") + "/health", timeout=5)
@@ -668,6 +708,12 @@ if __name__ == "__main__":
     check("GW POST /api/ingest/weather", gw_ingest_weather)
     check("GW GET /api/platform/rate-limit", gw_rate_limit_stats)
     check("GW GET /api/simulations/{id}/compare/{scenario_id}", gw_scenario_compare)
+
+    print("=== NexusTwin Digital Twin ===")
+    check("GW GET /api/v1/twin/cities", gw_twin_cities)
+    check("GW POST /api/v1/twin/search (empty query)", gw_twin_search_empty)
+    check("GW POST /api/v1/twin/upload", gw_twin_upload_test)
+    check("GW GET /api/v1/twin/progress (nonexistent)", gw_twin_progress_nonexistent)
 
     print("=== Sidecars (direct) ===")
     check("CAM :9003 /health", sc_camera_health)

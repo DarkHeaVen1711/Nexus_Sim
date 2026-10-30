@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "NexusSim API",
-    "description": "Full-stack API collection for NexusSim. Import into Postman (File > Import) and run top to bottom. Covers A-H (original), I (city management), J (auth & simulation), K (platform services). All services must be running (run.bat). Gateway serves HTTPS with a local self-signed cert.",
+    "description": "Full-stack API collection for NexusSim. Import into Postman (File > Import) and run top to bottom. Covers A-H (original), I (city management), J (auth & simulation), K (platform services), L (NexusTwin dynamic digital twin). All services must be running (run.bat). Gateway serves HTTPS with a local self-signed cert.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -47,6 +47,10 @@
     },
     {
       "key": "registered_algo_id",
+      "value": ""
+    },
+    {
+      "key": "twin_job_id",
       "value": ""
     }
   ],
@@ -1446,6 +1450,186 @@
                 "exec": [
                   "pm.test('K50 - Status 200', () => { pm.response.to.have.status(200); });",
                   "pm.test('K50 - stats', () => { pm.expect(pm.response.json()).to.have.property('tracked_requests'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "L - NexusTwin Digital Twin (:8000)",
+      "item": [
+        {
+          "name": "L51 GET /api/v1/twin/cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{gw}}/api/v1/twin/cities"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L51 - Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('L51 - array response', () => { pm.expect(pm.response.json()).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L52 POST /api/v1/twin/search empty query -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gw}}/api/v1/twin/search",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"   \"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L52 - Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('L52 - validation error detail', () => { pm.expect(pm.response.json().detail).to.include('empty'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L53 POST /api/v1/twin/search valid query",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gw}}/api/v1/twin/search",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Shantigram, Ahmedabad\",\n  \"workspace_id\": \"ws_default\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L53 - Status 200', () => { pm.response.to.have.status(200); });",
+                  "pm.test('L53 - status queued', () => { pm.expect(pm.response.json().status).to.eql('queued'); });",
+                  "pm.test('L53 - has job_id', () => { pm.expect(pm.response.json()).to.have.property('job_id'); });",
+                  "pm.collectionVariables.set('twin_job_id', pm.response.json().job_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L54 GET /api/v1/twin/progress/:job_id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{gw}}/api/v1/twin/progress/{{twin_job_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L54 - Status 200 or 404', () => { pm.expect(pm.response.code).to.be.oneOf([200, 404]); });",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('L54 - progress has stage & pct', () => {",
+                  "    const d = pm.response.json();",
+                  "    pm.expect(d).to.have.property('stage');",
+                  "    pm.expect(d).to.have.property('progress_pct');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L55 GET /api/v1/twin/progress/nonexistent -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{gw}}/api/v1/twin/progress/nonexistent_twin_job"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L55 - Status 404', () => { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L56 DELETE /api/v1/twin/cities/invalid..path -> 400",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{gw}}/api/v1/twin/cities/..invalid"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L56 - Status 400', () => { pm.response.to.have.status(400); });",
+                  "pm.test('L56 - invalid path detail', () => { pm.expect(pm.response.json().detail).to.include('Invalid'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "L57 DELETE /api/v1/twin/cities/nonexistent -> 404",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{gw}}/api/v1/twin/cities/nonexistent-twin-city"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('L57 - Status 404', () => { pm.response.to.have.status(404); });",
+                  "pm.test('L57 - city not found detail', () => { pm.expect(pm.response.json().detail).to.include('not found'); });"
                 ]
               }
             }

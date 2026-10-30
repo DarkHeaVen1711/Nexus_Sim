@@ -299,4 +299,19 @@ async def delete_twin_city(city_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"City '{city_id}' not found")
 
     shutil.rmtree(cdir, ignore_errors=True)
+
+    # Clean up entry in pipeline/cities.yaml if present
+    cities_yaml = os.path.join(_REPO_ROOT, "pipeline", "cities.yaml")
+    if os.path.exists(cities_yaml):
+        try:
+            import yaml
+            with open(cities_yaml, "r", encoding="utf-8") as f:
+                cfgs = yaml.safe_load(f) or {}
+            if city_id in cfgs:
+                del cfgs[city_id]
+                with open(cities_yaml, "w", encoding="utf-8") as f:
+                    yaml.dump(cfgs, f, sort_keys=True)
+        except Exception:
+            pass
+
     return {"status": "deleted", "city_id": city_id}
