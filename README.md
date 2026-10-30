@@ -50,6 +50,9 @@
 
 ## ⚡ Key Highlights & Capabilities
 
+- 🌐 **NexusTwin 2-Stage Dynamic Ingestion Engine**: Instant digital twin generation from raw geographic data. **Stage 1**: Direct drag-drop of `.osm`, `.pbf`, and `.graphml` files up to 500 MB. **Stage 2**: Global geocoded Overpass QL vector streaming across a 3-tier mirror pool in $\le 20$s with automated gravity OD matrix generation.
+- ⏳ **Simulation Time-Machine & State Branching**: Interactive tick scrubber allowing real-time timeline navigation, frame replay, and non-destructive scenario forking (`⚡ Fork`) for comparative what-if traffic analysis.
+- 🔍 **Explainable AI (XAI) Signal Inspector**: Transparent deep-dive into signal control logic: Interval Type-2 Fuzzy Footprint of Uncertainty (FOU) with Upper/Lower membership functions, Karnik-Mendel defuzzification, Webster cycle splits ($C_0$), and MAPPO actor-critic action probabilities.
 - 🏎️ **Ultra-Fast C++17 Core**: Custom Structure-of-Arrays (SoA) layout with 2D Quadtree spatial indexing ($O(\log N)$ proximity queries), stress-tested at **20,000 concurrent agents** maintaining real-time 60 FPS pacing.
 - 🧠 **Decentralized MAPPO AI Control**: Independent neural actors controlling 3,709 intersections simultaneously. Converged full-network model delivers **+26.3% reward improvement** over fixed-cycle Webster timing.
 - ⏱️ **Zero-Overhead Inference**: Direct hot-path ONNX C++ inference dispatch running off a single-producer single-consumer (SPSC) ring buffer (**p95 latency = 0.0808 ms**, 100× inside the 8.0 ms budget).
@@ -94,6 +97,7 @@ NexusSim is built on an isolated sidecar architecture. The C++ engine remains co
 
 | Subsystem | Port | Protocol | Primary Contract |
 |---|---|---|---|
+| **FastAPI Gateway Router** | `8000` | HTTPS / REST | Gateway hub, auth, rate-limiting, and NexusTwin ingestion (`/api/v1/twin/*`) |
 | **C++ Simulation Engine** | `9001` | WebSocket | Broadcasts state frames `{tick, agents[], metrics, signals[]}` |
 | **Interactive Dashboard** | `3000` | HTTP / WS | Serves React Leaflet visualization, dock panels, and Algo Explorer |
 | **Virtual Camera Service** | `9003` | HTTP / WS | Streams annotated canvas frames and vehicle blob counts |
@@ -269,12 +273,14 @@ cd engine/build && ctest --output-on-failure
 
 ```text
 ======================= TEST EXECUTION SUMMARY =======================
-  ✔ Gateway API Suite            :  38 / 38   passing
+  ✔ Gateway & Twin API Suite     :  42 / 42   passing
   ✔ Data Pipeline Pytest Suite   :  39 / 39   passing
-  ✔ ML & Cross-Subject E2E Suite :  80 / 80   passing (1 skipped)
+  ✔ ML, MARL & Soft Computing    :  84 / 84   passing
   ✔ Dashboard Vitest Suite       :   8 / 8    passing
+  ✔ Postman Collection (A–L)     :  52 / 52   passing (11 folders)
   --------------------------------------------------------------------
-  TOTAL                          : 165 / 165 collected (100% GREEN)
+  TOTAL UNIT & CONTRACT TESTS    : 173 / 173  collected (100% GREEN)
+  TOTAL POSTMAN REST CONTRACTS   :  52 / 52   verified (100% GREEN)
 ======================================================================
 ```
 

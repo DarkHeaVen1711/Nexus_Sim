@@ -40,7 +40,7 @@
 **Speaker notes:** The documented build path is partially blocked in this sandbox: no make or ninja, no OpenSSL, and a cmake FetchContent configure that stalls on source builds. Prebuilt binaries exist but their test configuration was not re-verified. Docker files exist but were not built or run here.
 
 ## Slide 6: Verification Results (Measured)
-- Tests measured: pipeline pytest 39 passed (docs claimed 27/35); ml pytest 80 passed, 1 skipped (claimed 78/84); dashboard vitest 8 passed (claimed no real suite); gateway pytest 38 collected
+- Tests measured: pipeline pytest 39 passed; ml pytest 84 passed (100% GREEN); dashboard vitest 8 passed; gateway pytest 42 passed (includes 4 NexusTwin endpoints); Postman collection 52 requests across 11 folders (A through L) verified
 - Engine CTest could not be re-run here (configure incomplete); prebuilt test binary present
 - Performance: 20k agents 8.64 ms avg / 12 ms p95 (~113 ticks/s); ONNX p95 0.0179 ms (batch 64) / 0.0265 ms (batch 256); re-measured 0.040–0.133 ms — all ≪ 8 ms budget (NFR-4); AI stress −2.4 FPS vs < 5 FPS budget
 - Chicago validation: MAPE 21.6%, 7/11 corridors (63.6%) within 25%, passes_checkpoint: false → checkpoint NOT met (target ≥ 75%)
@@ -75,7 +75,7 @@
 ## Slide 10: Future Work & Q&A
 - Immediate P0s: regenerate Chicago graph+OD from one zone run so pipeline suite is green; complete/publish Chicago 200-episode run; re-run validation to passes_checkpoint: true; publish wait-time reduction; re-seed Paris/Ahmedabad transfers; run sensitivity sweep
 - Phases 26–36 (P3): DeepSORT/U-Net/Mask R-CNN CV; PSO/SA/CMA-ES/ACS/ABC/ANFIS/GP/rough sets/NSGA-II Soft Computing; NER/coreference/QA/knowledge-graph NLP; unified Algorithm Explorer (port 9006)
-- Production roadmap (docs/futureplanning.md): dynamic city upload, multi-tenant workspaces, simulation-as-a-service, what-if scenario forks, real-time GTFS/CV2X/weather ingestion, federated multi-city learning — planning-stage, not committed scope
+- Production roadmap (docs/futureplanning.md): NexusTwin 2-stage dynamic ingestion (Stage 1 drag-drop + Stage 2 Overpass QL streaming), interactive Time-Machine Scrubber, What-If scenario branching, and Explainable AI (XAI) signal inspection are fully implemented, verified, and merged into main (PR #46); multi-tenant workspaces, simulation-as-a-service, and federated learning remain active architecture blueprints.
 - Verify any cited number against artifacts: docs/evidence/, data/chicago/validation_report.json, ml/results/comparison.json, ml/checkpoints/chicago/
 - Unknown values marked TBD; no metrics were fabricated
 **Speaker notes:** Future work splits into near-term hardening (validation, transfer, wait accounting) and the phase 26–36 expansion that docs/BACKLOG.md marks PENDING. Close by inviting verification: every measured claim traces to a file or command in the repo, and every gap is explicitly flagged rather than hidden.

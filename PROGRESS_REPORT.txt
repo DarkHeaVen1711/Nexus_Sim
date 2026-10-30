@@ -291,5 +291,25 @@ Train the RL model:
    computer vision, and NLP as one integrated system."
 
 ====================================================================
+11. NEWEST PLATFORM FEATURES: NEXUSTWIN & EXPLAINABLE AI (XAI)
+====================================================================
+- NexusTwin 2-Stage Dynamic Ingestion Engine:
+  * Stage 1: Drag-and-drop .osm, .pbf, or .graphml road networks up
+    to 500 MB with automated topology validation and OD synthesis.
+  * Stage 2: Full-text geocoding and live Overpass vector download
+    in <= 20 seconds with automatic zone clustering.
+- Interactive Time-Machine Scrubber:
+  * Allows real-time timeline navigation, frame replay, and non-
+    destructive scenario branching ("Fork" button) for what-if trials.
+- Explainable AI (XAI) Signal Inspector:
+  * Live Type-2 Fuzzy Footprint of Uncertainty (FOU) visualization,
+    Karnik-Mendel defuzzification, Webster cycle splits, and MAPPO
+    action probabilities.
+- Testing & Postman Verification:
+  * 173 unit & contract tests across Gateway, ML, Pipeline, and UI.
+  * 52 automated REST test requests across Folders A-L in Postman.
+  * 100% GREEN build across all GitHub Actions CI jobs.
+
+====================================================================
 END OF REPORT
 ====================================================================

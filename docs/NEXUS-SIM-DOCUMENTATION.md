@@ -722,6 +722,29 @@ Run the NLP service from `ml/nlp`. The `/incident` handler imports
 
 Standalone camera demo: `python ml/cv/virtual_camera.py`.
 
+### 4.11 NexusTwin Dynamic Ingestion Engine & Time-Machine Platform
+
+NexusTwin introduces dynamic, on-demand digital twin generation and interactive simulation inspection without restarting the stack.
+
+#### 1. Ingestion Modes
+- **Stage 1: Direct File Ingestion (`POST /api/v1/twin/upload`)**
+  Accepts user-uploaded `.osm`, `.pbf`, or `.graphml` files (up to 500 MB). The engine validates geometry, extracts the largest strongly connected component (SCC), infers highway lanes, clusters spatial zones, and synthesizes a gravity OD demand matrix via `pipeline/src/dynamic_ingest.py`.
+- **Stage 2: Global Geocoded Search (`POST /api/v1/twin/search`)**
+  Accepts free-text location queries (e.g. `Shantigram, Ahmedabad`). Resolves geographic bounds via Nominatim and streams live highway vector geometries from a 3-tier Overpass QL mirror pool in $\le 20$ seconds.
+
+#### 2. REST & Streaming API Endpoints (`gateway/twin_router.py`)
+- `GET /api/v1/twin/cities`: Lists all synthesized digital twin cities and their topology metadata.
+- `POST /api/v1/twin/upload`: Multipart file upload returning `{job_id, status: "queued", stream_url}`.
+- `POST /api/v1/twin/search`: JSON search query returning `{job_id, status: "queued", stream_url}`.
+- `GET /api/v1/twin/progress/{job_id}`: Granular progress tracking supporting JSON polling and Server-Sent Events (`Accept: text/event-stream`).
+- `DELETE /api/v1/twin/cities/{city_id}`: Deletes generated city topology files and cleans up `pipeline/cities.yaml`.
+
+#### 3. Frontend Inspection & What-If Branching
+- **Time-Machine State Scrubber (`dashboard/src/components/SimControls.tsx`)**:
+  Interactive timeline slider supporting scrub-to-tick navigation, paused inspection, and non-destructive scenario forking (`⚡ Fork`) to compare diverging control policies.
+- **Explainable AI (XAI) Signal Drawer (`dashboard/src/components/XaiInspectionDrawer.tsx`)**:
+  Interactive inspection dock showing Interval Type-2 Fuzzy Footprint of Uncertainty (FOU), Upper/Lower membership functions, Karnik-Mendel defuzzification, Webster formula cycle splits ($C_0$), and MAPPO actor-critic action probabilities.
+
 ### 4.10 Generating City Data
 
 ```bash
