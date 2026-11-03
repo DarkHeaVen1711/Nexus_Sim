@@ -115,7 +115,10 @@ public:
                     if (!policy->is_transit && policy->is_bus_only(edge.u, edge.v)) continue;
                 }
 
-                double edge_cost = edge.length_m;
+                double penalty = g.get_edge_penalty(edge.u, edge.v);
+                if (penalty >= Graph::INFINITY_PENALTY) continue;
+
+                double edge_cost = edge.length_m * penalty;
                 if (policy && !policy->is_transit) {
                     edge_cost += policy->get_toll(edge.u, edge.v) * policy->toll_weight * 50.0;
                 }
@@ -176,7 +179,10 @@ public:
                     if (!policy->is_transit && policy->is_bus_only(edge.u, edge.v)) continue;
                 }
 
-                double edge_cost = edge.length_m * noise(rng);
+                double penalty = g.get_edge_penalty(edge.u, edge.v);
+                if (penalty >= Graph::INFINITY_PENALTY) continue;
+
+                double edge_cost = edge.length_m * penalty * noise(rng);
                 if (policy && !policy->is_transit) {
                     edge_cost += policy->get_toll(edge.u, edge.v) * policy->toll_weight * 50.0;
                 }
