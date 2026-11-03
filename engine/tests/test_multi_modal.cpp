@@ -38,3 +38,19 @@ TEST(MultiModalTest, AgentSystemSoAInitialization) {
 
     EXPECT_DOUBLE_EQ(agents.target_speed[bus_idx], 13.89);
 }
+
+TEST(EVTest, BatteryDrainDuringCruising) {
+    AgentSystem agents;
+    size_t ev = agents.add_agent(100, 1, 2, AgentType::ElectricVehicle);
+    agents.battery_soc[ev] = 0.50; // 50%
+    agents.battery_capacity_kwh[ev] = 60.0; // 60 kWh pack
+
+    // Cruise for 10 km (10,000 m) over 600 seconds (10 minutes)
+    simulate_ev_consumption(agents, ev, 10000.0, 600.0);
+
+    // Energy used: 10 km * 0.18 kWh/km = 1.8 kWh traction + 1.5 kW * (600/3600) h = 0.25 kWh aux = 2.05 kWh
+    // Delta SoC = 2.05 / 60.0 = 0.034166...
+    // Expected new SoC ~ 0.50 - 0.034166 = 0.46583
+    EXPECT_LT(agents.battery_soc[ev], 0.50);
+    EXPECT_NEAR(agents.battery_soc[ev], 0.4658, 0.001);
+}
