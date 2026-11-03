@@ -103,3 +103,30 @@ TEST(GreenWaveTest, StarvationPreventionCompensatesCrossStreet) {
     EXPECT_EQ(ctrl.current_phase_idx, 1);
     EXPECT_DOUBLE_EQ(ctrl.current_timer, 15.0); // 10s base + 5s compensation!
 }
+
+TEST(GreenWaveTest, MultiHopCorridorPropagation) {
+    std::unordered_map<int64_t, SignalController> controllers;
+    // Create 3 chained intersections along corridor edges 101, 102, 103
+    for (int i = 1; i <= 3; ++i) {
+        SignalController sc(i * 10);
+        SignalController::Phase p0;
+        p0.allowed_edges = {100 + i};
+        p0.green_time = 20.0;
+        SignalController::Phase p1;
+        p1.allowed_edges = {200 + i};
+        p1.green_time = 20.0;
+        sc.phases = {p0, p1};
+        sc.current_phase_idx = 1; // Initially in red for the corridor
+        controllers.emplace(i * 10, sc);
+    }
+
+    std::vector<int64_t> route = {101, 102, 103};
+    size_t count = trigger_corridor_green_wave(route, controllers, 25.0);
+    EXPECT_EQ(count, 3u);
+
+    // All 3 controllers along the corridor should now have active green for the corridor edges
+    for (int i = 1; i <= 3; ++i) {
+        EXPECT_TRUE(controllers[i * 10].is_preempted);
+        EXPECT_TRUE(controllers[i * 10].is_green(100 + i));
+    }
+}
