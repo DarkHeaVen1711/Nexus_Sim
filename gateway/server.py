@@ -65,6 +65,10 @@ from import_osm import import_osm  # type: ignore
 
 # Import platform services (algorithm registry, rate limiting, emissions, ingestion)
 from gateway.twin_router import router as twin_router
+from gateway.scenario_router import router as scenario_router
+from gateway.incident_router import router as incident_router
+from gateway.emergency_router import router as emergency_router
+from gateway.multimodal_router import router as multimodal_router
 from gateway.platform_services import (  # type: ignore
     RegisteredAlgorithm,
     algorithm_registry,
@@ -89,6 +93,10 @@ app = FastAPI(
 
 # Enable CORS for frontend dashboard (port 3000)
 app.include_router(twin_router)
+app.include_router(scenario_router)
+app.include_router(incident_router)
+app.include_router(emergency_router)
+app.include_router(multimodal_router)
 
 app.add_middleware(
     CORSMiddleware,
