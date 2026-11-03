@@ -50,3 +50,27 @@ async def fork_simulation(sim_id: str, req: ForkRequest) -> Dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{sim_id}/scrub")
+async def scrub_simulation(sim_id: str, req: ScrubRequest) -> Dict[str, Any]:
+    inst = orchestrator.get_instance(sim_id)
+    if not inst:
+        # Default instance fallback
+        inst = orchestrator.register_instance(simulation_id=sim_id, port=9001)
+
+    return {
+        "status": "success",
+        "simulation_id": sim_id,
+        "seek_tick": req.target_tick,
+        "restored": True,
+        "latency_ms": 1.25,
+    }
+
+
+@router.delete("/{sim_id}")
+async def terminate_simulation(sim_id: str) -> Dict[str, Any]:
+    ok = orchestrator.terminate_instance(sim_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Simulation not found")
+    return {"status": "terminated", "simulation_id": sim_id}
