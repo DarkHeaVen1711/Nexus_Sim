@@ -131,3 +131,32 @@ TEST(SnapshotBufferTest, MultiAgentStateRoundTrip) {
         EXPECT_EQ(dst_agents.current_edge_idx[i], static_cast<int64_t>(i * 2));
     }
 }
+
+TEST(SnapshotBufferTest, LargeScaleStateReconstruction) {
+    SnapshotRingBuffer buf(5);
+    AgentSystem src_agents;
+    const size_t AGENT_COUNT = 10000;
+    for (size_t i = 0; i < AGENT_COUNT; ++i) {
+        src_agents.add_agent(static_cast<int64_t>(i), 1, 2, AgentType::Car);
+        src_agents.position[i] = static_cast<double>(i * 3);
+        src_agents.velocity[i] = 14.0;
+        src_agents.current_edge_idx[i] = static_cast<int64_t>(i % 500);
+    }
+
+    std::unordered_map<int64_t, SignalController> src_ctrls;
+    EXPECT_TRUE(buf.push_snapshot(5000, src_agents, src_ctrls, 123456789ULL));
+
+    AgentSystem dst_agents;
+    std::unordered_map<int64_t, SignalController> dst_ctrls;
+    SnapshotHeader hdr;
+    EXPECT_TRUE(buf.restore_snapshot(5000, dst_agents, dst_ctrls, &hdr));
+
+    EXPECT_EQ(hdr.agent_count, AGENT_COUNT);
+    EXPECT_EQ(dst_agents.size(), AGENT_COUNT);
+    EXPECT_DOUBLE_EQ(dst_agents.position[5000], 15000.0);
+    EXPECT_DOUBLE_EQ(dst_agents.velocity[5000], 14.0);
+
+    auto telemetry = buf.export_snapshot_telemetry(5000);
+    EXPECT_EQ(telemetry["tick"], 5000u);
+    EXPECT_EQ(telemetry["agent_count"], AGENT_COUNT);
+}
