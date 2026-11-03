@@ -54,3 +54,25 @@ TEST(EVTest, BatteryDrainDuringCruising) {
     EXPECT_LT(agents.battery_soc[ev], 0.50);
     EXPECT_NEAR(agents.battery_soc[ev], 0.4658, 0.001);
 }
+
+TEST(EVTest, AutonomousRerouteToNearestDepot) {
+    Graph g;
+    g.add_node({1, 0, 0, 0.0, 0.0, 1});
+    g.add_node({2, 0, 0, 50.0, 0.0, 1});
+    g.add_node({3, 0, 0, 100.0, 0.0, 1}); // Far depot
+    g.add_node({4, 0, 0, 10.0, 10.0, 1});  // Near depot
+
+    g.add_edge({1, 2, 50.0, 2});
+    g.add_edge({2, 3, 50.0, 2});
+    g.add_edge({1, 4, 15.0, 2});
+
+    ChargingStation cs_far{3, 4, 0, 50.0, "Far Fast Charger"};
+    ChargingStation cs_near{4, 2, 0, 50.0, "Near Quick Charger"};
+    g.add_charging_station(cs_far);
+    g.add_charging_station(cs_near);
+
+    auto path = Pathfinder::find_nearest_charging_station(g, 1);
+    ASSERT_EQ(path.size(), 2u);
+    EXPECT_EQ(path[0], 1);
+    EXPECT_EQ(path[1], 4); // Chose nearest depot (node 4)!
+}
