@@ -113,4 +113,24 @@ inline void simulate_ev_consumption(AgentSystem& agents, size_t idx, double dist
     agents.battery_soc[idx] = std::max(0.0, agents.battery_soc[idx] - delta_soc);
 }
 
+inline bool simulate_ev_dwell(AgentSystem& agents, size_t idx, double dt_s, double charge_rate_kw = 50.0) {
+    if (idx >= agents.size()) return false;
+    if (agents.state[idx] != AgentState::Charging) return false;
+
+    // Fast DC charging recovery
+    if (agents.battery_capacity_kwh[idx] > 0.0) {
+        double added_kwh = charge_rate_kw * (dt_s / 3600.0);
+        double delta_soc = added_kwh / agents.battery_capacity_kwh[idx];
+        agents.battery_soc[idx] = std::min(1.0, agents.battery_soc[idx] + delta_soc);
+    }
+
+    agents.dwell_time_remaining[idx] -= dt_s;
+    if (agents.dwell_time_remaining[idx] <= 0.0) {
+        agents.dwell_time_remaining[idx] = 0.0;
+        agents.state[idx] = AgentState::Navigating;
+        return true; // Dwell complete, resumed trip
+    }
+    return false; // Still charging
+}
+
 } // namespace nexussim
