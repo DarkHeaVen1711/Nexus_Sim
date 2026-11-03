@@ -37,3 +37,37 @@ TEST(GreenWaveTest, SingleIntersectionPreemption) {
     EXPECT_TRUE(telem.is_preempted);
     EXPECT_EQ(telem.active_edge, 1);
 }
+
+TEST(GreenWaveTest, SafetyHoldBufferAndRestoration) {
+    SignalController ctrl(100);
+    SignalController::Phase p0;
+    p0.allowed_edges = {10};
+    p0.green_time = 15.0;
+    p0.yellow_time = 3.0;
+    p0.red_clearance = 2.0;
+
+    SignalController::Phase p1;
+    p1.allowed_edges = {20};
+    p1.green_time = 15.0;
+    p1.yellow_time = 3.0;
+    p1.red_clearance = 2.0;
+
+    ctrl.phases = {p0, p1};
+    ctrl.current_phase_idx = 1;
+    ctrl.current_state = SignalController::PhaseState::GREEN;
+
+    // Trigger preemption for 5.0 seconds (+ 3.0s buffer = 8.0s total hold)
+    ctrl.trigger_green_wave(10, 5.0);
+    EXPECT_TRUE(ctrl.is_preempted);
+    EXPECT_TRUE(ctrl.is_green(10));
+
+    // Tick 4.0 seconds - still preempted
+    ctrl.tick(4.0);
+    EXPECT_TRUE(ctrl.is_preempted);
+    EXPECT_TRUE(ctrl.is_green(10));
+
+    // Tick 4.5 seconds more - hold expires (8.0s exceeded) -> transitions to yellow clearance
+    ctrl.tick(4.5);
+    EXPECT_FALSE(ctrl.is_preempted);
+    EXPECT_EQ(ctrl.current_state, SignalController::PhaseState::YELLOW);
+}
