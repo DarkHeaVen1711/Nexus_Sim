@@ -44,6 +44,8 @@ public:
     double preemption_saved_timer = 0.0;
     int64_t active_preemption_edge = -1;
     double preemption_clearance_buffer = 3.0; // 3.0s safety buffer post exit
+    bool starvation_compensation_pending = false;
+    double starved_extra_green = 5.0; // 5s compensation for starved phases
 
     SignalController(int64_t node_id = 0) : node_id(node_id) {}
 
@@ -133,6 +135,7 @@ public:
             if (preemption_hold_remaining <= 0.0) {
                 is_preempted = false;
                 active_preemption_edge = -1;
+                starvation_compensation_pending = true;
                 // Transition gracefully to clearance yellow
                 current_state = PhaseState::YELLOW;
                 current_timer = phases[current_phase_idx].yellow_time;
@@ -154,7 +157,9 @@ public:
                 // Move to next phase
                 current_phase_idx = (current_phase_idx + 1) % phases.size();
                 current_state = PhaseState::GREEN;
-                current_timer = phases[current_phase_idx].green_time;
+                double extra = (starvation_compensation_pending ? starved_extra_green : 0.0);
+                starvation_compensation_pending = false;
+                current_timer = phases[current_phase_idx].green_time + extra;
             }
         }
     }
