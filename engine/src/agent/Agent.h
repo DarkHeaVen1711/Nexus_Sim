@@ -66,6 +66,9 @@ struct AgentSystem {
     alignas(64) std::vector<double> cur_edge_len;
     alignas(64) std::vector<std::vector<int64_t>> path;
     alignas(64) std::vector<uint8_t> needs_reroute;
+    alignas(64) std::vector<double> battery_soc;
+    alignas(64) std::vector<double> battery_capacity_kwh;
+    alignas(64) std::vector<double> dwell_time_remaining;
 
     size_t add_agent(int64_t agent_id, int64_t orig, int64_t dest,
                      AgentType t) {
@@ -86,6 +89,9 @@ struct AgentSystem {
         cur_edge_len.push_back(0.0);
         path.push_back({});
         needs_reroute.push_back(0);
+        battery_soc.push_back(t == AgentType::ElectricVehicle ? 0.90 : 1.0);
+        battery_capacity_kwh.push_back(t == AgentType::ElectricVehicle ? 60.0 : 0.0);
+        dwell_time_remaining.push_back(0.0);
         return idx;
     }
 
