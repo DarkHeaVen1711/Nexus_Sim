@@ -645,20 +645,20 @@ Phase 6: NexusTwin Ingestion Engine
 Phase 7: Time-Machine & State Scrubber
   ├── [COMPLETED] 7.1: Timeline Scrubber UI & Tick Navigation (dashboard/src/components/SimControls.tsx)
   ├── [COMPLETED] 7.2: Scenario Branching & What-If Forking Trigger (⚡ Fork)
-  ├── [PLANNED]   7.3: In-Memory Ring Buffer & Binary Serialization (engine/src/SnapshotBuffer.h)
-  └── [PLANNED]   7.4: Multi-Engine Concurrent Process Manager
+  ├── [COMPLETED] 7.3: In-Memory Ring Buffer & Binary Serialization (engine/src/agent/SnapshotBuffer.h)
+  └── [COMPLETED] 7.4: Multi-Engine Concurrent Process Manager (gateway/scenario_orchestrator.py)
 
 Phase 8: Incidents, Green-Wave & Explainable AI (XAI)
   ├── [COMPLETED] 8.1: XAI Signal Inspection Drawer (dashboard/src/components/XaiInspectionDrawer.tsx)
   ├── [COMPLETED] 8.2: Interval Type-2 Fuzzy FOU & Karnik-Mendel Visualizer
   ├── [COMPLETED] 8.3: Webster Optimum Cycle Split & MAPPO Action Probability Visualizer
-  ├── [PLANNED]   8.4: First-Responder Corridor Green-Wave Preemption (engine/src/SignalController.h)
-  └── [PLANNED]   8.5: Dynamic Polygon Hazard Mutator (engine/src/RoadNetwork.h)
+  ├── [COMPLETED] 8.4: First-Responder Corridor Green-Wave Preemption (engine/src/agent/SignalController.h)
+  └── [COMPLETED] 8.5: Dynamic Polygon Hazard Mutator (engine/src/graph/Graph.h)
 
 Phase 9: Multi-Modal Transit & EV Charging Infrastructure
-  ├── [PLANNED]   9.1: Multi-Modal SoA Agent Pool (engine/src/Agent.h)
-  ├── [PLANNED]   9.2: Transit Signal Priority (TSP) DSRC Simulation (engine/src/SignalController.h)
-  └── [PLANNED]   9.3: EV Battery Depletion & Charging Queue Management (engine/src/RoadNetwork.h)
+  ├── [COMPLETED] 9.1: Multi-Modal SoA Agent Pool (engine/src/agent/Agent.h)
+  ├── [COMPLETED] 9.2: Transit Signal Priority (TSP) DSRC Simulation (engine/src/agent/SignalController.h)
+  └── [COMPLETED] 9.3: EV Battery Depletion & Charging Queue Management (engine/src/graph/Graph.h, Pathfinder.h)
 ```
 
 ---
