@@ -15,7 +15,9 @@ enum class AgentType {
     Bus,
     AutoRickshaw,
     TwoWheeler,
-    Pedestrian
+    Pedestrian,
+    ElectricVehicle,
+    Emergency
 };
 
 struct AgentSystem {
