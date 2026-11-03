@@ -35,6 +35,20 @@ struct PolygonHazard {
     std::vector<Point> vertices;
     double penalty = 1e9; // default infinite penalty (road closure)
     std::string description;
+
+    bool contains_point(double px, double py) const {
+        if (vertices.size() < 3) return false;
+        bool inside = false;
+        size_t n = vertices.size();
+        for (size_t i = 0, j = n - 1; i < n; j = i++) {
+            double xi = vertices[i].x, yi = vertices[i].y;
+            double xj = vertices[j].x, yj = vertices[j].y;
+            bool intersect = ((yi > py) != (yj > py)) &&
+                             (px < (xj - xi) * (py - yi) / (yj - yi + 1e-12) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
 };
 
 class Graph {
