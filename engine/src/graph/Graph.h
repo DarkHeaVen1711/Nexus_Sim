@@ -112,6 +112,26 @@ public:
         }
     }
 
+    size_t apply_polygon_incident(const PolygonHazard& hazard) {
+        size_t penalized_count = 0;
+        for (const auto& edge : edges_) {
+            const Node* nu = get_node(edge.u);
+            const Node* nv = get_node(edge.v);
+            if (!nu || !nv) continue;
+
+            double mid_x = (nu->x + nv->x) * 0.5;
+            double mid_y = (nu->y + nv->y) * 0.5;
+
+            if (hazard.contains_point(nu->x, nu->y) ||
+                hazard.contains_point(nv->x, nv->y) ||
+                hazard.contains_point(mid_x, mid_y)) {
+                set_edge_penalty(edge.u, edge.v, hazard.penalty);
+                penalized_count++;
+            }
+        }
+        return penalized_count;
+    }
+
     double get_edge_penalty(int64_t u, int64_t v) const {
         if (edge_penalties_.empty()) return 1.0;
         auto it = edge_penalties_.find(edge_key(u, v));
