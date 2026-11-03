@@ -130,3 +130,32 @@ TEST(GreenWaveTest, MultiHopCorridorPropagation) {
         EXPECT_TRUE(controllers[i * 10].is_green(100 + i));
     }
 }
+
+TEST(GreenWaveTest, PriorityHierarchyEmergencyOverridesTransit) {
+    SignalController ctrl(300);
+    SignalController::Phase p0;
+    p0.allowed_edges = {10}; // Transit bus approach
+    p0.green_time = 15.0;
+
+    SignalController::Phase p1;
+    p1.allowed_edges = {20}; // Emergency vehicle approach
+    p1.green_time = 15.0;
+
+    ctrl.phases = {p0, p1};
+    ctrl.current_phase_idx = 0;
+    ctrl.current_state = SignalController::PhaseState::GREEN;
+    ctrl.current_timer = 10.0;
+
+    // Bus requests TSP extension -> granted (+5s)
+    EXPECT_TRUE(ctrl.request_transit_priority(10, 5.0));
+    EXPECT_DOUBLE_EQ(ctrl.current_timer, 15.0);
+
+    // Emergency vehicle approaches on cross street edge 20 -> preempts immediately!
+    EXPECT_TRUE(ctrl.trigger_green_wave(20, 10.0));
+    EXPECT_TRUE(ctrl.is_preempted);
+    EXPECT_EQ(ctrl.current_phase_idx, 1);
+    EXPECT_TRUE(ctrl.is_green(20));
+
+    // While emergency is preempted, any further bus TSP request is denied
+    EXPECT_FALSE(ctrl.request_transit_priority(10, 5.0));
+}

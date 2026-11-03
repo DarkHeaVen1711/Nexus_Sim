@@ -57,8 +57,25 @@ public:
     double preemption_clearance_buffer = 3.0; // 3.0s safety buffer post exit
     bool starvation_compensation_pending = false;
     double starved_extra_green = 5.0; // 5s compensation for starved phases
+    bool transit_priority_active = false;
 
     SignalController(int64_t node_id = 0) : node_id(node_id) {}
+
+    bool request_transit_priority(int64_t approach_edge_id, double extension_time = 5.0) {
+        if (is_preempted) return false; // Emergency always overrides transit priority
+        if (phases.empty()) return false;
+
+        // If current phase serves transit approach, extend green
+        const auto& allowed = phases[current_phase_idx].allowed_edges;
+        if (std::find(allowed.begin(), allowed.end(), approach_edge_id) != allowed.end()) {
+            if (current_state == PhaseState::GREEN) {
+                current_timer += extension_time;
+                transit_priority_active = true;
+                return true;
+            }
+        }
+        return false;
+    }
 
     bool trigger_green_wave(int64_t approach_edge_id, double hold_duration = 10.0) {
         if (phases.empty()) return false;
