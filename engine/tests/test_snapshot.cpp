@@ -80,3 +80,54 @@ TEST(SnapshotBufferTest, RingBufferWraparound) {
         EXPECT_EQ(ticks[i], 6u + i);
     }
 }
+
+TEST(SnapshotBufferTest, Crc32ChecksumValidation) {
+    const char* sample_text = "NexusSim Deterministic Digital Twin";
+    uint32_t crc1 = calculate_crc32(reinterpret_cast<const uint8_t*>(sample_text), strlen(sample_text));
+    uint32_t crc2 = calculate_crc32(reinterpret_cast<const uint8_t*>(sample_text), strlen(sample_text));
+    EXPECT_EQ(crc1, crc2);
+    EXPECT_NE(crc1, 0u);
+
+    const char* corrupted_text = "NexusSim Deterministic Digital Twin!";
+    uint32_t crc_diff = calculate_crc32(reinterpret_cast<const uint8_t*>(corrupted_text), strlen(corrupted_text));
+    EXPECT_NE(crc1, crc_diff);
+}
+
+TEST(SnapshotBufferTest, MultiAgentStateRoundTrip) {
+    SnapshotRingBuffer buf(5);
+    AgentSystem src_agents;
+    for (int i = 0; i < 25; ++i) {
+        src_agents.add_agent(1000 + i, 10, 20, static_cast<AgentType>(i % 5));
+        src_agents.position[i] = i * 4.2;
+        src_agents.velocity[i] = (i % 3) * 5.5;
+        src_agents.wait_time[i] = i * 0.5;
+        src_agents.current_edge_idx[i] = i * 2;
+    }
+
+    std::unordered_map<int64_t, SignalController> src_ctrls;
+    SignalController c1(10);
+    c1.current_phase_idx = 2;
+    c1.current_state = SignalController::PhaseState::RED;
+    c1.current_timer = 5.0;
+    src_ctrls.emplace(10, c1);
+
+    EXPECT_TRUE(buf.push_snapshot(777, src_agents, src_ctrls, 99999));
+
+    AgentSystem dst_agents;
+    std::unordered_map<int64_t, SignalController> dst_ctrls;
+    dst_ctrls.emplace(10, SignalController(10));
+    SnapshotHeader hdr;
+
+    EXPECT_TRUE(buf.restore_snapshot(777, dst_agents, dst_ctrls, &hdr));
+    EXPECT_EQ(hdr.tick, 777u);
+    EXPECT_EQ(hdr.agent_count, 25u);
+    EXPECT_EQ(hdr.prng_state, 99999u);
+    EXPECT_EQ(dst_agents.size(), 25u);
+
+    for (size_t i = 0; i < 25; ++i) {
+        EXPECT_EQ(dst_agents.id[i], 1000 + static_cast<int64_t>(i));
+        EXPECT_DOUBLE_EQ(dst_agents.position[i], i * 4.2);
+        EXPECT_DOUBLE_EQ(dst_agents.velocity[i], (i % 3) * 5.5);
+        EXPECT_EQ(dst_agents.current_edge_idx[i], static_cast<int64_t>(i * 2));
+    }
+}
