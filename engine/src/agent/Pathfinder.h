@@ -201,6 +201,30 @@ public:
         return {};
     }
 
+    static std::vector<int64_t> find_nearest_charging_station(
+            const Graph& g, int64_t current_node, const RoutingPolicy* policy = nullptr) {
+        const auto& stations = g.get_charging_stations();
+        if (stations.empty()) return {};
+
+        std::vector<int64_t> best_path;
+        double min_dist = std::numeric_limits<double>::infinity();
+
+        for (const auto& [node_id, station] : stations) {
+            if (!station.has_available_stall()) continue;
+            auto path = compute_path(g, current_node, node_id, policy);
+            if (!path.empty()) {
+                const Node* start = g.get_node(current_node);
+                const Node* goal = g.get_node(node_id);
+                double d = heuristic(start, goal);
+                if (d < min_dist) {
+                    min_dist = d;
+                    best_path = std::move(path);
+                }
+            }
+        }
+        return best_path;
+    }
+
 private:
     static double heuristic(const Node* a, const Node* b) {
         if (!a || !b) return 0.0;

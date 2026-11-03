@@ -390,7 +390,7 @@ endif()
 if(ENABLE_TESTING)
   enable_testing()
   target_compile_definitions(engine_lib PUBLIC TESTS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests")
-  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_fuzzy.cpp tests/test_od_spawner.cpp tests/test_stress.cpp tests/test_inference.cpp tests/test_ring_buffer.cpp tests/test_snapshot.cpp tests/test_incident.cpp tests/test_green_wave.cpp)
+  add_executable(engine_test tests/test_engine.cpp tests/test_graph.cpp tests/test_agent.cpp tests/test_quadtree.cpp tests/test_signal.cpp tests/test_fuzzy.cpp tests/test_od_spawner.cpp tests/test_stress.cpp tests/test_inference.cpp tests/test_ring_buffer.cpp tests/test_snapshot.cpp tests/test_incident.cpp tests/test_green_wave.cpp tests/test_multi_modal.cpp)
   target_link_libraries(engine_test gtest_main engine_lib)
 
   include(GoogleTest)

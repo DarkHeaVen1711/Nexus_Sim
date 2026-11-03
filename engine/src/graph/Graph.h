@@ -51,6 +51,18 @@ struct PolygonHazard {
     }
 };
 
+struct ChargingStation {
+    int64_t node_id;
+    int32_t total_stalls = 4;
+    int32_t occupied_stalls = 0;
+    double charge_rate_kw = 50.0;
+    std::string name;
+
+    bool has_available_stall() const {
+        return occupied_stalls < total_stalls;
+    }
+};
+
 class Graph {
 public:
     static constexpr double INFINITY_PENALTY = 1e9;
@@ -66,6 +78,19 @@ public:
     void add_edge(const Edge& edge) {
         edges_.push_back(edge);
         adj_list_[edge.u].push_back(edge);
+    }
+
+    void add_charging_station(const ChargingStation& cs) {
+        charging_stations_[cs.node_id] = cs;
+    }
+
+    const ChargingStation* get_charging_station(int64_t node_id) const {
+        auto it = charging_stations_.find(node_id);
+        return it != charging_stations_.end() ? &it->second : nullptr;
+    }
+
+    const std::unordered_map<int64_t, ChargingStation>& get_charging_stations() const {
+        return charging_stations_;
     }
 
     const Node* get_node(int64_t id) const {
@@ -151,6 +176,7 @@ private:
     std::vector<Edge> edges_;
     std::unordered_map<int64_t, std::vector<Edge>> adj_list_;
     std::unordered_map<int64_t, double> edge_penalties_;
+    std::unordered_map<int64_t, ChargingStation> charging_stations_;
 };
 
 } // namespace nexussim
