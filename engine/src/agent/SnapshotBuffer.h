@@ -5,6 +5,7 @@
 #include <cstring>
 #include <chrono>
 #include "Agent.h"
+#include "SignalController.h"
 
 namespace nexussim {
 
@@ -111,6 +112,35 @@ inline void unpack_agents(const std::vector<AgentSnapshotRecord>& records, Agent
             agents.wait_time[idx] = r.wait_time;
             agents.state[idx] = static_cast<AgentState>(r.state);
             agents.lane[idx] = r.lane;
+        }
+    }
+}
+
+inline std::vector<ControllerSnapshotRecord> pack_controllers(
+    const std::unordered_map<int64_t, SignalController>& controllers) {
+    std::vector<ControllerSnapshotRecord> records;
+    records.reserve(controllers.size());
+    for (const auto& [node_id, ctrl] : controllers) {
+        ControllerSnapshotRecord r{};
+        r.node_id = node_id;
+        r.current_phase_idx = ctrl.current_phase_idx;
+        r.current_state = static_cast<uint8_t>(ctrl.current_state);
+        r.current_timer = ctrl.current_timer;
+        r.queue_length = 0.0; // Queue length summary
+        records.push_back(r);
+    }
+    return records;
+}
+
+inline void unpack_controllers(
+    const std::vector<ControllerSnapshotRecord>& records,
+    std::unordered_map<int64_t, SignalController>& controllers) {
+    for (const auto& r : records) {
+        auto it = controllers.find(r.node_id);
+        if (it != controllers.end()) {
+            it->second.current_phase_idx = r.current_phase_idx;
+            it->second.current_state = static_cast<SignalController::PhaseState>(r.current_state);
+            it->second.current_timer = r.current_timer;
         }
     }
 }
