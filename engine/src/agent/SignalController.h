@@ -20,6 +20,14 @@ public:
         double get_total_time() const { return green_time + yellow_time + red_clearance; }
     };
 
+    struct EmergencyVehicleBeacon {
+        int64_t vehicle_id;
+        int64_t approach_edge_id;
+        double distance_to_stopline_m;
+        double speed_mps;
+        double timestamp_s;
+    };
+
     int64_t node_id;
     std::vector<Phase> phases;
     
