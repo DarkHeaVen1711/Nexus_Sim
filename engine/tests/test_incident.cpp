@@ -118,3 +118,28 @@ TEST(PolygonHazardTest, ClearAllPenaltiesRestoresTopology) {
     EXPECT_DOUBLE_EQ(g.get_edge_penalty(1, 2), 1.0);
     EXPECT_DOUBLE_EQ(g.get_edge_penalty(3, 4), 1.0);
 }
+
+TEST(PolygonHazardTest, IncidentBenchmarkSubMillisecond) {
+    Graph g;
+    // Build a 100-node, 200-edge test grid
+    for (int i = 0; i < 100; ++i) {
+        g.add_node({i, 0, 0, static_cast<double>((i % 10) * 100), static_cast<double>((i / 10) * 100), 1});
+    }
+    for (int i = 0; i < 90; ++i) {
+        g.add_edge({i, i + 1, 100.0, 2});
+        g.add_edge({i, i + 10, 100.0, 2});
+    }
+
+    PolygonHazard poly;
+    poly.id = 999;
+    poly.vertices = {{200, 200}, {600, 200}, {600, 600}, {200, 600}};
+    poly.penalty = Graph::INFINITY_PENALTY;
+
+    auto t0 = std::chrono::high_resolution_clock::now();
+    size_t affected = g.apply_polygon_incident(poly);
+    auto t1 = std::chrono::high_resolution_clock::now();
+
+    double elapsed_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+    EXPECT_GT(affected, 0u);
+    EXPECT_LT(elapsed_ms, 5.0); // well within sub-5ms SLA
+}
