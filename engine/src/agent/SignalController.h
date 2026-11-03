@@ -36,7 +36,43 @@ public:
     PhaseState current_state = PhaseState::GREEN;
     std::string mode = "webster";
 
+    bool is_preempted = false;
+    double preemption_hold_remaining = 0.0;
+    int preemption_saved_phase = 0;
+    PhaseState preemption_saved_state = PhaseState::GREEN;
+    double preemption_saved_timer = 0.0;
+    int64_t active_preemption_edge = -1;
+
     SignalController(int64_t node_id = 0) : node_id(node_id) {}
+
+    bool trigger_green_wave(int64_t approach_edge_id, double hold_duration = 10.0) {
+        if (phases.empty()) return false;
+        int target_idx = -1;
+        for (size_t i = 0; i < phases.size(); ++i) {
+            for (int64_t e : phases[i].allowed_edges) {
+                if (e == approach_edge_id) {
+                    target_idx = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (target_idx != -1) break;
+        }
+        if (target_idx == -1) return false;
+
+        if (!is_preempted) {
+            preemption_saved_phase = current_phase_idx;
+            preemption_saved_state = current_state;
+            preemption_saved_timer = current_timer;
+        }
+
+        current_phase_idx = target_idx;
+        current_state = PhaseState::GREEN;
+        current_timer = hold_duration;
+        is_preempted = true;
+        preemption_hold_remaining = hold_duration;
+        active_preemption_edge = approach_edge_id;
+        return true;
+    }
 
     void set_mode(const std::string& m) { mode = m; }
     std::string get_mode() const { return mode; }
