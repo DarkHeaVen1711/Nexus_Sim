@@ -7,7 +7,8 @@ namespace nexussim {
 enum class AgentState {
     Spawned,
     Navigating,
-    Arrived
+    Arrived,
+    Charging
 };
 
 enum class AgentType {
@@ -18,6 +19,34 @@ enum class AgentType {
     Pedestrian,
     ElectricVehicle,
     Emergency
+};
+
+struct AgentKinematics {
+    double max_speed_mps;
+    double max_accel_mps2;
+    double max_decel_mps2;
+    double length_m;
+    double width_m;
+
+    static AgentKinematics for_type(AgentType t) {
+        switch (t) {
+            case AgentType::Bus:
+                return {13.89, 1.0, 2.0, 12.0, 2.5}; // 50 km/h, 12m
+            case AgentType::TwoWheeler:
+                return {11.11, 1.8, 3.0, 2.0, 0.8};  // 40 km/h, 2m
+            case AgentType::AutoRickshaw:
+                return {10.0, 1.5, 2.5, 2.8, 1.3};   // 36 km/h, 2.8m
+            case AgentType::Pedestrian:
+                return {1.39, 0.8, 1.5, 0.5, 0.5};   // 5 km/h, 0.5m
+            case AgentType::ElectricVehicle:
+                return {16.67, 2.8, 4.0, 4.8, 1.8};  // 60 km/h, 4.8m, EV
+            case AgentType::Emergency:
+                return {22.22, 3.5, 4.5, 6.5, 2.2};  // 80 km/h, 6.5m
+            case AgentType::Car:
+            default:
+                return {16.67, 2.5, 3.5, 4.8, 1.8};  // 60 km/h, 4.8m
+        }
+    }
 };
 
 struct AgentSystem {
@@ -48,7 +77,7 @@ struct AgentSystem {
         state.push_back(AgentState::Spawned);
         position.push_back(0.0);
         velocity.push_back(0.0);
-        target_speed.push_back(0.0);
+        target_speed.push_back(AgentKinematics::for_type(t).max_speed_mps);
         current_edge_idx.push_back(0);
         lane.push_back(0);
         wait_time.push_back(0.0);
