@@ -160,6 +160,58 @@ public:
     size_t size() const { return count_; }
     bool empty() const { return count_ == 0; }
 
+    bool push_snapshot(uint64_t tick,
+                       const AgentSystem& agents,
+                       const std::unordered_map<int64_t, SignalController>& controllers,
+                       uint64_t prng_state = 0) {
+        auto agent_records = pack_agents(agents);
+        auto ctrl_records = pack_controllers(controllers);
+
+        size_t header_size = sizeof(SnapshotHeader);
+        size_t agents_size = agent_records.size() * sizeof(AgentSnapshotRecord);
+        size_t ctrls_size = ctrl_records.size() * sizeof(ControllerSnapshotRecord);
+        size_t total_size = header_size + agents_size + ctrls_size;
+
+        std::vector<uint8_t> blob(total_size);
+
+        SnapshotHeader hdr;
+        hdr.magic = 0x4E585353;
+        hdr.version = 1;
+        hdr.tick = tick;
+        hdr.timestamp_ns = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now().time_since_epoch()
+            ).count()
+        );
+        hdr.agent_count = static_cast<uint32_t>(agent_records.size());
+        hdr.controller_count = static_cast<uint32_t>(ctrl_records.size());
+        hdr.prng_state = prng_state;
+        hdr.crc32 = 0; // set 0 before computing CRC
+
+        std::memcpy(blob.data(), &hdr, header_size);
+        if (agents_size > 0) {
+            std::memcpy(blob.data() + header_size, agent_records.data(), agents_size);
+        }
+        if (ctrls_size > 0) {
+            std::memcpy(blob.data() + header_size + agents_size, ctrl_records.data(), ctrls_size);
+        }
+
+        // Calculate CRC32 over the payload after the header crc32 field
+        uint32_t computed_crc = calculate_crc32(blob.data() + header_size, agents_size + ctrls_size);
+        reinterpret_cast<SnapshotHeader*>(blob.data())->crc32 = computed_crc;
+
+        buffers_[head_] = std::move(blob);
+        tick_index_[head_] = tick;
+        valid_slots_[head_] = true;
+
+        head_ = (head_ + 1) % capacity_;
+        if (count_ < capacity_) {
+            count_++;
+        }
+
+        return true;
+    }
+
     std::vector<uint64_t> get_available_ticks() const {
         std::vector<uint64_t> ticks;
         ticks.reserve(count_);
