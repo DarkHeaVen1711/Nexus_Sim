@@ -89,6 +89,29 @@ public:
         return zones.size();
     }
 
+    void set_edge_penalty(int64_t u, int64_t v, double penalty) {
+        int64_t key = edge_key(u, v);
+        if (penalty <= 1.0) {
+            edge_penalties_.erase(key);
+        } else {
+            edge_penalties_[key] = penalty;
+        }
+    }
+
+    double get_edge_penalty(int64_t u, int64_t v) const {
+        if (edge_penalties_.empty()) return 1.0;
+        auto it = edge_penalties_.find(edge_key(u, v));
+        return it != edge_penalties_.end() ? it->second : 1.0;
+    }
+
+    void clear_all_penalties() {
+        edge_penalties_.clear();
+    }
+
+    const std::unordered_map<int64_t, double>& get_all_penalties() const {
+        return edge_penalties_;
+    }
+
 private:
     std::unordered_map<int64_t, Node> nodes_;
     std::vector<Edge> edges_;
