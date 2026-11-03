@@ -28,7 +28,7 @@ public:
     PhaseState current_state = PhaseState::GREEN;
     std::string mode = "webster";
 
-    SignalController(int64_t node_id) : node_id(node_id) {}
+    SignalController(int64_t node_id = 0) : node_id(node_id) {}
 
     void set_mode(const std::string& m) { mode = m; }
     std::string get_mode() const { return mode; }
