@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <unordered_map>
 #include <iostream>
+#include <string>
 
 namespace nexussim {
 
@@ -20,6 +21,25 @@ public:
         double get_total_time() const { return green_time + yellow_time + red_clearance; }
     };
 
+    struct EmergencyVehicleBeacon {
+        int64_t vehicle_id;
+        int64_t approach_edge_id;
+        double distance_to_stopline_m;
+        double speed_mps;
+        double timestamp_s;
+    };
+
+    struct PreemptionTelemetry {
+        bool is_preempted = false;
+        double remaining_s = 0.0;
+        int64_t active_edge = -1;
+        int phase_idx = 0;
+    };
+
+    PreemptionTelemetry get_preemption_telemetry() const {
+        return {is_preempted, preemption_hold_remaining, active_preemption_edge, current_phase_idx};
+    }
+
     int64_t node_id;
     std::vector<Phase> phases;
     
@@ -28,20 +48,73 @@ public:
     PhaseState current_state = PhaseState::GREEN;
     std::string mode = "webster";
 
+    bool is_preempted = false;
+    double preemption_hold_remaining = 0.0;
+    int preemption_saved_phase = 0;
+    PhaseState preemption_saved_state = PhaseState::GREEN;
+    double preemption_saved_timer = 0.0;
+    int64_t active_preemption_edge = -1;
+    double preemption_clearance_buffer = 3.0; // 3.0s safety buffer post exit
+    bool starvation_compensation_pending = false;
+    double starved_extra_green = 5.0; // 5s compensation for starved phases
+    bool transit_priority_active = false;
+
     SignalController(int64_t node_id = 0) : node_id(node_id) {}
+
+    bool request_transit_priority(int64_t approach_edge_id, double extension_time = 5.0) {
+        if (is_preempted) return false; // Emergency always overrides transit priority
+        if (phases.empty()) return false;
+
+        // If current phase serves transit approach, extend green
+        const auto& allowed = phases[current_phase_idx].allowed_edges;
+        if (std::find(allowed.begin(), allowed.end(), approach_edge_id) != allowed.end()) {
+            if (current_state == PhaseState::GREEN) {
+                current_timer += extension_time;
+                transit_priority_active = true;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool trigger_green_wave(int64_t approach_edge_id, double hold_duration = 10.0) {
+        if (phases.empty()) return false;
+        int target_idx = -1;
+        for (size_t i = 0; i < phases.size(); ++i) {
+            for (int64_t e : phases[i].allowed_edges) {
+                if (e == approach_edge_id) {
+                    target_idx = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (target_idx != -1) break;
+        }
+        if (target_idx == -1) return false;
+
+        if (!is_preempted) {
+            preemption_saved_phase = current_phase_idx;
+            preemption_saved_state = current_state;
+            preemption_saved_timer = current_timer;
+        }
+
+        current_phase_idx = target_idx;
+        current_state = PhaseState::GREEN;
+        current_timer = hold_duration + preemption_clearance_buffer;
+        is_preempted = true;
+        preemption_hold_remaining = hold_duration + preemption_clearance_buffer;
+        active_preemption_edge = approach_edge_id;
+        return true;
+    }
 
     void set_mode(const std::string& m) { mode = m; }
     std::string get_mode() const { return mode; }
 
     // Implements Webster's Formula for fixed cycle timing
-    // volumes: traffic flow on each phase (vph)
-    // saturation_flow: assumed capacity per lane (vph)
     void calculate_webster_timing(const std::vector<std::vector<int64_t>>& phase_edges, 
                                   const std::vector<double>& phase_volumes,
                                   double saturation_flow = 1800.0) {
-        
         phases.clear();
-        int n_phases = phase_edges.size();
+        int n_phases = static_cast<int>(phase_edges.size());
         if (n_phases == 0) return;
 
         double L = n_phases * 5.0; // 5 seconds lost time per phase (3s yellow + 2s all-red)
@@ -57,12 +130,10 @@ public:
         if (Y >= 0.9) Y = 0.9;
         
         double cycle_length = (1.5 * L + 5.0) / (1.0 - Y);
-        
-        // Practical constraints for cycle length (min 30s, max 120s)
         cycle_length = std::max(30.0, std::min(120.0, cycle_length));
 
         for (int i = 0; i < n_phases; ++i) {
-            double g_i = (y_i[i] / Y) * (cycle_length - L);
+            double g_i = (y_i[i] / (Y > 1e-6 ? Y : 1.0)) * (cycle_length - L);
             g_i = std::max(5.0, g_i); // minimum 5s green
             
             Phase p;
@@ -76,9 +147,6 @@ public:
         current_state = PhaseState::GREEN;
     }
 
-    // AI control hook (Phase 8.5): terminate the current green immediately,
-    // entering the standard yellow -> red -> next phase sequence. Returns
-    // false when the controller is not in GREEN (nothing to cut short).
     bool end_green() {
         if (phases.empty() || current_state != PhaseState::GREEN) return false;
         current_state = PhaseState::YELLOW;
@@ -88,6 +156,20 @@ public:
 
     void tick(double dt) {
         if (phases.empty()) return;
+
+        if (is_preempted) {
+            preemption_hold_remaining -= dt;
+            current_timer = preemption_hold_remaining;
+            if (preemption_hold_remaining <= 0.0) {
+                is_preempted = false;
+                active_preemption_edge = -1;
+                starvation_compensation_pending = true;
+                // Transition gracefully to clearance yellow
+                current_state = PhaseState::YELLOW;
+                current_timer = phases[current_phase_idx].yellow_time;
+            }
+            return;
+        }
 
         current_timer -= dt;
         
@@ -103,18 +185,35 @@ public:
                 // Move to next phase
                 current_phase_idx = (current_phase_idx + 1) % phases.size();
                 current_state = PhaseState::GREEN;
-                current_timer = phases[current_phase_idx].green_time;
+                double extra = (starvation_compensation_pending ? starved_extra_green : 0.0);
+                starvation_compensation_pending = false;
+                current_timer = phases[current_phase_idx].green_time + extra;
             }
         }
     }
 
     bool is_green(int64_t incoming_edge_id) const {
         if (phases.empty() || current_state == PhaseState::RED) return false;
-        if (current_state == PhaseState::YELLOW) return false; // treat yellow as red for new approaching agents (simplified)
+        if (current_state == PhaseState::YELLOW) return false;
         
         const auto& allowed = phases[current_phase_idx].allowed_edges;
         return std::find(allowed.begin(), allowed.end(), incoming_edge_id) != allowed.end();
     }
 };
+
+inline size_t trigger_corridor_green_wave(
+    const std::vector<int64_t>& route_edges,
+    std::unordered_map<int64_t, SignalController>& controllers,
+    double hold_duration = 15.0) {
+    size_t preempted = 0;
+    for (int64_t edge_id : route_edges) {
+        for (auto& [node_id, ctrl] : controllers) {
+            if (ctrl.trigger_green_wave(edge_id, hold_duration)) {
+                preempted++;
+            }
+        }
+    }
+    return preempted;
+}
 
 } // namespace nexussim
