@@ -6,6 +6,7 @@
 #include <chrono>
 #include "Agent.h"
 #include "SignalController.h"
+#include <nlohmann/json.hpp>
 
 namespace nexussim {
 
@@ -258,6 +259,26 @@ public:
             }
         }
         return false;
+    }
+
+    nlohmann::json export_snapshot_telemetry(uint64_t tick) const {
+        for (size_t i = 0; i < capacity_; ++i) {
+            if (valid_slots_[i] && tick_index_[i] == tick) {
+                const auto& blob = buffers_[i];
+                if (blob.size() < sizeof(SnapshotHeader)) return nlohmann::json{};
+                const auto* hdr = reinterpret_cast<const SnapshotHeader*>(blob.data());
+
+                nlohmann::json j;
+                j["tick"] = hdr->tick;
+                j["timestamp_ns"] = hdr->timestamp_ns;
+                j["agent_count"] = hdr->agent_count;
+                j["controller_count"] = hdr->controller_count;
+                j["crc32"] = hdr->crc32;
+                j["prng_state"] = hdr->prng_state;
+                return j;
+            }
+        }
+        return nlohmann::json{};
     }
 
     std::vector<uint64_t> get_available_ticks() const {
