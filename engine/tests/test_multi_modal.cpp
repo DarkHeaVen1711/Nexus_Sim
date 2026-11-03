@@ -76,3 +76,24 @@ TEST(EVTest, AutonomousRerouteToNearestDepot) {
     EXPECT_EQ(path[0], 1);
     EXPECT_EQ(path[1], 4); // Chose nearest depot (node 4)!
 }
+
+TEST(EVTest, DwellCompletionAndResume) {
+    AgentSystem agents;
+    size_t ev = agents.add_agent(999, 1, 10, AgentType::ElectricVehicle);
+    agents.state[ev] = AgentState::Charging;
+    agents.battery_soc[ev] = 0.10; // 10%
+    agents.battery_capacity_kwh[ev] = 60.0;
+    agents.dwell_time_remaining[ev] = 600.0; // 10 minutes dwell
+
+    // Tick 300s - still charging
+    bool resumed = simulate_ev_dwell(agents, ev, 300.0, 50.0);
+    EXPECT_FALSE(resumed);
+    EXPECT_EQ(agents.state[ev], AgentState::Charging);
+    EXPECT_GT(agents.battery_soc[ev], 0.10); // Battery recharged
+
+    // Tick 301s more - dwell completes
+    resumed = simulate_ev_dwell(agents, ev, 301.0, 50.0);
+    EXPECT_TRUE(resumed);
+    EXPECT_EQ(agents.state[ev], AgentState::Navigating); // Resumed navigation!
+    EXPECT_DOUBLE_EQ(agents.dwell_time_remaining[ev], 0.0);
+}
