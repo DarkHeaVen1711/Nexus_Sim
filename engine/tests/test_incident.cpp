@@ -106,3 +106,15 @@ TEST(PolygonHazardTest, ApplyPolygonIncidentPenalizesIntersectingEdges) {
     EXPECT_GE(g.get_edge_penalty(1, 2), Graph::INFINITY_PENALTY);
     EXPECT_DOUBLE_EQ(g.get_edge_penalty(3, 4), 1.0);
 }
+
+TEST(PolygonHazardTest, ClearAllPenaltiesRestoresTopology) {
+    Graph g;
+    g.set_edge_penalty(1, 2, Graph::INFINITY_PENALTY);
+    g.set_edge_penalty(3, 4, 10.0);
+    EXPECT_FALSE(g.get_all_penalties().empty());
+
+    g.clear_all_penalties();
+    EXPECT_TRUE(g.get_all_penalties().empty());
+    EXPECT_DOUBLE_EQ(g.get_edge_penalty(1, 2), 1.0);
+    EXPECT_DOUBLE_EQ(g.get_edge_penalty(3, 4), 1.0);
+}
