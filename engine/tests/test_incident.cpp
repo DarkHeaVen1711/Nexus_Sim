@@ -45,3 +45,28 @@ TEST(EdgePenaltyTest, InfinitePenaltyPreventsTraversal) {
     EXPECT_EQ(p2[1], 4);
     EXPECT_EQ(p2[2], 3);
 }
+
+TEST(PathfinderIncidentTest, StochasticRerouteRespectsBlockedEdges) {
+    Graph g;
+    g.add_node({10, 0.0, 0.0, 0.0, 0.0, 1});
+    g.add_node({20, 0.0, 1.0, 50.0, 0.0, 1});
+    g.add_node({30, 0.0, 2.0, 100.0, 0.0, 1});
+    g.add_node({40, 1.0, 1.0, 50.0, 20.0, 1});
+
+    g.add_edge({10, 20, 50.0, 1});
+    g.add_edge({20, 30, 50.0, 1});
+    g.add_edge({10, 40, 60.0, 1});
+    g.add_edge({40, 30, 60.0, 1});
+
+    std::mt19937 rng(42);
+    // Block direct path edge 20 -> 30
+    g.set_edge_penalty(20, 30, Graph::INFINITY_PENALTY);
+
+    for (int trial = 0; trial < 10; ++trial) {
+        auto p = Pathfinder::compute_path_stochastic(g, 10, 30, rng, 0.1);
+        ASSERT_EQ(p.size(), 3u);
+        EXPECT_EQ(p[0], 10);
+        EXPECT_EQ(p[1], 40); // must take detour node 40
+        EXPECT_EQ(p[2], 30);
+    }
+}
