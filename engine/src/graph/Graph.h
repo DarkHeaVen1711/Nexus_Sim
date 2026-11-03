@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <cstddef>
+#include <string>
 
 namespace nexussim {
 
@@ -24,8 +25,26 @@ struct Edge {
     int32_t lanes;
 };
 
+struct Point {
+    double x;
+    double y;
+};
+
+struct PolygonHazard {
+    int64_t id;
+    std::vector<Point> vertices;
+    double penalty = 1e9; // default infinite penalty (road closure)
+    std::string description;
+};
+
 class Graph {
 public:
+    static constexpr double INFINITY_PENALTY = 1e9;
+
+    static int64_t edge_key(int64_t u, int64_t v) {
+        return (u * 0x9e3779b9) ^ v;
+    }
+
     void add_node(const Node& node) {
         nodes_[node.id] = node;
     }
@@ -74,6 +93,7 @@ private:
     std::unordered_map<int64_t, Node> nodes_;
     std::vector<Edge> edges_;
     std::unordered_map<int64_t, std::vector<Edge>> adj_list_;
+    std::unordered_map<int64_t, double> edge_penalties_;
 };
 
 } // namespace nexussim
