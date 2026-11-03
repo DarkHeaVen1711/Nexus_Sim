@@ -212,6 +212,54 @@ public:
         return true;
     }
 
+    bool restore_snapshot(uint64_t tick,
+                          AgentSystem& out_agents,
+                          std::unordered_map<int64_t, SignalController>& out_controllers,
+                          SnapshotHeader* out_hdr = nullptr) const {
+        for (size_t i = 0; i < capacity_; ++i) {
+            if (valid_slots_[i] && tick_index_[i] == tick) {
+                const auto& blob = buffers_[i];
+                if (blob.size() < sizeof(SnapshotHeader)) return false;
+
+                const auto* hdr = reinterpret_cast<const SnapshotHeader*>(blob.data());
+                if (hdr->magic != 0x4E585353) return false;
+
+                size_t header_size = sizeof(SnapshotHeader);
+                size_t agents_size = hdr->agent_count * sizeof(AgentSnapshotRecord);
+                size_t ctrls_size = hdr->controller_count * sizeof(ControllerSnapshotRecord);
+
+                if (blob.size() < header_size + agents_size + ctrls_size) return false;
+
+                // Validate CRC32
+                uint32_t expected_crc = calculate_crc32(blob.data() + header_size, agents_size + ctrls_size);
+                if (hdr->crc32 != expected_crc) {
+                    return false; // CRC mismatch
+                }
+
+                if (out_hdr) {
+                    *out_hdr = *hdr;
+                }
+
+                // Unpack agents
+                std::vector<AgentSnapshotRecord> agent_records(hdr->agent_count);
+                if (agents_size > 0) {
+                    std::memcpy(agent_records.data(), blob.data() + header_size, agents_size);
+                }
+                unpack_agents(agent_records, out_agents);
+
+                // Unpack controllers
+                std::vector<ControllerSnapshotRecord> ctrl_records(hdr->controller_count);
+                if (ctrls_size > 0) {
+                    std::memcpy(ctrl_records.data(), blob.data() + header_size + agents_size, ctrls_size);
+                }
+                unpack_controllers(ctrl_records, out_controllers);
+
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::vector<uint64_t> get_available_ticks() const {
         std::vector<uint64_t> ticks;
         ticks.reserve(count_);
