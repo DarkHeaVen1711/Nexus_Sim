@@ -41,4 +41,59 @@ struct ControllerSnapshotRecord {
 
 #pragma pack(pop)
 
+class SnapshotRingBuffer {
+public:
+    static constexpr size_t DEFAULT_CAPACITY = 120; // 120 snapshots (e.g. 2 minutes at 10 ticks/interval)
+
+    explicit SnapshotRingBuffer(size_t capacity = DEFAULT_CAPACITY)
+        : capacity_(capacity > 0 ? capacity : DEFAULT_CAPACITY),
+          buffers_(capacity > 0 ? capacity : DEFAULT_CAPACITY),
+          tick_index_(capacity > 0 ? capacity : DEFAULT_CAPACITY, 0),
+          valid_slots_(capacity > 0 ? capacity : DEFAULT_CAPACITY, false),
+          head_(0), count_(0) {}
+
+    size_t capacity() const { return capacity_; }
+    size_t size() const { return count_; }
+    bool empty() const { return count_ == 0; }
+
+    std::vector<uint64_t> get_available_ticks() const {
+        std::vector<uint64_t> ticks;
+        ticks.reserve(count_);
+        if (count_ == 0) return ticks;
+
+        size_t start = (head_ + capacity_ - count_) % capacity_;
+        for (size_t i = 0; i < count_; ++i) {
+            size_t idx = (start + i) % capacity_;
+            if (valid_slots_[idx]) {
+                ticks.push_back(tick_index_[idx]);
+            }
+        }
+        return ticks;
+    }
+
+    bool has_tick(uint64_t tick) const {
+        for (size_t i = 0; i < capacity_; ++i) {
+            if (valid_slots_[i] && tick_index_[i] == tick) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void clear() {
+        head_ = 0;
+        count_ = 0;
+        std::fill(valid_slots_.begin(), valid_slots_.end(), false);
+        std::fill(tick_index_.begin(), tick_index_.end(), 0);
+    }
+
+private:
+    size_t capacity_;
+    std::vector<std::vector<uint8_t>> buffers_;
+    std::vector<uint64_t> tick_index_;
+    std::vector<bool> valid_slots_;
+    size_t head_;
+    size_t count_;
+};
+
 } // namespace nexussim
