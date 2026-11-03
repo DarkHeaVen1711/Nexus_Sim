@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <cstdint>
 #include <cstddef>
+#include <string>
 
 namespace nexussim {
 
@@ -24,8 +25,40 @@ struct Edge {
     int32_t lanes;
 };
 
+struct Point {
+    double x;
+    double y;
+};
+
+struct PolygonHazard {
+    int64_t id;
+    std::vector<Point> vertices;
+    double penalty = 1e9; // default infinite penalty (road closure)
+    std::string description;
+
+    bool contains_point(double px, double py) const {
+        if (vertices.size() < 3) return false;
+        bool inside = false;
+        size_t n = vertices.size();
+        for (size_t i = 0, j = n - 1; i < n; j = i++) {
+            double xi = vertices[i].x, yi = vertices[i].y;
+            double xj = vertices[j].x, yj = vertices[j].y;
+            bool intersect = ((yi > py) != (yj > py)) &&
+                             (px < (xj - xi) * (py - yi) / (yj - yi + 1e-12) + xi);
+            if (intersect) inside = !inside;
+        }
+        return inside;
+    }
+};
+
 class Graph {
 public:
+    static constexpr double INFINITY_PENALTY = 1e9;
+
+    static int64_t edge_key(int64_t u, int64_t v) {
+        return (u * 0x9e3779b9) ^ v;
+    }
+
     void add_node(const Node& node) {
         nodes_[node.id] = node;
     }
@@ -70,10 +103,54 @@ public:
         return zones.size();
     }
 
+    void set_edge_penalty(int64_t u, int64_t v, double penalty) {
+        int64_t key = edge_key(u, v);
+        if (penalty <= 1.0) {
+            edge_penalties_.erase(key);
+        } else {
+            edge_penalties_[key] = penalty;
+        }
+    }
+
+    size_t apply_polygon_incident(const PolygonHazard& hazard) {
+        size_t penalized_count = 0;
+        for (const auto& edge : edges_) {
+            const Node* nu = get_node(edge.u);
+            const Node* nv = get_node(edge.v);
+            if (!nu || !nv) continue;
+
+            double mid_x = (nu->x + nv->x) * 0.5;
+            double mid_y = (nu->y + nv->y) * 0.5;
+
+            if (hazard.contains_point(nu->x, nu->y) ||
+                hazard.contains_point(nv->x, nv->y) ||
+                hazard.contains_point(mid_x, mid_y)) {
+                set_edge_penalty(edge.u, edge.v, hazard.penalty);
+                penalized_count++;
+            }
+        }
+        return penalized_count;
+    }
+
+    double get_edge_penalty(int64_t u, int64_t v) const {
+        if (edge_penalties_.empty()) return 1.0;
+        auto it = edge_penalties_.find(edge_key(u, v));
+        return it != edge_penalties_.end() ? it->second : 1.0;
+    }
+
+    void clear_all_penalties() {
+        edge_penalties_.clear();
+    }
+
+    const std::unordered_map<int64_t, double>& get_all_penalties() const {
+        return edge_penalties_;
+    }
+
 private:
     std::unordered_map<int64_t, Node> nodes_;
     std::vector<Edge> edges_;
     std::unordered_map<int64_t, std::vector<Edge>> adj_list_;
+    std::unordered_map<int64_t, double> edge_penalties_;
 };
 
 } // namespace nexussim

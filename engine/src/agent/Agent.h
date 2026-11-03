@@ -34,6 +34,7 @@ struct AgentSystem {
     alignas(64) std::vector<double> journey_time;
     alignas(64) std::vector<double> cur_edge_len;
     alignas(64) std::vector<std::vector<int64_t>> path;
+    alignas(64) std::vector<uint8_t> needs_reroute;
 
     size_t add_agent(int64_t agent_id, int64_t orig, int64_t dest,
                      AgentType t) {
@@ -53,6 +54,7 @@ struct AgentSystem {
         journey_time.push_back(-1.0);
         cur_edge_len.push_back(0.0);
         path.push_back({});
+        needs_reroute.push_back(0);
         return idx;
     }
 
