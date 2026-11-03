@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 namespace nexussim {
 
@@ -99,5 +100,17 @@ struct AgentSystem {
         return id.size();
     }
 };
+
+inline void simulate_ev_consumption(AgentSystem& agents, size_t idx, double distance_m, double dt_s) {
+    if (idx >= agents.size()) return;
+    if (agents.type[idx] != AgentType::ElectricVehicle) return;
+    if (agents.battery_capacity_kwh[idx] <= 0.0) return;
+
+    double dist_km = distance_m / 1000.0;
+    // 0.18 kWh per km traction + 1.5 kW auxiliary
+    double energy_kwh = (dist_km * 0.18) + (1.5 * (dt_s / 3600.0));
+    double delta_soc = energy_kwh / agents.battery_capacity_kwh[idx];
+    agents.battery_soc[idx] = std::max(0.0, agents.battery_soc[idx] - delta_soc);
+}
 
 } // namespace nexussim
