@@ -70,3 +70,39 @@ TEST(PathfinderIncidentTest, StochasticRerouteRespectsBlockedEdges) {
         EXPECT_EQ(p[2], 30);
     }
 }
+
+TEST(PolygonHazardTest, RayCastingContainment) {
+    PolygonHazard poly;
+    poly.id = 1;
+    // Square from (0,0) to (10,10)
+    poly.vertices = {{0, 0}, {10, 0}, {10, 10}, {0, 10}};
+
+    EXPECT_TRUE(poly.contains_point(5.0, 5.0));
+    EXPECT_TRUE(poly.contains_point(1.0, 1.0));
+    EXPECT_FALSE(poly.contains_point(15.0, 5.0));
+    EXPECT_FALSE(poly.contains_point(-2.0, 5.0));
+    EXPECT_FALSE(poly.contains_point(5.0, 12.0));
+}
+
+TEST(PolygonHazardTest, ApplyPolygonIncidentPenalizesIntersectingEdges) {
+    Graph g;
+    // Nodes inside square: 1(2,2), 2(8,8) -> edge inside
+    // Nodes outside square: 3(20,20), 4(30,30) -> edge outside
+    g.add_node({1, 0, 0, 2.0, 2.0, 1});
+    g.add_node({2, 0, 0, 8.0, 8.0, 1});
+    g.add_node({3, 0, 0, 20.0, 20.0, 1});
+    g.add_node({4, 0, 0, 30.0, 30.0, 1});
+
+    g.add_edge({1, 2, 50.0, 1});
+    g.add_edge({3, 4, 50.0, 1});
+
+    PolygonHazard poly;
+    poly.id = 42;
+    poly.vertices = {{0, 0}, {10, 0}, {10, 10}, {0, 10}};
+    poly.penalty = Graph::INFINITY_PENALTY;
+
+    size_t count = g.apply_polygon_incident(poly);
+    EXPECT_EQ(count, 1u);
+    EXPECT_GE(g.get_edge_penalty(1, 2), Graph::INFINITY_PENALTY);
+    EXPECT_DOUBLE_EQ(g.get_edge_penalty(3, 4), 1.0);
+}
