@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "../src/agent/Agent.h"
+#include "../src/graph/Graph.h"
+#include "../src/agent/Pathfinder.h"
 
 using namespace nexussim;
 
