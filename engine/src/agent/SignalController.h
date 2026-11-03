@@ -184,4 +184,19 @@ public:
     }
 };
 
+inline size_t trigger_corridor_green_wave(
+    const std::vector<int64_t>& route_edges,
+    std::unordered_map<int64_t, SignalController>& controllers,
+    double hold_duration = 15.0) {
+    size_t preempted = 0;
+    for (int64_t edge_id : route_edges) {
+        for (auto& [node_id, ctrl] : controllers) {
+            if (ctrl.trigger_green_wave(edge_id, hold_duration)) {
+                preempted++;
+            }
+        }
+    }
+    return preempted;
+}
+
 } // namespace nexussim
