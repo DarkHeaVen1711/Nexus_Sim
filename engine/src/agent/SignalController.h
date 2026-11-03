@@ -29,6 +29,17 @@ public:
         double timestamp_s;
     };
 
+    struct PreemptionTelemetry {
+        bool is_preempted = false;
+        double remaining_s = 0.0;
+        int64_t active_edge = -1;
+        int phase_idx = 0;
+    };
+
+    PreemptionTelemetry get_preemption_telemetry() const {
+        return {is_preempted, preemption_hold_remaining, active_preemption_edge, current_phase_idx};
+    }
+
     int64_t node_id;
     std::vector<Phase> phases;
     
